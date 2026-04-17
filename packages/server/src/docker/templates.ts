@@ -1,5 +1,5 @@
 import path from 'path';
-import { getDockerClient } from './client.ts';
+import { getDockerClient } from './client.js';
 
 export const TEMPLATE_TYPES = ['node', 'node+java', 'node+python'] as const;
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
@@ -41,7 +41,7 @@ export async function ensureTemplateImage(type: TemplateType): Promise<void> {
   const config = getTemplateConfig(type);
 
   // 检查镜像是否已存在
-  const images = await docker.listImages({ filter: config.imageName });
+  const images = await docker.listImages({ filters: `{"dangling":["false"],"reference":["${config.imageName}"]}` });
   if (images.length > 0) return;
 
   // 构建镜像

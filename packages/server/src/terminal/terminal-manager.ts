@@ -113,7 +113,7 @@ class TerminalManagerImpl {
     try {
       // 解码 base64 输入
       const decoded = Buffer.from(data, 'base64').toString();
-      writeToExecStream(session.execSession.stream as NodeJS.WritableStream, decoded);
+      writeToExecStream(session.execSession.stream as unknown as NodeJS.WritableStream, decoded);
     } catch (error) {
       console.error(`Failed to write input to session ${sessionId}:`, error);
     }
@@ -157,7 +157,7 @@ class TerminalManagerImpl {
       session.execSession.stream.removeAllListeners();
 
       // 关闭 stdin
-      closeExecStdin(session.execSession.stream as NodeJS.WritableStream);
+      closeExecStdin(session.execSession.stream as unknown as NodeJS.WritableStream);
 
       // 关闭 WebSocket 连接
       if (session.ws.readyState === WebSocket.OPEN) {

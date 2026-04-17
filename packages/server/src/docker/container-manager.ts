@@ -1,6 +1,6 @@
 import Docker from 'dockerode';
-import { getDockerClient } from './client.ts';
-import { ensureTemplateImage, getTemplateConfig, TemplateType } from './templates.ts';
+import { getDockerClient } from './client.js';
+import { ensureTemplateImage, getTemplateConfig, TemplateType } from './templates.js';
 
 const CONTAINER_NAME_PREFIX = 'code-link-project-';
 
@@ -107,7 +107,7 @@ export async function execInContainer(
 
     stream.on('end', async () => {
       const info = await exec.inspect();
-      resolve({ stdout, stderr, exitCode: info.ExitCode });
+      resolve({ stdout, stderr, exitCode: info.ExitCode ?? 0 });
     });
   });
 }

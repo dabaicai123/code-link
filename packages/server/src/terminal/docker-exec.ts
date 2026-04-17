@@ -1,6 +1,6 @@
 import Docker from 'dockerode';
 import { PassThrough, Transform, TransformCallback } from 'stream';
-import { getDockerClient } from '../docker/client.ts';
+import { getDockerClient } from '../docker/client.js';
 
 export interface ExecSession {
   exec: Docker.Exec;
@@ -161,8 +161,7 @@ export async function getExecInfo(
   execId: string
 ): Promise<Docker.ExecInspectInfo> {
   const docker = getDockerClient();
-  const container = docker.getContainer(containerId);
-  const exec = container.getExec(execId);
+  const exec = docker.getExec(execId);
   return exec.inspect();
 }
 
