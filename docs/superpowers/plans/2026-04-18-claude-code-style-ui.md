@@ -4,9 +4,9 @@
 
 **Goal:** 将 Code Link 前端界面改造为 Claude Code 桌面端风格，采用深色主题、分栏布局和极简主义设计。
 
-**Architecture:** 创建全局 CSS 变量系统，重构布局为侧边栏+主工作区结构，改造登录页为极简中心式，实现多标签终端工作区。
+**Architecture:** 创建全局 CSS 变量系统，重构布局为侧边栏+主工作区结构，改造登录页为极简中心式，实现多标签终端+预览切换的工作区。
 
-**Tech Stack:** Next.js 14, React 18, Tailwind CSS（改为 CSS 变量模式）, @xterm/xterm
+**Tech Stack:** Next.js 14, React 18, CSS 变量, @xterm/xterm, iframe 预览
 
 ---
 
@@ -1082,7 +1082,741 @@ git -C /root/my/code-link commit -m "feat: add multi-tab terminal workspace comp
 
 ---
 
-## Task 4: 改造登录/注册页
+## Task 4: 创建预览面板组件
+
+**Files:**
+- Create: `packages/web/src/components/workspace/preview-panel.tsx`
+
+- [ ] **Step 1: 创建预览面板组件**
+
+创建 `packages/web/src/components/workspace/preview-panel.tsx`:
+
+```tsx
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useBuild } from '@/hooks/use-build';
+
+interface PreviewPanelProps {
+  projectId: number;
+}
+
+const STATUS_LABELS = {
+  pending: '等待中',
+  running: '构建中',
+  success: '成功',
+  failed: '失败',
+} as const;
+
+const STATUS_COLORS = {
+  pending: 'var(--status-warning)',
+  running: 'var(--accent-color)',
+  success: 'var(--status-success)',
+  failed: 'var(--status-error)',
+} as const;
+
+export function PreviewPanel({ projectId }: PreviewPanelProps) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { loading, error, startBuild, getPreviewUrl, stopPreview } = useBuild(projectId);
+  const [buildStatus, setBuildStatus] = useState<'pending' | 'running' | 'success' | 'failed' | null>(null);
+
+  const handleStartBuild = async () => {
+    setBuildStatus('running');
+    const result = await startBuild();
+    if (result) {
+      const url = await getPreviewUrl();
+      if (url) {
+        setPreviewUrl(url);
+        setBuildStatus('success');
+      }
+    } else {
+      setBuildStatus('failed');
+    }
+  };
+
+  const loadPreview = useCallback(async () => {
+    const url = await getPreviewUrl();
+    if (url) {
+      setPreviewUrl(url);
+      setBuildStatus('success');
+    }
+  }, [getPreviewUrl]);
+
+  const handleStopPreview = async () => {
+    const success = await stopPreview();
+    if (success) {
+      setPreviewUrl(null);
+      setBuildStatus(null);
+    }
+  };
+
+  const handleRefresh = () => {
+    if (previewUrl) {
+      // 通过添加时间戳强制刷新 iframe
+      setPreviewUrl(`${previewUrl.split('?')[0]}?t=${Date.now()}`);
+    }
+  };
+
+  useEffect(() => {
+    loadPreview();
+  }, [projectId, loadPreview]);
+
+  return (
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      {/* 工具栏 */}
+      <div
+        style={{
+          padding: '8px 16px',
+          borderBottom: '1px solid var(--border-color)',
+          backgroundColor: 'var(--bg-secondary)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        <button
+          onClick={handleStartBuild}
+          disabled={loading}
+          className="btn btn-primary"
+          style={{ padding: '4px 12px', fontSize: '12px' }}
+        >
+          {loading ? '构建中...' : '构建预览'}
+        </button>
+        {previewUrl && (
+          <>
+            <button
+              onClick={handleRefresh}
+              className="btn btn-secondary"
+              style={{ padding: '4px 12px', fontSize: '12px' }}
+            >
+              刷新
+            </button>
+            <button
+              onClick={handleStopPreview}
+              disabled={loading}
+              className="btn btn-secondary"
+              style={{
+                padding: '4px 12px',
+                fontSize: '12px',
+                color: 'var(--status-error)',
+                borderColor: 'var(--status-error)',
+              }}
+            >
+              停止
+            </button>
+          </>
+        )}
+        {buildStatus && (
+          <div
+            style={{
+              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12px',
+              color: STATUS_COLORS[buildStatus],
+            }}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: STATUS_COLORS[buildStatus],
+              }}
+            />
+            {STATUS_LABELS[buildStatus]}
+          </div>
+        )}
+      </div>
+
+      {/* 错误提示 */}
+      {error && (
+        <div
+          style={{
+            padding: '12px 16px',
+            backgroundColor: 'rgba(248, 113, 113, 0.1)',
+            borderBottom: '1px solid var(--status-error)',
+            color: 'var(--status-error)',
+            fontSize: '13px',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* 预览区域 */}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        {previewUrl ? (
+          <iframe
+            src={previewUrl}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              backgroundColor: 'white',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>🌐</div>
+            <div>点击「构建预览」开始</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: 提交**
+
+```bash
+git -C /root/my/code-link add packages/web/src/components/workspace/preview-panel.tsx
+git -C /root/my/code-link commit -m "feat: add preview panel component with build controls"
+```
+
+---
+
+## Task 5: 重构工作区支持终端/预览切换
+
+**Files:**
+- Create: `packages/web/src/components/workspace/index.tsx`
+- Create: `packages/web/src/components/workspace/tab-bar.tsx`
+- Create: `packages/web/src/components/workspace/status-bar.tsx`
+- Create: `packages/web/src/components/workspace/terminal-panel.tsx`
+- Create: `packages/web/src/components/workspace/workspace-switcher.tsx`
+
+- [ ] **Step 1: 创建工作区切换组件**
+
+创建 `packages/web/src/components/workspace/workspace-switcher.tsx`:
+
+```tsx
+'use client';
+
+interface WorkspaceSwitcherProps {
+  activeMode: 'terminal' | 'preview';
+  onSwitch: (mode: 'terminal' | 'preview') => void;
+}
+
+export function WorkspaceSwitcher({ activeMode, onSwitch }: WorkspaceSwitcherProps) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        borderBottom: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-secondary)',
+      }}
+    >
+      <button
+        onClick={() => onSwitch('terminal')}
+        style={{
+          padding: '10px 20px',
+          backgroundColor: activeMode === 'terminal' ? 'var(--bg-primary)' : 'transparent',
+          color: activeMode === 'terminal' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          border: 'none',
+          borderBottom: activeMode === 'terminal' ? '2px solid var(--accent-color)' : 'none',
+          cursor: 'pointer',
+          fontSize: '13px',
+          fontWeight: 500,
+        }}
+      >
+        终端
+      </button>
+      <button
+        onClick={() => onSwitch('preview')}
+        style={{
+          padding: '10px 20px',
+          backgroundColor: activeMode === 'preview' ? 'var(--bg-primary)' : 'transparent',
+          color: activeMode === 'preview' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          border: 'none',
+          borderBottom: activeMode === 'preview' ? '2px solid var(--accent-color)' : 'none',
+          cursor: 'pointer',
+          fontSize: '13px',
+          fontWeight: 500,
+        }}
+      >
+        预览
+      </button>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: 创建终端标签栏组件**
+
+创建 `packages/web/src/components/workspace/tab-bar.tsx`:
+
+```tsx
+'use client';
+
+interface TerminalTab {
+  id: string;
+  label: string;
+}
+
+interface TabBarProps {
+  tabs: TerminalTab[];
+  activeTabId: string;
+  onTabSelect: (tabId: string) => void;
+  onTabClose: (tabId: string) => void;
+  onNewTab: () => void;
+}
+
+export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onNewTab }: TabBarProps) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        borderBottom: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      {tabs.map((tab) => (
+        <div
+          key={tab.id}
+          style={{
+            padding: '6px 12px',
+            color: activeTabId === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+            fontSize: '12px',
+            borderBottom: activeTabId === tab.id ? '2px solid var(--accent-color)' : 'none',
+            backgroundColor: activeTabId === tab.id ? 'var(--bg-secondary)' : 'transparent',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+          onClick={() => onTabSelect(tab.id)}
+        >
+          {tab.label}
+          {tabs.length > 1 && (
+            <span
+              style={{
+                fontSize: '10px',
+                opacity: 0.6,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onTabClose(tab.id);
+              }}
+            >
+              ✕
+            </span>
+          )}
+        </div>
+      ))}
+      <div
+        style={{
+          padding: '6px 12px',
+          color: 'var(--text-secondary)',
+          fontSize: '12px',
+          cursor: 'pointer',
+        }}
+        onClick={onNewTab}
+      >
+        +
+      </div>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 3: 创建状态栏组件**
+
+创建 `packages/web/src/components/workspace/status-bar.tsx`:
+
+```tsx
+'use client';
+
+interface StatusBarProps {
+  terminalInfo?: {
+    nodeVersion?: string;
+    npmVersion?: string;
+    memory?: string;
+  };
+  previewInfo?: {
+    port?: number;
+    status?: string;
+  };
+}
+
+export function StatusBar({ terminalInfo, previewInfo }: StatusBarProps) {
+  return (
+    <div
+      style={{
+        padding: '4px 16px',
+        borderTop: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-secondary)',
+        display: 'flex',
+        gap: '16px',
+        fontSize: '11px',
+        color: 'var(--text-secondary)',
+        height: 'var(--status-bar-height)',
+      }}
+    >
+      {terminalInfo?.nodeVersion && <span>Node {terminalInfo.nodeVersion}</span>}
+      {terminalInfo?.npmVersion && <span>npm {terminalInfo.npmVersion}</span>}
+      {terminalInfo?.memory && <span>内存: {terminalInfo.memory}</span>}
+      {previewInfo?.port && <span>端口: {previewInfo.port}</span>}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: 创建终端面板组件**
+
+创建 `packages/web/src/components/workspace/terminal-panel.tsx`:
+
+```tsx
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { Terminal as XTerm } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { TerminalWebSocket } from '@/lib/terminal-websocket';
+import '@xterm/xterm/css/xterm.css';
+
+interface TerminalPanelProps {
+  projectId: string;
+  userId: string;
+  wsUrl?: string;
+  onExit?: () => void;
+  onError?: (error: string) => void;
+}
+
+export function TerminalPanel({
+  projectId,
+  userId,
+  wsUrl = 'ws://localhost:3001/terminal',
+  onExit,
+  onError,
+}: TerminalPanelProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<XTerm | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const wsRef = useRef<TerminalWebSocket | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const xterm = new XTerm({
+      cursorBlink: true,
+      fontSize: 13,
+      fontFamily: 'var(--font-mono)',
+      theme: {
+        background: 'var(--bg-primary)',
+        foreground: 'var(--text-primary)',
+        cursor: 'var(--status-success)',
+        cursorAccent: 'var(--bg-primary)',
+        selectionBackground: '#264f78',
+      },
+      allowProposedApi: true,
+    });
+
+    const fitAddon = new FitAddon();
+    const webLinksAddon = new WebLinksAddon();
+
+    xterm.loadAddon(fitAddon);
+    xterm.loadAddon(webLinksAddon);
+    xterm.open(containerRef.current);
+
+    xtermRef.current = xterm;
+    fitAddonRef.current = fitAddon;
+
+    setTimeout(() => fitAddon.fit(), 0);
+
+    return () => {
+      xterm.dispose();
+      xtermRef.current = null;
+      fitAddonRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!xtermRef.current) return;
+
+    const ws = new TerminalWebSocket();
+    wsRef.current = ws;
+
+    ws.setOnConnected(() => {
+      if (fitAddonRef.current) {
+        const dims = fitAddonRef.current.proposeDimensions();
+        if (dims) {
+          ws.start(dims.cols, dims.rows);
+        } else {
+          ws.start(80, 24);
+        }
+      }
+    });
+
+    ws.setOnOutput((data) => {
+      xtermRef.current?.write(data);
+    });
+
+    ws.setOnExit(() => {
+      xtermRef.current?.write('\r\n\x1b[33m[Session ended]\x1b[0m\r\n');
+      onExit?.();
+    });
+
+    ws.setOnError((message) => {
+      xtermRef.current?.write(`\r\n\x1b[31m[Error: ${message}]\x1b[0m\r\n`);
+      onError?.(message);
+    });
+
+    ws.connect(wsUrl, projectId, userId);
+
+    const disposable = xtermRef.current.onData((data) => {
+      ws.sendInput(data);
+    });
+
+    const pingInterval = setInterval(() => ws.ping(), 30000);
+
+    return () => {
+      clearInterval(pingInterval);
+      disposable.dispose();
+      ws.disconnect();
+      wsRef.current = null;
+    };
+  }, [projectId, userId, wsUrl, onExit, onError]);
+
+  useEffect(() => {
+    if (!containerRef.current || !fitAddonRef.current) return;
+
+    const handleResize = () => {
+      if (fitAddonRef.current && xtermRef.current) {
+        fitAddonRef.current.fit();
+        const dims = fitAddonRef.current.proposeDimensions();
+        if (dims && wsRef.current) {
+          wsRef.current.resize(dims.cols, dims.rows);
+        }
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(() => handleResize());
+    resizeObserver.observe(containerRef.current);
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        height: '100%',
+        width: '100%',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    />
+  );
+}
+```
+
+- [ ] **Step 5: 创建工作区主组件**
+
+创建 `packages/web/src/components/workspace/index.tsx`:
+
+```tsx
+'use client';
+
+import { useState, useCallback } from 'react';
+import { TabBar } from './tab-bar';
+import { StatusBar } from './status-bar';
+import { TerminalPanel } from './terminal-panel';
+import { PreviewPanel } from './preview-panel';
+import { WorkspaceSwitcher } from './workspace-switcher';
+
+interface Project {
+  id: number;
+  name: string;
+  template_type: 'node' | 'node+java' | 'node+python';
+  status: 'created' | 'running' | 'stopped';
+}
+
+interface TerminalTab {
+  id: string;
+  label: string;
+}
+
+interface WorkspaceProps {
+  project: Project | null;
+  userId: string;
+  wsUrl?: string;
+  onRestart?: () => void;
+}
+
+export function Workspace({
+  project,
+  userId,
+  wsUrl = 'ws://localhost:3001/terminal',
+  onRestart,
+}: WorkspaceProps) {
+  const [mode, setMode] = useState<'terminal' | 'preview'>('terminal');
+  const [tabs, setTabs] = useState<TerminalTab[]>([
+    { id: 'terminal-1', label: '终端 1' },
+  ]);
+  const [activeTabId, setActiveTabId] = useState('terminal-1');
+  const [tabCounter, setTabCounter] = useState(1);
+
+  const handleNewTab = useCallback(() => {
+    const newId = `terminal-${tabCounter + 1}`;
+    setTabs((prev) => [...prev, { id: newId, label: `终端 ${tabCounter + 1}` }]);
+    setActiveTabId(newId);
+    setTabCounter((prev) => prev + 1);
+  }, [tabCounter]);
+
+  const handleCloseTab = useCallback((tabId: string) => {
+    setTabs((prev) => {
+      const newTabs = prev.filter((t) => t.id !== tabId);
+      if (activeTabId === tabId && newTabs.length > 0) {
+        setActiveTabId(newTabs[newTabs.length - 1].id);
+      }
+      return newTabs;
+    });
+  }, [activeTabId]);
+
+  const handleSelectTab = useCallback((tabId: string) => {
+    setActiveTabId(tabId);
+  }, []);
+
+  if (!project) {
+    return (
+      <div
+        style={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📁</div>
+        <div>选择一个项目开始工作</div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      {/* 项目标题栏 */}
+      <div
+        style={{
+          padding: '8px 16px',
+          borderBottom: '1px solid var(--border-color)',
+          backgroundColor: 'var(--bg-secondary)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            style={{
+              color: project.status === 'running' ? 'var(--status-success)' : 'var(--status-warning)',
+              fontSize: '10px',
+            }}
+          >
+            ●
+          </span>
+          <span style={{ color: 'var(--text-primary)', fontSize: '13px' }}>
+            {project.name}
+          </span>
+        </div>
+        {mode === 'terminal' && (
+          <button
+            className="btn btn-secondary"
+            style={{ padding: '4px 8px', fontSize: '11px' }}
+            onClick={onRestart}
+          >
+            重启容器
+          </button>
+        )}
+      </div>
+
+      {/* 工作区切换 */}
+      <WorkspaceSwitcher activeMode={mode} onSwitch={setMode} />
+
+      {/* 终端模式 */}
+      {mode === 'terminal' && (
+        <>
+          <TabBar
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onTabSelect={handleSelectTab}
+            onTabClose={handleCloseTab}
+            onNewTab={handleNewTab}
+          />
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                style={{
+                  height: '100%',
+                  display: activeTabId === tab.id ? 'block' : 'none',
+                }}
+              >
+                <TerminalPanel
+                  projectId={String(project.id)}
+                  userId={userId}
+                  wsUrl={wsUrl}
+                />
+              </div>
+            ))}
+          </div>
+          <StatusBar />
+        </>
+      )}
+
+      {/* 预览模式 */}
+      {mode === 'preview' && (
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <PreviewPanel projectId={project.id} />
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 6: 提交**
+
+```bash
+git -C /root/my/code-link add packages/web/src/components/workspace/
+git -C /root/my/code-link commit -m "feat: add workspace with terminal/preview switching"
+```
+
+---
+
+## Task 6: 改造登录/注册页
 
 **Files:**
 - Modify: `packages/web/src/components/auth-form.tsx`
@@ -1331,7 +2065,7 @@ git -C /root/my/code-link commit -m "feat: redesign auth pages with minimal cent
 
 ---
 
-## Task 5: 创建新的仪表盘页面
+## Task 7: 创建新的仪表盘页面
 
 **Files:**
 - Modify: `packages/web/src/app/dashboard/page.tsx`
@@ -1727,7 +2461,7 @@ git -C /root/my/code-link commit -m "feat: redesign dashboard with split-panel l
 
 ---
 
-## Task 6: 清理旧组件和更新路由
+## Task 8: 清理旧组件和更新路由
 
 **Files:**
 - Delete: `packages/web/src/components/project-card.tsx` (旧版)
@@ -1798,7 +2532,7 @@ git -C /root/my/code-link commit -m "refactor: remove old components and update 
 
 ---
 
-## Task 7: 验证和测试
+## Task 9: 验证和测试
 
 **Files:**
 - 无新文件
@@ -1844,10 +2578,12 @@ git -C /root/my/code-link commit -m "chore: verify UI overhaul completion"
 | Create | `packages/web/src/components/sidebar/project-card.tsx` |
 | Create | `packages/web/src/components/sidebar/user-section.tsx` |
 | Create | `packages/web/src/components/sidebar/sidebar.types.ts` |
-| Create | `packages/web/src/components/terminal-workspace/index.tsx` |
-| Create | `packages/web/src/components/terminal-workspace/tab-bar.tsx` |
-| Create | `packages/web/src/components/terminal-workspace/status-bar.tsx` |
-| Create | `packages/web/src/components/terminal-workspace/terminal-panel.tsx` |
+| Create | `packages/web/src/components/workspace/index.tsx` |
+| Create | `packages/web/src/components/workspace/tab-bar.tsx` |
+| Create | `packages/web/src/components/workspace/status-bar.tsx` |
+| Create | `packages/web/src/components/workspace/terminal-panel.tsx` |
+| Create | `packages/web/src/components/workspace/preview-panel.tsx` |
+| Create | `packages/web/src/components/workspace/workspace-switcher.tsx` |
 | Modify | `packages/web/src/app/layout.tsx` |
 | Modify | `packages/web/src/app/page.tsx` |
 | Modify | `packages/web/src/app/login/page.tsx` |
@@ -1858,3 +2594,6 @@ git -C /root/my/code-link commit -m "chore: verify UI overhaul completion"
 | Delete | `packages/web/src/components/project-card.tsx` |
 | Delete | `packages/web/src/components/terminal.tsx` |
 | Delete | `packages/web/src/components/terminal-container.tsx` |
+| Delete | `packages/web/src/components/build-status.tsx` (合并到 preview-panel) |
+| Delete | `packages/web/src/components/preview-frame.tsx` (合并到 preview-panel) |
+
