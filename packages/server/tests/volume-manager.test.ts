@@ -1,6 +1,6 @@
 // tests/volume-manager.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createProjectVolume, removeProjectVolume, getVolumePath } from '../src/docker/volume-manager.ts';
+import { createProjectVolume, removeProjectVolume, getVolumePath, volumeExists } from '../src/docker/volume-manager.ts';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -36,5 +36,16 @@ describe('Volume Manager', () => {
     } catch (error: any) {
       expect(error.code).toBe('ENOENT');
     }
+  });
+
+  it('should return true when volume exists', async () => {
+    await createProjectVolume(testProjectId);
+    const exists = await volumeExists(testProjectId);
+    expect(exists).toBe(true);
+  });
+
+  it('should return false when volume does not exist', async () => {
+    const exists = await volumeExists(8888);
+    expect(exists).toBe(false);
   });
 });
