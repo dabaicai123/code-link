@@ -46,5 +46,27 @@ export function initSchema(db: Database.Database): void {
       preview_port INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL CHECK (provider IN ('github', 'gitlab')),
+      access_token TEXT NOT NULL,
+      refresh_token TEXT,
+      expires_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, provider)
+    );
+
+    CREATE TABLE IF NOT EXISTS project_repos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL CHECK (provider IN ('github', 'gitlab')),
+      repo_url TEXT NOT NULL,
+      repo_name TEXT NOT NULL,
+      branch TEXT NOT NULL DEFAULT 'main',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(project_id, repo_url)
+    );
   `);
 }

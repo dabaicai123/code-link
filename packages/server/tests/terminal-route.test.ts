@@ -8,6 +8,21 @@ import { getDb, closeDb } from '../src/db/connection.ts';
 import { initSchema } from '../src/db/schema.ts';
 import { resetTerminalManagerInstance, getTerminalManager } from '../src/terminal/terminal-manager.ts';
 
+// Mock Docker 相关模块
+vi.mock('../src/docker/container-manager.js', () => ({
+  getContainerStatus: vi.fn(),
+}));
+
+vi.mock('../src/terminal/docker-exec.js', () => ({
+  streamExecOutput: vi.fn(),
+  resizeExecTTY: vi.fn(),
+  writeToExecStream: vi.fn(),
+  closeExecStdin: vi.fn(),
+}));
+
+import { getContainerStatus } from '../src/docker/container-manager.js';
+import { streamExecOutput, resizeExecTTY } from '../src/terminal/docker-exec.js';
+
 describe('Terminal WebSocket Route', () => {
   let httpServer: any;
   let wsServer: WebSocketServer;
@@ -245,6 +260,76 @@ describe('Terminal WebSocket Route', () => {
       expect(message.message).toContain('没有关联的容器');
       client.close();
     });
+
+    it('应拒绝容器未运行的项目', async () => {
+      // 设置容器 ID
+      db.prepare('UPDATE projects SET container_id = ? WHERE id = ?').run('test-container-id', testProjectId);
+
+      // Mock 容器状态为非运行中
+      vi.mocked(getContainerStatus).mockResolvedValue('exited');
+
+      const client = new WebSocket(`ws://localhost:${port}/terminal?projectId=${testProjectId}&userId=${testUserId}`);
+
+      await new Promise<void>((resolve) => {
+        client.on('open', () => resolve());
+      });
+
+      client.send(JSON.stringify({ type: 'start', cols: 80, rows: 24 }));
+
+      const message = await new Promise<any>((resolve) => {
+        client.on('message', (data) => {
+          resolve(JSON.parse(data.toString()));
+        });
+      });
+
+      expect(message.type).toBe('error');
+      expect(message.message).toContain('容器未运行');
+      client.close();
+    });
+
+    it('应成功启动终端会话', async () => {
+      // 设置容器 ID
+      db.prepare('UPDATE projects SET container_id = ? WHERE id = ?').run('test-container-id', testProjectId);
+
+      // Mock 容器状态为运行中
+      vi.mocked(getContainerStatus).mockResolvedValue('running');
+
+      // Mock exec stream
+      const mockStream = {
+        on: vi.fn(),
+        write: vi.fn(),
+        end: vi.fn(),
+        removeAllListeners: vi.fn(),
+      };
+      vi.mocked(streamExecOutput).mockResolvedValue({
+        stream: mockStream as any,
+        exec: { id: 'test-exec' } as any,
+      });
+
+      const client = new WebSocket(`ws://localhost:${port}/terminal?projectId=${testProjectId}&userId=${testUserId}`);
+
+      await new Promise<void>((resolve) => {
+        client.on('open', () => resolve());
+      });
+
+      client.send(JSON.stringify({ type: 'start', cols: 80, rows: 24 }));
+
+      const message = await new Promise<any>((resolve) => {
+        client.on('message', (data) => {
+          resolve(JSON.parse(data.toString()));
+        });
+      });
+
+      expect(message.type).toBe('started');
+      expect(message.sessionId).toBeDefined();
+      expect(streamExecOutput).toHaveBeenCalledWith(
+        'test-container-id',
+        ['/bin/sh', '-c', 'exec bash || exec sh'],
+        true,
+        { env: ['TERM=xterm-256color'] }
+      );
+      client.close();
+    });
   });
 
   describe('input 消息', () => {
@@ -267,6 +352,52 @@ describe('Terminal WebSocket Route', () => {
       expect(message.message).toContain('未启动');
       client.close();
     });
+
+    it('应拒绝会话 ID 不匹配的输入', async () => {
+      // 设置容器并启动会话
+      db.prepare('UPDATE projects SET container_id = ? WHERE id = ?').run('test-container-id', testProjectId);
+      vi.mocked(getContainerStatus).mockResolvedValue('running');
+      const mockStream = {
+        on: vi.fn(),
+        write: vi.fn(),
+        end: vi.fn(),
+        removeAllListeners: vi.fn(),
+      };
+      vi.mocked(streamExecOutput).mockResolvedValue({
+        stream: mockStream as any,
+        exec: { id: 'test-exec' } as any,
+      });
+
+      const client = new WebSocket(`ws://localhost:${port}/terminal?projectId=${testProjectId}&userId=${testUserId}`);
+
+      await new Promise<void>((resolve) => {
+        client.on('open', () => resolve());
+      });
+
+      // 先启动会话
+      client.send(JSON.stringify({ type: 'start', cols: 80, rows: 24 }));
+
+      const startMessage = await new Promise<any>((resolve) => {
+        client.on('message', (data) => {
+          resolve(JSON.parse(data.toString()));
+        });
+      });
+
+      expect(startMessage.type).toBe('started');
+
+      // 发送不匹配的 sessionId
+      client.send(JSON.stringify({ type: 'input', sessionId: 'wrong-session-id', data: 'dGVzdA==' }));
+
+      const errorMessage = await new Promise<any>((resolve) => {
+        client.on('message', (data) => {
+          resolve(JSON.parse(data.toString()));
+        });
+      });
+
+      expect(errorMessage.type).toBe('error');
+      expect(errorMessage.message).toContain('不匹配');
+      client.close();
+    });
   });
 
   describe('resize 消息', () => {
@@ -287,6 +418,50 @@ describe('Terminal WebSocket Route', () => {
 
       expect(message.type).toBe('error');
       expect(message.message).toContain('未启动');
+      client.close();
+    });
+
+    it('应成功调整终端大小', async () => {
+      // 设置容器并启动会话
+      db.prepare('UPDATE projects SET container_id = ? WHERE id = ?').run('test-container-id', testProjectId);
+      vi.mocked(getContainerStatus).mockResolvedValue('running');
+      const mockStream = {
+        on: vi.fn(),
+        write: vi.fn(),
+        end: vi.fn(),
+        removeAllListeners: vi.fn(),
+      };
+      vi.mocked(streamExecOutput).mockResolvedValue({
+        stream: mockStream as any,
+        exec: { id: 'test-exec' } as any,
+      });
+      vi.mocked(resizeExecTTY).mockResolvedValue();
+
+      const client = new WebSocket(`ws://localhost:${port}/terminal?projectId=${testProjectId}&userId=${testUserId}`);
+
+      await new Promise<void>((resolve) => {
+        client.on('open', () => resolve());
+      });
+
+      // 先启动会话
+      client.send(JSON.stringify({ type: 'start', cols: 80, rows: 24 }));
+
+      const startMessage = await new Promise<any>((resolve) => {
+        client.on('message', (data) => {
+          resolve(JSON.parse(data.toString()));
+        });
+      });
+
+      expect(startMessage.type).toBe('started');
+      const sessionId = startMessage.sessionId;
+
+      // 调整大小
+      client.send(JSON.stringify({ type: 'resize', sessionId, cols: 120, rows: 40 }));
+
+      // 等待一段时间确保没有错误响应
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      expect(resizeExecTTY).toHaveBeenCalledWith({ id: 'test-exec' }, 120, 40);
       client.close();
     });
   });

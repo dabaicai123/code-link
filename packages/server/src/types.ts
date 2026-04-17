@@ -52,3 +52,23 @@ export interface Build {
   preview_port: number | null;
   created_at: string;
 }
+
+export interface Token {
+  id: number;
+  user_id: number;
+  provider: 'github' | 'gitlab';
+  access_token: string;
+  refresh_token: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface ProjectRepo {
+  id: number;
+  project_id: number;
+  provider: 'github' | 'gitlab';
+  repo_url: string;
+  repo_name: string;
+  branch: string;
+  created_at: string;
+}

@@ -2,6 +2,7 @@
 import type WebSocket from 'ws';
 import type Database from 'better-sqlite3';
 import { getTerminalManager } from '../terminal/terminal-manager.js';
+import { getContainerStatus } from '../docker/container-manager.js';
 import type { Project } from '../types.js';
 
 // 终端消息类型
@@ -122,7 +123,6 @@ export function handleTerminalConnection(
 
     // 检查容器状态
     try {
-      const { getContainerStatus } = await import('../docker/container-manager.js');
       const status = await getContainerStatus(project.container_id);
       if (status !== 'running') {
         sendMessage({ type: 'error', message: '容器未运行，请先启动容器' });

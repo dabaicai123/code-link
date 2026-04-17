@@ -33,6 +33,15 @@ interface FileChangeMessage {
   [key: string]: unknown;
 }
 
+interface IncomingMessage {
+  type: string;
+  projectId?: number;
+  userId?: number;
+  userName?: string;
+  content?: string;
+  [key: string]: unknown;
+}
+
 export class WebSocketServer {
   private wss: WSServer;
   private channels: ChannelManager;
@@ -109,9 +118,9 @@ export class WebSocketServer {
   }
 
   private handleMessage(ws: WebSocket, raw: string): void {
-    let parsed: any;
+    let parsed: IncomingMessage;
     try {
-      parsed = JSON.parse(raw);
+      parsed = JSON.parse(raw) as IncomingMessage;
     } catch {
       ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
       return;
@@ -124,13 +133,13 @@ export class WebSocketServer {
 
     switch (parsed.type) {
       case 'subscribe':
-        this.handleSubscribe(ws, parsed);
+        this.handleSubscribe(ws, parsed as SubscribeMessage);
         break;
       case 'chat':
-        this.handleChat(ws, parsed);
+        this.handleChat(ws, parsed as ChatMessageInput);
         break;
       case 'file_change':
-        this.handleFileChange(ws, parsed);
+        this.handleFileChange(ws, parsed as FileChangeMessage);
         break;
       default:
         ws.send(JSON.stringify({ type: 'error', message: 'Unknown message type' }));
