@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
 import type Database from 'better-sqlite3';
 import { getDb } from './db/connection.js';
 import { initSchema } from './db/schema.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createProjectsRouter } from './routes/projects.js';
+import { createWebSocketServer } from './websocket/server.js';
 
 export function createApp(db: Database.Database): express.Express {
   const app = express();
@@ -26,12 +28,22 @@ export function createApp(db: Database.Database): express.Express {
   return app;
 }
 
+export function startServer(db: Database.Database, port: number = 3001): void {
+  const app = createApp(db);
+  const server = createServer(app);
+
+  // 初始化 WebSocket 服务器
+  createWebSocketServer(server);
+
+  server.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+    console.log(`WebSocket server ready on ws://localhost:${port}`);
+  });
+}
+
+// 启动入口
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
   const db = getDb();
   initSchema(db);
-  const app = createApp(db);
-  const port = process.env.PORT || 4000;
-  app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
-  });
+  startServer(db, process.env.PORT ? parseInt(process.env.PORT) : 4000);
 }
