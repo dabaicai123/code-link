@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth-context';
+import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: 'Code Link',
-  description: '代码分享平台',
+  description: '开发环境管理平台',
 };
 
 export default function RootLayout({
