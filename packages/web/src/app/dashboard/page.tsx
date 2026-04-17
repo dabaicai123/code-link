@@ -112,7 +112,7 @@ export default function DashboardPage() {
             <h1 className="text-xl font-bold text-gray-900">Code Link</h1>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">
-                欢迎，{user.username}
+                欢迎，{user.name}
               </span>
               <button
                 onClick={handleLogout}

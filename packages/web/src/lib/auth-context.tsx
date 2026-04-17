@@ -16,7 +16,7 @@ import { api, setToken, removeToken, ApiError } from './api';
 interface User {
   id: string;
   email: string;
-  username: string;
+  name: string;
 }
 
 /**
@@ -27,7 +27,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, username: string, password: string) => Promise<void>;
+  register: (email: string, name: string, password: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
 }
@@ -79,13 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (email: string, username: string, password: string) => {
+    async (email: string, name: string, password: string) => {
       setError(null);
       setLoading(true);
       try {
         const response = await api.post<{ token: string; user: User }>(
           '/auth/register',
-          { email, username, password }
+          { email, name, password }
         );
         setToken(response.token);
         setUser(response.user);

@@ -11,7 +11,7 @@ interface AuthFormProps {
 
 interface FormErrors {
   email?: string;
-  username?: string;
+  name?: string;
   password?: string;
   general?: string;
 }
@@ -21,7 +21,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const { login, register } = useAuth();
 
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,14 +38,14 @@ export function AuthForm({ mode }: AuthFormProps) {
 
     // 用户名验证（仅注册时）
     if (mode === 'register') {
-      if (!username) {
-        newErrors.username = '请输入用户名';
-      } else if (username.length < 3) {
-        newErrors.username = '用户名至少需要 3 个字符';
-      } else if (username.length > 20) {
-        newErrors.username = '用户名不能超过 20 个字符';
-      } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        newErrors.username = '用户名只能包含字母、数字和下划线';
+      if (!name) {
+        newErrors.name = '请输入用户名';
+      } else if (name.length < 3) {
+        newErrors.name = '用户名至少需要 3 个字符';
+      } else if (name.length > 20) {
+        newErrors.name = '用户名不能超过 20 个字符';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(name)) {
+        newErrors.name = '用户名只能包含字母、数字和下划线';
       }
     }
 
@@ -74,7 +74,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       if (mode === 'login') {
         await login(email, password);
       } else {
-        await register(email, username, password);
+        await register(email, name, password);
       }
       router.push('/dashboard');
     } catch (err) {
@@ -160,27 +160,27 @@ export function AuthForm({ mode }: AuthFormProps) {
             {/* 用户名输入（仅注册） */}
             {mode === 'register' && (
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                   用户名
                 </label>
                 <input
-                  id="username"
-                  name="username"
+                  id="name"
+                  name="name"
                   type="text"
                   autoComplete="username"
                   required
-                  value={username}
+                  value={name}
                   onChange={(e) => {
-                    setUsername(e.target.value);
-                    clearFieldError('username');
+                    setName(e.target.value);
+                    clearFieldError('name');
                   }}
                   className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                    errors.username ? 'border-red-300' : 'border-gray-300'
+                    errors.name ? 'border-red-300' : 'border-gray-300'
                   } placeholder-gray-400 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
                   placeholder="请输入用户名"
                 />
-                {errors.username && (
-                  <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-600">{errors.name}</p>
                 )}
               </div>
             )}
