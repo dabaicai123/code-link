@@ -23,31 +23,46 @@ export function createProjectsRouter(db: Database.Database): Router {
       return;
     }
 
+    if (typeof name !== 'string' || name.length > 100) {
+      res.status(400).json({ error: '项目名称必须是 1-100 字符的字符串' });
+      return;
+    }
+
     if (!isValidTemplateType(template_type)) {
       res.status(400).json({ error: '无效的模板类型，必须是 node, node+java 或 node+python' });
       return;
     }
 
-    // 创建项目
-    const result = db
-      .prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)')
-      .run(name, template_type, userId);
+    try {
+      // 使用事务确保原子性
+      const createProjectTx = db.transaction(() => {
+        const result = db
+          .prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)')
+          .run(name, template_type, userId);
 
-    const projectId = result.lastInsertRowid;
+        const projectId = result.lastInsertRowid;
 
-    // 添加创建者为 owner
-    db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
-      projectId,
-      userId,
-      'owner'
-    );
+        db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
+          projectId,
+          userId,
+          'owner'
+        );
 
-    // 返回创建的项目
-    const project = db
-      .prepare('SELECT id, name, template_type, container_id, status, github_repo, created_by, created_at FROM projects WHERE id = ?')
-      .get(projectId) as Project;
+        return projectId;
+      });
 
-    res.status(201).json(project);
+      const projectId = createProjectTx();
+
+      // 返回创建的项目
+      const project = db
+        .prepare('SELECT id, name, template_type, container_id, status, github_repo, created_by, created_at FROM projects WHERE id = ?')
+        .get(projectId) as Project;
+
+      res.status(201).json(project);
+    } catch (error) {
+      console.error('创建项目失败:', error);
+      res.status(500).json({ error: '创建项目失败' });
+    }
   });
 
   // GET /api/projects - 获取用户参与的所有项目
