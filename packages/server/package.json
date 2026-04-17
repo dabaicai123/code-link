@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "build:templates": "./scripts/build-templates.sh",
     "test": "vitest run",
     "test:watch": "vitest"
   },
