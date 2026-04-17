@@ -90,5 +90,33 @@ describe('认证路由', () => {
       expect(res.status).toBe(200);
       expect(res.body.email).toBe('me@test.com');
     });
+
+    it('无 token 应返回 401', async () => {
+      const res = await request(app).get('/api/auth/me');
+      expect(res.status).toBe(401);
+    });
+
+    it('无效 token 应返回 401', async () => {
+      const res = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', 'Bearer invalid-token');
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('POST /api/auth/login 缺少字段', () => {
+    it('缺少 email 应返回 400', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ password: 'pass123' });
+      expect(res.status).toBe(400);
+    });
+
+    it('缺少 password 应返回 400', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'test@test.com' });
+      expect(res.status).toBe(400);
+    });
   });
 });
