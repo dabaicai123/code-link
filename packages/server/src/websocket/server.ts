@@ -1,12 +1,14 @@
 // src/websocket/server.ts
 import WebSocket, { WebSocketServer as WSServer } from 'ws';
 import type { Server as HttpServer } from 'http';
+import type Database from 'better-sqlite3';
 import { ChannelManager } from './channels.js';
 import {
   parseMessage,
   createChatMessage,
   type Message,
 } from './types.js';
+import { handleTerminalConnection } from '../routes/terminal.js';
 
 interface SubscribeMessage {
   type: 'subscribe';
@@ -34,15 +36,62 @@ interface FileChangeMessage {
 export class WebSocketServer {
   private wss: WSServer;
   private channels: ChannelManager;
+  private db: Database.Database | null = null;
 
-  constructor(server: HttpServer) {
+  constructor(server: HttpServer, db?: Database.Database) {
     this.wss = new WSServer({ server });
     this.channels = new ChannelManager();
+    if (db) {
+      this.db = db;
+    }
     this.setupHandlers();
+  }
+
+  /**
+   * 设置数据库实例（用于延迟注入）
+   */
+  setDb(db: Database.Database): void {
+    this.db = db;
   }
 
   private setupHandlers(): void {
     this.wss.on('connection', (ws, req) => {
+      // 解析 URL 以区分不同的连接类型
+      const url = req.url || '/';
+      const urlObj = new URL(url, `http://localhost`);
+
+      // 终端 WebSocket 连接: /terminal?projectId=xxx&userId=xxx
+      if (urlObj.pathname === '/terminal') {
+        const projectIdStr = urlObj.searchParams.get('projectId');
+        const userIdStr = urlObj.searchParams.get('userId');
+
+        if (!projectIdStr || !userIdStr) {
+          ws.send(JSON.stringify({ type: 'error', message: '缺少 projectId 或 userId 参数' }));
+          ws.close();
+          return;
+        }
+
+        const projectId = parseInt(projectIdStr, 10);
+        const userId = parseInt(userIdStr, 10);
+
+        if (isNaN(projectId) || isNaN(userId)) {
+          ws.send(JSON.stringify({ type: 'error', message: '无效的 projectId 或 userId' }));
+          ws.close();
+          return;
+        }
+
+        if (!this.db) {
+          ws.send(JSON.stringify({ type: 'error', message: '数据库未初始化' }));
+          ws.close();
+          return;
+        }
+
+        console.log(`Terminal WebSocket connected: projectId=${projectId}, userId=${userId}`);
+        handleTerminalConnection(ws, projectId, userId, this.db);
+        return;
+      }
+
+      // 实时同步 WebSocket 连接（原有逻辑）
       console.log('WebSocket client connected');
 
       ws.on('message', (data) => {
@@ -166,9 +215,12 @@ export class WebSocketServer {
 
 let wsServerInstance: WebSocketServer | null = null;
 
-export function createWebSocketServer(server: HttpServer): WebSocketServer {
+export function createWebSocketServer(server: HttpServer, db?: Database.Database): WebSocketServer {
   if (!wsServerInstance) {
-    wsServerInstance = new WebSocketServer(server);
+    wsServerInstance = new WebSocketServer(server, db);
+  } else if (db) {
+    // 如果实例已存在但 db 未设置，则设置 db
+    wsServerInstance.setDb(db);
   }
   return wsServerInstance;
 }

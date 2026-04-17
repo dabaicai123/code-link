@@ -34,8 +34,8 @@ export function startServer(db: Database.Database, port: number = 3001): void {
   const app = createApp(db);
   const server = createServer(app);
 
-  // 初始化 WebSocket 服务器
-  createWebSocketServer(server);
+  // 初始化 WebSocket 服务器，传入 db 用于终端 WebSocket 权限检查
+  createWebSocketServer(server, db);
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
