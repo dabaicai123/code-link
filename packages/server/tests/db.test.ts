@@ -15,6 +15,8 @@ describe('数据库 Schema', () => {
     expect(names).toContain('project_members');
     expect(names).toContain('messages');
     expect(names).toContain('builds');
+    expect(names).toContain('tokens');
+    expect(names).toContain('project_repos');
   });
 
   it('应能插入用户', () => {

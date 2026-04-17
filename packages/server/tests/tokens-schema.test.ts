@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { initSchema } from '../src/db/schema.js';
 
@@ -8,6 +8,10 @@ describe('Tokens Schema', () => {
   beforeEach(() => {
     db = new Database(':memory:');
     initSchema(db);
+  });
+
+  afterEach(() => {
+    db.close();
   });
 
   it('should have tokens table', () => {
