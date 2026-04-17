@@ -19,6 +19,20 @@ describe('PreviewContainerManager', () => {
     const images = await docker.listImages();
     const nodeImage = images.find(img => img.RepoTags?.some(tag => tag.includes('code-link-node')));
     testImageId = nodeImage?.Id || null;
+
+    // 清理可能残留的测试容器
+    const testContainerNames = [
+      'test-project-1', 'test-project-2', 'test-project-3', 'test-project-4',
+      'test-project-port-release', 'test-project-cleanup-1', 'test-project-cleanup-2', 'test-project-cleanup-3'
+    ];
+    for (const name of testContainerNames) {
+      try {
+        const container = docker.getContainer(`code-link-preview-${name}`);
+        await container.remove({ force: true });
+      } catch {
+        // 容器不存在，忽略
+      }
+    }
   }, 60000);
 
   afterEach(async () => {
