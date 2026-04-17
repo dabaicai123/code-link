@@ -10,6 +10,7 @@ import { createContainersRouter } from './routes/containers.js';
 import { createGitHubRouter } from './routes/github.js';
 import { createGitLabRouter } from './routes/gitlab.js';
 import { createReposRouter } from './routes/repos.js';
+import { createBuildsRouter } from './routes/builds.js';
 import { createWebSocketServer } from './websocket/server.js';
 
 export function createApp(db: Database.Database): express.Express {
@@ -28,6 +29,7 @@ export function createApp(db: Database.Database): express.Express {
   app.use('/api/github', createGitHubRouter(db));
   app.use('/api/gitlab', createGitLabRouter(db));
   app.use('/api/repos', createReposRouter(db));
+  app.use('/api/builds', createBuildsRouter(db));
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
