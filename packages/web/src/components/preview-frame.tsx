@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api, ApiError } from '@/lib/api';
+import { useState, useEffect, useCallback } from 'react';
+import { useBuild } from '@/hooks/use-build';
 
 interface PreviewFrameProps {
   projectId: number;
@@ -9,55 +9,61 @@ interface PreviewFrameProps {
 
 export function PreviewFrame({ projectId }: PreviewFrameProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, startBuild, getPreviewUrl, stopPreview } = useBuild(projectId);
 
-  const startBuild = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      await api.post('/builds', { projectId });
-      // 构建状态通过 WebSocket 更新
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : '构建失败';
-      setError(message);
-    } finally {
-      setLoading(false);
+  const handleStartBuild = async () => {
+    await startBuild();
+    // 构建完成后刷新预览
+    const url = await getPreviewUrl();
+    if (url) {
+      setPreviewUrl(url);
     }
   };
 
-  const loadPreview = async () => {
-    try {
-      const response = await api.get<{ url: string }>(`/builds/preview/${projectId}`);
-      setPreviewUrl(response.url);
-    } catch {
-      // 预览不存在时忽略错误
+  const loadPreview = useCallback(async () => {
+    const url = await getPreviewUrl();
+    if (url) {
+      setPreviewUrl(url);
+    }
+  }, [getPreviewUrl]);
+
+  const handleStopPreview = async () => {
+    const success = await stopPreview();
+    if (success) {
+      setPreviewUrl(null);
     }
   };
 
   useEffect(() => {
     loadPreview();
-  }, [projectId]);
+  }, [projectId, loadPreview]);
 
   return (
     <div className="preview-frame">
       <div className="preview-toolbar flex items-center gap-2 mb-4">
         <button
-          onClick={startBuild}
+          onClick={handleStartBuild}
           disabled={loading}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? '构建中...' : '构建预览'}
         </button>
         {previewUrl && (
-          <button
-            onClick={loadPreview}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-          >
-            刷新预览
-          </button>
+          <>
+            <button
+              onClick={loadPreview}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              刷新预览
+            </button>
+            <button
+              onClick={handleStopPreview}
+              disabled={loading}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              停止预览
+            </button>
+          </>
         )}
       </div>
 

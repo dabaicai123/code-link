@@ -1,18 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useProjectSync } from '@/hooks/use-project-sync';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
-
-interface Build {
-  id: number;
-  project_id: number;
-  status: 'pending' | 'running' | 'success' | 'failed';
-  preview_port: number | null;
-  created_at: string;
-  completed_at: string | null;
-}
+import type { Build } from '@/types/build';
 
 interface BuildStatusProps {
   projectId: number;
@@ -58,14 +50,14 @@ export function BuildStatus({ projectId }: BuildStatusProps) {
     }
   }, [buildStatus]);
 
-  const loadBuilds = async () => {
+  const loadBuilds = useCallback(async () => {
     try {
       const response = await api.get<Build[]>(`/builds/project/${projectId}`);
       setBuilds(response);
-    } catch {
-      // 忽略错误
+    } catch (err) {
+      console.error('获取构建列表失败:', err);
     }
-  };
+  }, [projectId]);
 
   return (
     <div className="build-status">

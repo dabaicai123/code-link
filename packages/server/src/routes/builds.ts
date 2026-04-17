@@ -1,9 +1,9 @@
 // packages/server/src/routes/builds.ts
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
-import { authMiddleware } from '../middleware/auth.ts';
-import { getBuildManager } from '../build/build-manager.ts';
-import { getPreviewContainerManager } from '../build/preview-container.ts';
+import { authMiddleware } from '../middleware/auth.js';
+import { getBuildManager } from '../build/build-manager.js';
+import { getPreviewContainerManager } from '../build/preview-container.js';
 
 export function createBuildsRouter(db: Database.Database): Router {
   const router = Router();
@@ -46,7 +46,8 @@ export function createBuildsRouter(db: Database.Database): Router {
   // GET /api/builds/project/:projectId - 获取项目的构建列表
   router.get('/project/:projectId', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
+    const idParam = req.params.projectId;
+    const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });
@@ -72,7 +73,8 @@ export function createBuildsRouter(db: Database.Database): Router {
   // GET /api/builds/:id - 获取构建详情
   router.get('/:id', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const buildId = parseInt(req.params.id, 10);
+    const idParam = req.params.id;
+    const buildId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(buildId)) {
       res.status(400).json({ error: '无效的构建 ID' });
@@ -103,7 +105,8 @@ export function createBuildsRouter(db: Database.Database): Router {
   // GET /api/builds/preview/:projectId - 获取项目预览 URL
   router.get('/preview/:projectId', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
+    const idParam = req.params.projectId;
+    const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });
@@ -137,7 +140,8 @@ export function createBuildsRouter(db: Database.Database): Router {
   // DELETE /api/builds/preview/:projectId - 停止预览容器
   router.delete('/preview/:projectId', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
+    const idParam = req.params.projectId;
+    const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });
