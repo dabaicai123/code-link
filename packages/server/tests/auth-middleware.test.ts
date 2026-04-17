@@ -1,0 +1,43 @@
+// packages/server/tests/auth-middleware.test.ts
+import { describe, it, expect } from 'vitest';
+import express from 'express';
+import request from 'supertest';
+import jwt from 'jsonwebtoken';
+import { authMiddleware, JWT_SECRET } from '../src/middleware/auth.ts';
+
+function buildApp() {
+  const app = express();
+  app.use(express.json());
+  app.get('/protected', authMiddleware, (req, res) => {
+    res.json({ userId: (req as any).userId });
+  });
+  return app;
+}
+
+describe('JWT 认证中间件', () => {
+  it('无 token 应返回 401', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/protected');
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('未提供认证令牌');
+  });
+
+  it('无效 token 应返回 401', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .get('/protected')
+      .set('Authorization', 'Bearer invalid-token');
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('无效的认证令牌');
+  });
+
+  it('有效 token 应通过并设置 userId', async () => {
+    const app = buildApp();
+    const token = jwt.sign({ userId: 42 }, JWT_SECRET, { expiresIn: '24h' });
+    const res = await request(app)
+      .get('/protected')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.userId).toBe(42);
+  });
+});
