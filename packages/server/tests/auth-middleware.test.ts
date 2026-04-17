@@ -40,4 +40,33 @@ describe('JWT 认证中间件', () => {
     expect(res.status).toBe(200);
     expect(res.body.userId).toBe(42);
   });
+
+  it('空 Bearer token 应返回 401', async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .get('/protected')
+      .set('Authorization', 'Bearer ');
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('未提供认证令牌');
+  });
+
+  it('payload 无 userId 应返回 401', async () => {
+    const app = buildApp();
+    const token = jwt.sign({ admin: true }, JWT_SECRET, { expiresIn: '24h' });
+    const res = await request(app)
+      .get('/protected')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('无效的认证令牌');
+  });
+
+  it('过期 token 应返回 401', async () => {
+    const app = buildApp();
+    const token = jwt.sign({ userId: 42 }, JWT_SECRET, { expiresIn: '-1s' });
+    const res = await request(app)
+      .get('/protected')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe('无效的认证令牌');
+  });
 });
