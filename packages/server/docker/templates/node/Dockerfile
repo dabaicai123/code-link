@@ -13,11 +13,8 @@ RUN npm install -g @anthropic-ai/claude-code
 # 创建工作目录
 WORKDIR /workspace
 
-# 复制启动脚本
+# 复制启动脚本并创建 agent 目录
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# 创建 agent 目录
-RUN mkdir -p /agent
+RUN chmod +x /entrypoint.sh && mkdir -p /agent
 
 ENTRYPOINT ["/entrypoint.sh"]
