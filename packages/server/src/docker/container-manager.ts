@@ -69,6 +69,7 @@ export async function getProjectContainer(projectId: number): Promise<Docker.Con
   const containerName = `${CONTAINER_NAME_PREFIX}${projectId}`;
 
   try {
+    await docker.getContainer(containerName).inspect();
     return docker.getContainer(containerName);
   } catch {
     return null;
@@ -90,7 +91,7 @@ export async function execInContainer(
 
   const stream = await exec.start({ Detach: false });
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
 
@@ -101,6 +102,8 @@ export async function execInContainer(
       if (type === 1) stdout += content;
       else if (type === 2) stderr += content;
     });
+
+    stream.on('error', reject);
 
     stream.on('end', async () => {
       const info = await exec.inspect();
