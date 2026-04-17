@@ -6,7 +6,7 @@
 
 **Architecture:** 创建全局 CSS 变量系统，侧边栏+主工作区（左终端+右协作面板），终端底部消息编辑区支持元素标签与文本交替。
 
-**Tech Stack:** Next.js 14, React 18, CSS 变量, @xterm/xterm, iframe 展示, 元素选择器
+**Tech Stack:** Next.js 16.2.3, React 19, CSS 变量, @xterm/xterm, iframe 展示, 元素选择器
 
 ---
 
