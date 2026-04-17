@@ -94,6 +94,53 @@ describe('PreviewContainerManager', () => {
     const info = manager.getContainerInfo('test-project-4');
     expect(info?.port).toBe(port2);
   });
+
+  it('should release port when container is stopped', async () => {
+    if (!testImageId) {
+      console.log('Skipping test: no test image available');
+      return;
+    }
+
+    const portManager = getPortManager();
+    const initialPorts = portManager.getAllocatedPorts();
+
+    const port = await manager.createPreviewContainer(testImageId, 'test-project-port-release');
+
+    // 验证端口已被分配
+    expect(portManager.isPortInUse(port)).toBe(true);
+
+    // 停止容器
+    await manager.stopPreviewContainer('test-project-port-release');
+
+    // 验证端口已被释放
+    expect(portManager.isPortInUse(port)).toBe(false);
+  });
+
+  it('should release all ports when cleanupAll is called', async () => {
+    if (!testImageId) {
+      console.log('Skipping test: no test image available');
+      return;
+    }
+
+    const portManager = getPortManager();
+
+    const port1 = await manager.createPreviewContainer(testImageId, 'test-project-cleanup-1');
+    const port2 = await manager.createPreviewContainer(testImageId, 'test-project-cleanup-2');
+    const port3 = await manager.createPreviewContainer(testImageId, 'test-project-cleanup-3');
+
+    // 验证端口已被分配
+    expect(portManager.isPortInUse(port1)).toBe(true);
+    expect(portManager.isPortInUse(port2)).toBe(true);
+    expect(portManager.isPortInUse(port3)).toBe(true);
+
+    // 清理所有容器
+    await manager.cleanupAll();
+
+    // 验证所有端口已被释放
+    expect(portManager.isPortInUse(port1)).toBe(false);
+    expect(portManager.isPortInUse(port2)).toBe(false);
+    expect(portManager.isPortInUse(port3)).toBe(false);
+  });
 });
 
 describe('getPreviewContainerManager', () => {

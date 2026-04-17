@@ -57,6 +57,7 @@ export class PreviewContainerManager {
 
   async stopPreviewContainer(projectId: string): Promise<void> {
     const docker = getDockerClient();
+    const portManager = getPortManager();
     const info = this.containers.get(projectId);
 
     if (info) {
@@ -65,14 +66,23 @@ export class PreviewContainerManager {
         await container.stop();
         await container.remove();
       } catch {}
+
+      // 释放端口
+      portManager.releasePort(info.port);
       this.containers.delete(projectId);
     } else {
       // 尝试通过名称查找
       try {
         const container = docker.getContainer(`${PREVIEW_CONTAINER_PREFIX}${projectId}`);
-        const info = await container.inspect();
+        const containerInfo = await container.inspect();
         await container.stop();
         await container.remove();
+
+        // 尝试从端口绑定中释放端口
+        const portBinding = containerInfo.NetworkSettings?.Ports?.['3000/tcp']?.[0]?.HostPort;
+        if (portBinding) {
+          portManager.releasePort(parseInt(portBinding, 10));
+        }
       } catch {}
     }
   }
@@ -88,6 +98,7 @@ export class PreviewContainerManager {
 
   async cleanupAll(): Promise<void> {
     const docker = getDockerClient();
+    const portManager = getPortManager();
 
     for (const [projectId, info] of this.containers) {
       try {
@@ -95,6 +106,9 @@ export class PreviewContainerManager {
         await container.stop();
         await container.remove();
       } catch {}
+
+      // 释放端口
+      portManager.releasePort(info.port);
     }
 
     this.containers.clear();
