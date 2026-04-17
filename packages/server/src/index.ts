@@ -7,6 +7,9 @@ import { initSchema } from './db/schema.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createProjectsRouter } from './routes/projects.js';
 import { createContainersRouter } from './routes/containers.js';
+import { createGitHubRouter } from './routes/github.js';
+import { createGitLabRouter } from './routes/gitlab.js';
+import { createReposRouter } from './routes/repos.js';
 import { createWebSocketServer } from './websocket/server.js';
 
 export function createApp(db: Database.Database): express.Express {
@@ -22,6 +25,9 @@ export function createApp(db: Database.Database): express.Express {
   app.use('/api/auth', createAuthRouter(db));
   app.use('/api/projects', createProjectsRouter(db));
   app.use('/api/projects', createContainersRouter(db));
+  app.use('/api/github', createGitHubRouter(db));
+  app.use('/api/gitlab', createGitLabRouter(db));
+  app.use('/api/repos', createReposRouter(db));
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
