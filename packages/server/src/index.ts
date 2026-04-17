@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3';
 import { getDb } from './db/connection.ts';
 import { initSchema } from './db/schema.ts';
 import { createAuthRouter } from './routes/auth.ts';
+import { createProjectsRouter } from './routes/projects.ts';
 
 export function createApp(db: Database.Database): express.Express {
   const app = express();
@@ -16,6 +17,7 @@ export function createApp(db: Database.Database): express.Express {
   });
 
   app.use('/api/auth', createAuthRouter(db));
+  app.use('/api/projects', createProjectsRouter(db));
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
