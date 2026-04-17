@@ -28,21 +28,28 @@ export class PreviewContainerManager {
     await this.stopPreviewContainer(projectId);
 
     // 创建并启动容器
-    const container = await docker.createContainer({
-      name: `${PREVIEW_CONTAINER_PREFIX}${projectId}`,
-      Image: imageId,
-      ExposedPorts: {
-        '3000/tcp': {},
-      },
-      HostConfig: {
-        PortBindings: {
-          '3000/tcp': [{ HostPort: port.toString() }],
+    let container;
+    try {
+      container = await docker.createContainer({
+        name: `${PREVIEW_CONTAINER_PREFIX}${projectId}`,
+        Image: imageId,
+        ExposedPorts: {
+          '3000/tcp': {},
         },
-      },
-      Env: env ? Object.entries(env).map(([k, v]) => `${k}=${v}`) : [],
-    });
+        HostConfig: {
+          PortBindings: {
+            '3000/tcp': [{ HostPort: port.toString() }],
+          },
+        },
+        Env: env ? Object.entries(env).map(([k, v]) => `${k}=${v}`) : [],
+      });
 
-    await container.start();
+      await container.start();
+    } catch (error) {
+      // 启动失败时释放端口
+      portManager.releasePort(port);
+      throw error;
+    }
 
     // 记录容器信息
     this.containers.set(projectId, {
@@ -65,7 +72,9 @@ export class PreviewContainerManager {
         const container = docker.getContainer(info.containerId);
         await container.stop();
         await container.remove();
-      } catch {}
+      } catch (error) {
+        console.error('Failed to stop container:', error);
+      }
 
       // 释放端口
       portManager.releasePort(info.port);
@@ -83,7 +92,9 @@ export class PreviewContainerManager {
         if (portBinding) {
           portManager.releasePort(parseInt(portBinding, 10));
         }
-      } catch {}
+      } catch (error) {
+        console.error('Failed to stop container by name:', error);
+      }
     }
   }
 
@@ -105,7 +116,9 @@ export class PreviewContainerManager {
         const container = docker.getContainer(info.containerId);
         await container.stop();
         await container.remove();
-      } catch {}
+      } catch (error) {
+        console.error('Failed to cleanup container:', error);
+      }
 
       // 释放端口
       portManager.releasePort(info.port);

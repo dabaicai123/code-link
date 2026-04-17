@@ -6,7 +6,7 @@ import { ensureTemplateImage } from '../src/docker/templates.js';
 
 describe('PreviewContainerManager', () => {
   let manager: PreviewContainerManager;
-  let testImageId: string;
+  let testImageId: string | null = null;
 
   beforeEach(async () => {
     manager = new PreviewContainerManager();
@@ -18,32 +18,32 @@ describe('PreviewContainerManager', () => {
     const docker = getDockerClient();
     const images = await docker.listImages();
     const nodeImage = images.find(img => img.RepoTags?.some(tag => tag.includes('code-link-node')));
-    testImageId = nodeImage?.Id || '';
+    testImageId = nodeImage?.Id || null;
   }, 60000);
 
   afterEach(async () => {
     await manager.cleanupAll();
   });
 
-  it('should create preview container', async () => {
-    if (!testImageId) {
-      console.log('Skipping test: no test image available');
-      return;
-    }
+  const createTestWithImage = (name: string, fn: (imageId: string) => Promise<void>) => {
+    it(name, async () => {
+      if (!testImageId) {
+        console.log(`Skipping test '${name}': no test image available`);
+        return;
+      }
+      await fn(testImageId);
+    });
+  };
 
-    const port = await manager.createPreviewContainer(testImageId, 'test-project-1');
+  createTestWithImage('should create preview container', async (imageId) => {
+    const port = await manager.createPreviewContainer(imageId, 'test-project-1');
 
     expect(port).toBeGreaterThanOrEqual(30000);
     expect(port).toBeLessThanOrEqual(40000);
   });
 
-  it('should stop preview container', async () => {
-    if (!testImageId) {
-      console.log('Skipping test: no test image available');
-      return;
-    }
-
-    await manager.createPreviewContainer(testImageId, 'test-project-2');
+  createTestWithImage('should stop preview container', async (imageId) => {
+    await manager.createPreviewContainer(imageId, 'test-project-2');
     await manager.stopPreviewContainer('test-project-2');
 
     const docker = getDockerClient();
@@ -61,13 +61,8 @@ describe('PreviewContainerManager', () => {
     expect(url).toBe('http://localhost:30001');
   });
 
-  it('should return container info', async () => {
-    if (!testImageId) {
-      console.log('Skipping test: no test image available');
-      return;
-    }
-
-    const port = await manager.createPreviewContainer(testImageId, 'test-project-3');
+  createTestWithImage('should return container info', async (imageId) => {
+    const port = await manager.createPreviewContainer(imageId, 'test-project-3');
     const info = manager.getContainerInfo('test-project-3');
 
     expect(info).toBeDefined();
@@ -77,14 +72,9 @@ describe('PreviewContainerManager', () => {
     expect(info?.createdAt).toBeInstanceOf(Date);
   });
 
-  it('should replace existing container with same project id', async () => {
-    if (!testImageId) {
-      console.log('Skipping test: no test image available');
-      return;
-    }
-
-    const port1 = await manager.createPreviewContainer(testImageId, 'test-project-4');
-    const port2 = await manager.createPreviewContainer(testImageId, 'test-project-4');
+  createTestWithImage('should replace existing container with same project id', async (imageId) => {
+    const port1 = await manager.createPreviewContainer(imageId, 'test-project-4');
+    const port2 = await manager.createPreviewContainer(imageId, 'test-project-4');
 
     // 第二次创建应该替换第一个容器
     // 端口可能相同也可能不同（取决于端口管理器实现）
@@ -95,16 +85,10 @@ describe('PreviewContainerManager', () => {
     expect(info?.port).toBe(port2);
   });
 
-  it('should release port when container is stopped', async () => {
-    if (!testImageId) {
-      console.log('Skipping test: no test image available');
-      return;
-    }
-
+  createTestWithImage('should release port when container is stopped', async (imageId) => {
     const portManager = getPortManager();
-    const initialPorts = portManager.getAllocatedPorts();
 
-    const port = await manager.createPreviewContainer(testImageId, 'test-project-port-release');
+    const port = await manager.createPreviewContainer(imageId, 'test-project-port-release');
 
     // 验证端口已被分配
     expect(portManager.isPortInUse(port)).toBe(true);
@@ -116,17 +100,12 @@ describe('PreviewContainerManager', () => {
     expect(portManager.isPortInUse(port)).toBe(false);
   });
 
-  it('should release all ports when cleanupAll is called', async () => {
-    if (!testImageId) {
-      console.log('Skipping test: no test image available');
-      return;
-    }
-
+  createTestWithImage('should release all ports when cleanupAll is called', async (imageId) => {
     const portManager = getPortManager();
 
-    const port1 = await manager.createPreviewContainer(testImageId, 'test-project-cleanup-1');
-    const port2 = await manager.createPreviewContainer(testImageId, 'test-project-cleanup-2');
-    const port3 = await manager.createPreviewContainer(testImageId, 'test-project-cleanup-3');
+    const port1 = await manager.createPreviewContainer(imageId, 'test-project-cleanup-1');
+    const port2 = await manager.createPreviewContainer(imageId, 'test-project-cleanup-2');
+    const port3 = await manager.createPreviewContainer(imageId, 'test-project-cleanup-3');
 
     // 验证端口已被分配
     expect(portManager.isPortInUse(port1)).toBe(true);
