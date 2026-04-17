@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { Token } from '../types.js';
+import type { ProjectToken } from '../types.js';
 
 export class TokenManager {
   private db: Database.Database;
@@ -16,30 +16,30 @@ export class TokenManager {
     expiresAt?: string
   ): void {
     const existing = this.db
-      .prepare('SELECT id FROM tokens WHERE user_id = ? AND provider = ?')
+      .prepare('SELECT id FROM project_tokens WHERE user_id = ? AND provider = ?')
       .get(userId, provider);
 
     if (existing) {
       this.db
-        .prepare('UPDATE tokens SET access_token = ?, refresh_token = ?, expires_at = ? WHERE user_id = ? AND provider = ?')
+        .prepare('UPDATE project_tokens SET access_token = ?, refresh_token = ?, expires_at = ? WHERE user_id = ? AND provider = ?')
         .run(accessToken, refreshToken || null, expiresAt || null, userId, provider);
     } else {
       this.db
-        .prepare('INSERT INTO tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)')
+        .prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)')
         .run(userId, provider, accessToken, refreshToken || null, expiresAt || null);
     }
   }
 
-  getToken(userId: number, provider: 'github' | 'gitlab'): Token | null {
+  getToken(userId: number, provider: 'github' | 'gitlab'): ProjectToken | null {
     const result = this.db
-      .prepare('SELECT * FROM tokens WHERE user_id = ? AND provider = ?')
+      .prepare('SELECT * FROM project_tokens WHERE user_id = ? AND provider = ?')
       .get(userId, provider);
-    return result ? (result as Token) : null;
+    return result ? (result as ProjectToken) : null;
   }
 
   deleteToken(userId: number, provider: 'github' | 'gitlab'): void {
     this.db
-      .prepare('DELETE FROM tokens WHERE user_id = ? AND provider = ?')
+      .prepare('DELETE FROM project_tokens WHERE user_id = ? AND provider = ?')
       .run(userId, provider);
   }
 
@@ -47,7 +47,7 @@ export class TokenManager {
     return this.getToken(userId, provider) !== null;
   }
 
-  isTokenExpired(token: Token): boolean {
+  isTokenExpired(token: ProjectToken): boolean {
     if (!token.expires_at) return false;
 
     const expiresAt = new Date(token.expires_at);

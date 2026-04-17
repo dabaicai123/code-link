@@ -65,7 +65,7 @@ describe('GitHub OAuth 路由', () => {
       expect(res.body.success).toBe(true);
 
       // 验证 token 已保存
-      const token = db.prepare('SELECT * FROM tokens WHERE user_id = 1 AND provider = ?').get('github');
+      const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = 1 AND provider = ?').get('github');
       expect(token).toBeDefined();
     });
 
@@ -98,7 +98,7 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
+      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -132,7 +132,7 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
+      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
 
       const res = await request(app).get('/api/github/status?userId=1');
       expect(res.status).toBe(200);
@@ -152,12 +152,12 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
+      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
 
       const res = await request(app).delete('/api/github/token?userId=1');
       expect(res.status).toBe(204);
 
-      const token = db.prepare('SELECT * FROM tokens WHERE user_id = 1 AND provider = ?').get('github');
+      const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = 1 AND provider = ?').get('github');
       expect(token).toBeUndefined();
     });
   });
@@ -211,7 +211,7 @@ describe('GitLab OAuth 路由', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
 
-      const token = db.prepare('SELECT * FROM tokens WHERE user_id = 1 AND provider = ?').get('gitlab');
+      const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = 1 AND provider = ?').get('gitlab');
       expect(token).toBeDefined();
     });
   });
@@ -232,7 +232,7 @@ describe('GitLab OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'gitlab', 'gl_token');
+      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'gitlab', 'gl_token');
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -254,7 +254,7 @@ describe('GitLab OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'gitlab', 'gl_token');
+      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'gitlab', 'gl_token');
 
       const res = await request(app).get('/api/gitlab/status?userId=1');
       expect(res.status).toBe(200);

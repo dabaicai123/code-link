@@ -53,7 +53,7 @@ export interface Build {
   created_at: string;
 }
 
-export interface Token {
+export interface ProjectToken {
   id: number;
   user_id: number;
   provider: 'github' | 'gitlab';

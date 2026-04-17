@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { initSchema } from '../src/db/schema.js';
 
-describe('Tokens Schema', () => {
+describe('Project Tokens Schema', () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -14,9 +14,9 @@ describe('Tokens Schema', () => {
     db.close();
   });
 
-  it('should have tokens table', () => {
+  it('should have project_tokens table', () => {
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[];
-    expect(tables.some(t => t.name === 'tokens')).toBe(true);
+    expect(tables.some(t => t.name === 'project_tokens')).toBe(true);
   });
 
   it('should have project_repos table', () => {
@@ -27,11 +27,11 @@ describe('Tokens Schema', () => {
   it('should insert and retrieve token', () => {
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
 
-    db.prepare('INSERT INTO tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
       1, 'github', 'gh_token', 'gh_refresh', '2025-01-01T00:00:00Z'
     );
 
-    const token = db.prepare('SELECT * FROM tokens WHERE user_id = ? AND provider = ?').get(1, 'github') as any;
+    const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = ? AND provider = ?').get(1, 'github') as any;
     expect(token.access_token).toBe('gh_token');
     expect(token.provider).toBe('github');
   });
@@ -39,13 +39,13 @@ describe('Tokens Schema', () => {
   it('should enforce unique constraint on user_id and provider', () => {
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
 
-    db.prepare('INSERT INTO tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
       1, 'github', 'gh_token', 'gh_refresh', '2025-01-01T00:00:00Z'
     );
 
     // Should fail due to unique constraint
     expect(() => {
-      db.prepare('INSERT INTO tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
+      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
         1, 'github', 'gh_token2', 'gh_refresh2', '2025-02-01T00:00:00Z'
       );
     }).toThrow();
@@ -53,7 +53,7 @@ describe('Tokens Schema', () => {
 
   it('should cascade delete tokens when user is deleted', () => {
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
       1, 'github', 'gh_token', 'gh_refresh', '2025-01-01T00:00:00Z'
     );
 
@@ -61,7 +61,7 @@ describe('Tokens Schema', () => {
     db.prepare('DELETE FROM users WHERE id = ?').run(1);
 
     // Token should be deleted
-    const token = db.prepare('SELECT * FROM tokens WHERE user_id = ?').get(1);
+    const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = ?').get(1);
     expect(token).toBeUndefined();
   });
 
@@ -111,12 +111,12 @@ describe('Tokens Schema', () => {
     expect(repo).toBeUndefined();
   });
 
-  it('should only accept valid provider values for tokens', () => {
+  it('should only accept valid provider values for project_tokens', () => {
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
 
     // Invalid provider should fail
     expect(() => {
-      db.prepare('INSERT INTO tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
+      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
         1, 'invalid_provider', 'token', 'refresh', '2025-01-01T00:00:00Z'
       );
     }).toThrow();

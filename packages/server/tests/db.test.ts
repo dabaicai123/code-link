@@ -15,7 +15,7 @@ describe('数据库 Schema', () => {
     expect(names).toContain('project_members');
     expect(names).toContain('messages');
     expect(names).toContain('builds');
-    expect(names).toContain('tokens');
+    expect(names).toContain('project_tokens');
     expect(names).toContain('project_repos');
   });
 
