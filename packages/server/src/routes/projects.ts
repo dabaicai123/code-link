@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
-import { authMiddleware } from '../middleware/auth.ts';
-import type { Project, ProjectMember, User } from '../types.ts';
+import { authMiddleware } from '../middleware/auth.js';
+import type { Project, ProjectMember, User } from '../types.js';
 
 const VALID_TEMPLATE_TYPES = ['node', 'node+java', 'node+python'] as const;
 type TemplateType = (typeof VALID_TEMPLATE_TYPES)[number];
@@ -85,7 +85,8 @@ export function createProjectsRouter(db: Database.Database): Router {
   // GET /api/projects/:id - 获取项目详情
   router.get('/:id', authMiddleware, (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.id, 10);
+    const idParam = req.params.id;
+    const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });
@@ -134,7 +135,8 @@ export function createProjectsRouter(db: Database.Database): Router {
   // DELETE /api/projects/:id - 删除项目（仅 owner 可删除）
   router.delete('/:id', authMiddleware, (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.id, 10);
+    const idParam = req.params.id;
+    const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });

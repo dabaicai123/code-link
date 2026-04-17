@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import type Database from 'better-sqlite3';
-import { getDb } from './db/connection.ts';
-import { initSchema } from './db/schema.ts';
-import { createAuthRouter } from './routes/auth.ts';
-import { createProjectsRouter } from './routes/projects.ts';
+import { getDb } from './db/connection.js';
+import { initSchema } from './db/schema.js';
+import { createAuthRouter } from './routes/auth.js';
+import { createProjectsRouter } from './routes/projects.js';
 
 export function createApp(db: Database.Database): express.Express {
   const app = express();

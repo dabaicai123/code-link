@@ -2,8 +2,8 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type Database from 'better-sqlite3';
-import { JWT_SECRET, authMiddleware } from '../middleware/auth.ts';
-import type { User } from '../types.ts';
+import { JWT_SECRET, authMiddleware } from '../middleware/auth.js';
+import type { User } from '../types.js';
 
 export function createAuthRouter(db: Database.Database): Router {
   const router = Router();
