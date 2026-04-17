@@ -16,3 +16,10 @@ export function getDb(path?: string): Database.Database {
   }
   return defaultDb;
 }
+
+export function closeDb(db: Database.Database): void {
+  db.close();
+  if (db === defaultDb) {
+    defaultDb = null;
+  }
+}
