@@ -1,0 +1,11 @@
+{
+  "name": "code-link",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter @code-link/server dev",
+    "dev:web": "pnpm --filter @code-link/web dev",
+    "dev": "pnpm run dev:server & pnpm run dev:web",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
+  }
+}
