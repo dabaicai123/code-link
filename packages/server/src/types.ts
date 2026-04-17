@@ -1,3 +1,14 @@
+import { TemplateType } from './docker/templates.js';
+
+export interface ContainerInfo {
+  id: string;
+  name: string;
+  status: 'running' | 'stopped' | 'created';
+  projectId: number;
+  templateType: TemplateType;
+  volumePath: string;
+}
+
 export interface User {
   id: number;
   name: string;
