@@ -49,8 +49,8 @@ export function runOrganizationMigration(db: Database.Database): void {
       UNIQUE(organization_id, user_id)
     );
 
-    CREATE INDEX idx_org_members_org_id ON organization_members(organization_id);
-    CREATE INDEX idx_org_members_user_id ON organization_members(user_id);
+    CREATE INDEX IF NOT EXISTS idx_org_members_org_id ON organization_members(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_org_members_user_id ON organization_members(user_id);
   `);
   logger.info('Created organization_members table');
 
@@ -67,8 +67,8 @@ export function runOrganizationMigration(db: Database.Database): void {
       UNIQUE(organization_id, email)
     );
 
-    CREATE INDEX idx_org_invitations_email ON organization_invitations(email);
-    CREATE INDEX idx_org_invitations_status ON organization_invitations(status);
+    CREATE INDEX IF NOT EXISTS idx_org_invitations_email ON organization_invitations(email);
+    CREATE INDEX IF NOT EXISTS idx_org_invitations_status ON organization_invitations(status);
   `);
   logger.info('Created organization_invitations table');
 

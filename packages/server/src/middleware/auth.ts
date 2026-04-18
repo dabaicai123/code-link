@@ -117,6 +117,10 @@ export function createOrgMemberMiddleware(db: Database.Database, minRole: OrgRol
 /**
  * 创建项目权限检查中间件
  * 通过项目关联的组织检查用户权限
+ *
+ * 前提条件：projects 表必须有 organization_id 字段
+ * 此字段将在第二阶段迁移中添加
+ *
  * @param db 数据库实例
  * @param minRole 最低需要的角色
  */
