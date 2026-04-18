@@ -11,8 +11,10 @@ import { createGitHubRouter } from './routes/github.js';
 import { createGitLabRouter } from './routes/gitlab.js';
 import { createReposRouter } from './routes/repos.js';
 import { createBuildsRouter } from './routes/builds.js';
+import { createClaudeConfigRouter } from './routes/claude-config.js';
 import { createWebSocketServer } from './websocket/server.js';
 import { requestLoggingMiddleware, createLogger } from './logger/index.js';
+import { setEncryptionKey } from './crypto/aes.js';
 
 const logger = createLogger('server');
 
@@ -32,8 +34,9 @@ export function createApp(db: Database.Database): express.Express {
   app.use('/api/projects', createContainersRouter(db));
   app.use('/api/github', createGitHubRouter(db));
   app.use('/api/gitlab', createGitLabRouter(db));
-  app.use('/api/repos', createReposRouter(db));
+  app.use('/api/projects/:projectId/repos', createReposRouter(db));
   app.use('/api/builds', createBuildsRouter(db));
+  app.use('/api/claude-config', createClaudeConfigRouter(db));
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
@@ -59,5 +62,13 @@ export function startServer(db: Database.Database, port: number = 3001): void {
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
   const db = getDb();
   initSchema(db);
+
+  // 设置加密密钥
+  const encryptionKey = process.env.CLAUDE_CONFIG_ENCRYPTION_KEY || '';
+  if (!encryptionKey) {
+    logger.warn('CLAUDE_CONFIG_ENCRYPTION_KEY not set. User config encryption disabled.');
+  }
+  setEncryptionKey(encryptionKey);
+
   startServer(db, process.env.PORT ? parseInt(process.env.PORT) : 4000);
 }
