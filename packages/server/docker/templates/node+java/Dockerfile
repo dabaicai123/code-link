@@ -32,5 +32,5 @@ RUN chown -R codelink:codelink /workspace
 # 切换到非 root 用户
 USER codelink
 
-COPY entrypoint.sh /entrypoint.sh
+COPY node+java/entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
