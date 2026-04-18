@@ -5,6 +5,7 @@ import {
   resizeExecTTY,
   writeToExecStream,
   closeExecStdin,
+  execWithUserEnv,
   type ExecSession,
 } from './docker-exec.js';
 import { createLogger } from '../logger/index.js';
@@ -37,24 +38,24 @@ class TerminalManagerImpl {
    * @param ws WebSocket 连接
    * @param cols 终端列数
    * @param rows 终端行数
+   * @param userEnv 用户环境变量
    * @returns 会话 ID
    */
   async createSession(
     containerId: string,
     ws: WebSocket,
     cols: number = 80,
-    rows: number = 24
+    rows: number = 24,
+    userEnv?: Record<string, string>
   ): Promise<string> {
     const sessionId = `term-${++this.sessionCounter}-${Date.now()}`;
 
     try {
       // 启动交互式 shell，优先使用 bash，回退到 sh
-      const execSession = await streamExecOutput(
-        containerId,
-        ['/bin/sh', '-c', 'exec bash || exec sh'],
-        true, // interactive
-        { env: ['TERM=xterm-256color'] }
-      );
+      // 使用带用户环境变量的 exec
+      const execSession = userEnv
+        ? await execWithUserEnv(containerId, ['/bin/sh', '-c', 'exec bash || exec sh'], true, userEnv)
+        : await streamExecOutput(containerId, ['/bin/sh', '-c', 'exec bash || exec sh'], true, { env: ['TERM=xterm-256color'] });
 
       const session: TerminalSession = {
         id: sessionId,
