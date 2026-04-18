@@ -1,5 +1,8 @@
-import { isAIEnabled, type AIMessage } from './client.js';
+import { isAIEnabled, sendAIMessage, type AIMessage } from './client.js';
+import { buildContextForDraft, type DraftContext } from './context.js';
+import { getSystemPrompt, getCommandPrompt } from './prompts.js';
 import { createLogger } from '../logger/index.js';
+import type Database from 'better-sqlite3';
 
 const logger = createLogger('ai-commands');
 
@@ -68,12 +71,10 @@ export function parseAICommand(content: string): AICommand | null {
 
 /**
  * Execute AI command
- * Note: This function requires context.ts and prompts.ts to be fully implemented.
- * Currently returns an error indicating the dependency is not ready.
  */
 export async function executeAICommand(
-  _db: unknown,
-  _draftId: number,
+  db: Database.Database,
+  draftId: number,
   command: AICommand,
   _userId: number
 ): Promise<AICommandResult> {
@@ -85,17 +86,55 @@ export async function executeAICommand(
     };
   }
 
-  // TODO: Implement after context.ts and prompts.ts are created (Task 3 & Task 4)
-  // This is a stub implementation
-  logger.warn('executeAICommand called but context/prompts modules not ready', {
-    commandType: command.type,
-  });
+  try {
+    logger.info('Executing AI command', { draftId, commandType: command.type });
 
-  return {
-    success: false,
-    commandType: command.type,
-    error: 'Command execution not yet implemented. Requires context.ts and prompts.ts modules.',
-  };
+    // Build context for the draft
+    const context = await buildContextForDraft(db, draftId);
+
+    // Get system prompt with context
+    const systemPrompt = getSystemPrompt(command.type, context);
+
+    // Get user prompt
+    const userPrompt = getCommandPrompt(command, context);
+
+    // Build messages
+    const messages: AIMessage[] = [
+      { role: 'user', content: userPrompt },
+    ];
+
+    // Send to AI
+    const response = await sendAIMessage(messages, {
+      system: systemPrompt,
+      maxTokens: 4096,
+      temperature: 0.7,
+    });
+
+    logger.info('AI command executed successfully', {
+      draftId,
+      commandType: command.type,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
+    });
+
+    return {
+      success: true,
+      response: response.content,
+      commandType: command.type,
+    };
+  } catch (error) {
+    logger.error('Failed to execute AI command', {
+      draftId,
+      commandType: command.type,
+      error,
+    });
+
+    return {
+      success: false,
+      commandType: command.type,
+      error: error instanceof Error ? error.message : 'AI 命令执行失败',
+    };
+  }
 }
 
 /**

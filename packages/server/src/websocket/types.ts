@@ -186,7 +186,7 @@ export interface DraftAIResponseEvent extends DraftBaseMessage {
   message: {
     id: number;
     draft_id: number;
-    parent_id: number;
+    parent_id: number | null;
     user_id: number;
     user_name: string;
     content: string;
@@ -275,6 +275,20 @@ export function createDraftMessageConfirmedEvent(
     userId,
     userName,
     confirmationType,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function createDraftAIResponseEvent(
+  draftId: number,
+  message: DraftAIResponseEvent['message'],
+  commandType: string
+): DraftAIResponseEvent {
+  return {
+    type: 'draft_ai_response',
+    draftId,
+    message,
+    commandType,
     timestamp: new Date().toISOString(),
   };
 }

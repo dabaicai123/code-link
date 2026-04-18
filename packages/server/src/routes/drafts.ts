@@ -7,6 +7,7 @@ import {
   createDraftMessageEvent,
   createDraftStatusChangedEvent,
   createDraftMessageConfirmedEvent,
+  createDraftAIResponseEvent,
 } from '../websocket/types.js';
 import { createLogger } from '../logger/index.js';
 import type {
@@ -16,6 +17,12 @@ import type {
   ConfirmationType,
   CreateDraftInput,
 } from '../types/draft.js';
+import {
+  isAICommand,
+  parseAICommand,
+  executeAICommand,
+} from '../ai/commands.js';
+import { isAIEnabled } from '../ai/client.js';
 
 const logger = createLogger('drafts');
 
@@ -155,7 +162,7 @@ export function createDraftsRouter(db: Database.Database): Router {
   });
 
   // POST /api/drafts/:draftId/messages - 发送消息
-  router.post('/:draftId/messages', authMiddleware, (req, res) => {
+  router.post('/:draftId/messages', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
     const draftId = parseInt(req.params.draftId, 10);
     const { content, messageType, parentId, metadata } = req.body;
@@ -175,11 +182,15 @@ export function createDraftsRouter(db: Database.Database): Router {
         return;
       }
 
+      // Check if content is an AI command
+      const isAI = isAICommand(content);
+      const actualMessageType = isAI ? 'ai_command' : (messageType || 'text');
+
       const result = db
         .prepare(
           'INSERT INTO draft_messages (draft_id, parent_id, user_id, content, message_type, metadata) VALUES (?, ?, ?, ?, ?, ?)'
         )
-        .run(draftId, parentId || null, userId, content, messageType || 'text', metadata ? JSON.stringify(metadata) : null);
+        .run(draftId, parentId || null, userId, content, actualMessageType, metadata ? JSON.stringify(metadata) : null);
 
       const messageId = result.lastInsertRowid as number;
 
@@ -206,6 +217,84 @@ export function createDraftsRouter(db: Database.Database): Router {
       if (wsServer) {
         const wsMessage = createDraftMessageEvent(draftId, message);
         wsServer.broadcastDraftMessage(draftId, wsMessage, userId);
+      }
+
+      // If it's an AI command, execute it and save the response
+      if (isAI && isAIEnabled()) {
+        const command = parseAICommand(content);
+        if (command) {
+          // Execute AI command asynchronously
+          executeAICommand(db, draftId, command, userId)
+            .then((aiResult) => {
+              // Save AI response as a system message
+              const aiResponseContent = aiResult.success
+                ? aiResult.response
+                : `AI 命令执行失败: ${aiResult.error}`;
+
+              const aiMessageResult = db
+                .prepare(
+                  'INSERT INTO draft_messages (draft_id, parent_id, user_id, content, message_type, metadata) VALUES (?, ?, ?, ?, ?, ?)'
+                )
+                .run(
+                  draftId,
+                  messageId, // parent_id is the user's message
+                  0, // system user ID (0 for AI)
+                  aiResponseContent || '',
+                  aiResult.success ? 'ai_response' : 'ai_error',
+                  JSON.stringify({ commandType: command.type })
+                );
+
+              const aiMessageId = aiMessageResult.lastInsertRowid as number;
+
+              // Update draft's updated_at
+              db.prepare('UPDATE drafts SET updated_at = datetime(\'now\') WHERE id = ?').run(draftId);
+
+              // Get the AI message with user info
+              const aiMessage = db
+                .prepare(
+                  `SELECT m.*, u.name as user_name FROM draft_messages m
+                   LEFT JOIN users u ON m.user_id = u.id
+                   WHERE m.id = ?`
+                )
+                .get(aiMessageId) as {
+                id: number;
+                draft_id: number;
+                parent_id: number | null;
+                user_id: number;
+                user_name: string | null;
+                content: string;
+                message_type: string;
+                created_at: string;
+              };
+
+              // Broadcast AI response
+              if (wsServer) {
+                const aiWsMessage = createDraftAIResponseEvent(draftId, {
+                  id: aiMessage.id,
+                  draft_id: aiMessage.draft_id,
+                  parent_id: aiMessage.parent_id,
+                  user_id: aiMessage.user_id,
+                  user_name: aiMessage.user_name || 'AI Assistant',
+                  content: aiMessage.content,
+                  message_type: aiMessage.message_type,
+                  metadata: null,
+                  created_at: aiMessage.created_at,
+                }, command.type);
+                wsServer.broadcastDraftMessage(draftId, aiWsMessage);
+              }
+
+              logger.info('AI command executed', {
+                draftId,
+                messageId,
+                aiMessageId,
+                success: aiResult.success,
+                commandType: command.type,
+              });
+            })
+            .catch((error) => {
+              logger.error('Failed to execute AI command', { draftId, messageId, error });
+            });
+        }
       }
 
       res.status(201).json({ message });
