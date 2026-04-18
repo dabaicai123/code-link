@@ -9,7 +9,7 @@ import { SelectedElement } from '@/components/collaboration/display-panel';
 interface Project {
   id: number;
   name: string;
-  template_type: 'node' | 'node+java' | 'node+python';
+  templateType: 'node' | 'node+java' | 'node+python';
   status: 'created' | 'running' | 'stopped';
 }
 

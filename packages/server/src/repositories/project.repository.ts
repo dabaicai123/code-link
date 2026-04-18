@@ -65,8 +65,14 @@ export class ProjectRepository {
   /**
    * 获取用户参与的所有项目
    */
-  async findByUserId(userId: number): Promise<SelectProject[]> {
+  async findByUserId(userId: number, organizationId?: number): Promise<SelectProject[]> {
     const db = getDb();
+    const conditions = [eq(organizationMembers.userId, userId)];
+
+    if (organizationId) {
+      conditions.push(eq(projects.organizationId, organizationId));
+    }
+
     return db.select({
       id: projects.id,
       name: projects.name,
@@ -82,7 +88,7 @@ export class ProjectRepository {
         organizationMembers,
         eq(projects.organizationId, organizationMembers.organizationId)
       )
-      .where(eq(organizationMembers.userId, userId));
+      .where(and(...conditions));
   }
 
   /**

@@ -1,7 +1,7 @@
 export interface Build {
   id: number;
-  project_id: number;
+  projectId: number;
   status: 'pending' | 'running' | 'success' | 'failed';
-  preview_port: number | null;
-  created_at: string;
+  previewPort: number | null;
+  createdAt: string;
 }

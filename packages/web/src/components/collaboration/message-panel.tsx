@@ -73,8 +73,8 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
   };
 
   // 按层级组织消息（简化版，不支持深层嵌套）
-  const rootMessages = messages.filter(m => m.parent_id === null);
-  const getReplies = (parentId: number) => messages.filter(m => m.parent_id === parentId);
+  const rootMessages = messages.filter(m => m.parentId === null);
+  const getReplies = (parentId: number) => messages.filter(m => m.parentId === parentId);
 
   if (loading) {
     return (

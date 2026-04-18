@@ -9,12 +9,12 @@ import { useAuth } from '@/lib/auth-context';
  */
 interface ProjectRepo {
   id: number;
-  project_id: number;
+  projectId: number;
   provider: 'github' | 'gitlab';
-  repo_url: string;
-  repo_name: string;
+  repoUrl: string;
+  repoName: string;
   branch: string;
-  created_at: string;
+  createdAt: string;
 }
 
 /**
@@ -80,7 +80,7 @@ export function RepoList({ projectId, containerId }: RepoListProps) {
 
     try {
       await api.post(`/repos/${projectId}/push`, {
-        repoUrl: repo.repo_url,
+        repoUrl: repo.repoUrl,
         branch: repo.branch,
         containerId,
         commitMessage: commitMessage.trim(),
@@ -99,12 +99,12 @@ export function RepoList({ projectId, containerId }: RepoListProps) {
   };
 
   const handleRemoveRepo = async (repo: ProjectRepo) => {
-    if (!confirm(`确定要移除仓库 "${repo.repo_name}" 的关联吗？`)) {
+    if (!confirm(`确定要移除仓库 "${repo.repoName}" 的关联吗？`)) {
       return;
     }
 
     try {
-      await api.delete(`/repos/${projectId}?repoUrl=${encodeURIComponent(repo.repo_url)}`);
+      await api.delete(`/repos/${projectId}?repoUrl=${encodeURIComponent(repo.repoUrl)}`);
       setRepos((prev) => prev.filter((r) => r.id !== repo.id));
     } catch (err) {
       const message =
@@ -199,7 +199,7 @@ export function RepoList({ projectId, containerId }: RepoListProps) {
                   {PROVIDER_INFO[repo.provider].name}
                 </span>
                 <span className="text-gray-900 font-medium truncate">
-                  {repo.repo_name}
+                  {repo.repoName}
                 </span>
               </div>
 
@@ -223,12 +223,12 @@ export function RepoList({ projectId, containerId }: RepoListProps) {
 
               {/* 仓库地址 */}
               <a
-                href={repo.repo_url}
+                href={repo.repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-1 text-xs text-indigo-600 hover:text-indigo-800 truncate block"
               >
-                {repo.repo_url}
+                {repo.repoUrl}
               </a>
             </div>
 

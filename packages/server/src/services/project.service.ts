@@ -57,8 +57,8 @@ export class ProjectService {
   /**
    * 获取用户参与的所有项目
    */
-  async findByUserId(userId: number): Promise<SelectProject[]> {
-    return this.projectRepo.findByUserId(userId);
+  async findByUserId(userId: number, organizationId?: number): Promise<SelectProject[]> {
+    return this.projectRepo.findByUserId(userId, organizationId);
   }
 
   /**

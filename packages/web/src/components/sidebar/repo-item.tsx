@@ -3,8 +3,8 @@
 interface Repo {
   id: number;
   provider: 'github' | 'gitlab';
-  repo_name: string;
-  repo_url: string;
+  repoName: string;
+  repoUrl: string;
   cloned: boolean;
 }
 
@@ -55,7 +55,7 @@ export function RepoItem({ repo, onClone, onDelete, isCloning }: RepoItemProps) 
         {config.icon}
       </span>
       <span style={{ color: 'var(--text-primary)', fontSize: '12px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {repo.repo_name}
+        {repo.repoName}
       </span>
       {repo.cloned ? (
         onDelete && (

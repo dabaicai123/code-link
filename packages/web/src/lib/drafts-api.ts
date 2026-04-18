@@ -123,7 +123,7 @@ export const draftsApi = {
   async getConfirmations(
     draftId: number,
     messageId: number
-  ): Promise<{ confirmations: Array<{ user_id: number; user_name: string; type: string; comment: string | null }> }> {
+  ): Promise<{ confirmations: Array<{ userId: number; userName: string; type: string; comment: string | null }> }> {
     return fetchApi(`${API_BASE}/${draftId}/messages/${messageId}/confirmations`);
   },
 };

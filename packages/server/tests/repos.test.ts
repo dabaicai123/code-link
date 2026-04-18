@@ -37,8 +37,9 @@ describe('GitHub OAuth 路由', () => {
     it('应返回 GitHub OAuth URL', async () => {
       const res = await request(app).get('/api/github/oauth');
       expect(res.status).toBe(200);
-      expect(res.body.url).toBeDefined();
-      expect(res.body.url).toContain('github.com');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.url).toBeDefined();
+      expect(res.body.data.url).toContain('github.com');
     });
   });
 
@@ -48,7 +49,8 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/github/oauth/callback')
         .send({ userId: 1 });
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('缺少');
+      expect(res.body.code).toBe(20001);
+      expect(res.body.error).toContain('code 或 userId');
     });
 
     it('缺少 userId 应返回 400', async () => {
@@ -56,7 +58,8 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/github/oauth/callback')
         .send({ code: 'test_code' });
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('缺少');
+      expect(res.body.code).toBe(20001);
+      expect(res.body.error).toContain('code 或 userId');
     });
 
     it('成功交换 token 应返回 success', async () => {
@@ -78,7 +81,8 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/github/oauth/callback')
         .send({ code: 'test_code', userId: 1 });
       expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.success).toBe(true);
 
       // 验证 token 已保存
       const token = findTokenByUserIdAndProvider(1, 'github');
@@ -126,7 +130,8 @@ describe('GitHub OAuth 路由', () => {
 
       const res = await request(app).get('/api/github/repos?userId=1');
       expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(2);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data).toHaveLength(2);
     });
   });
 
@@ -139,7 +144,8 @@ describe('GitHub OAuth 路由', () => {
     it('无 token 应返回 authorized: false', async () => {
       const res = await request(app).get('/api/github/status?userId=1');
       expect(res.status).toBe(200);
-      expect(res.body.authorized).toBe(false);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.authorized).toBe(false);
     });
 
     it('有 token 应返回 authorized: true', async () => {
@@ -152,7 +158,8 @@ describe('GitHub OAuth 路由', () => {
 
       const res = await request(app).get('/api/github/status?userId=1');
       expect(res.status).toBe(200);
-      expect(res.body.authorized).toBe(true);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.authorized).toBe(true);
     });
   });
 
@@ -198,8 +205,9 @@ describe('GitLab OAuth 路由', () => {
     it('应返回 GitLab OAuth URL', async () => {
       const res = await request(app).get('/api/gitlab/oauth');
       expect(res.status).toBe(200);
-      expect(res.body.url).toBeDefined();
-      expect(res.body.url).toContain('gitlab.com');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.url).toBeDefined();
+      expect(res.body.data.url).toContain('gitlab.com');
     });
   });
 
@@ -229,7 +237,8 @@ describe('GitLab OAuth 路由', () => {
         .post('/api/gitlab/oauth/callback')
         .send({ code: 'test_code', userId: 1 });
       expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.success).toBe(true);
 
       const token = findTokenByUserIdAndProvider(1, 'gitlab');
       expect(token).toBeDefined();
@@ -263,7 +272,8 @@ describe('GitLab OAuth 路由', () => {
 
       const res = await request(app).get('/api/gitlab/projects?userId=1');
       expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(1);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data).toHaveLength(1);
     });
   });
 
@@ -278,7 +288,8 @@ describe('GitLab OAuth 路由', () => {
 
       const res = await request(app).get('/api/gitlab/status?userId=1');
       expect(res.status).toBe(200);
-      expect(res.body.authorized).toBe(true);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.authorized).toBe(true);
     });
   });
 });
@@ -301,8 +312,8 @@ describe('Repos 路由', () => {
     const regRes = await request(app)
       .post('/api/auth/register')
       .send({ name: 'test', email: 'test@test.com', password: 'password123' });
-    token = regRes.body.token;
-    userId = regRes.body.user.id;
+    token = regRes.body.data.token;
+    userId = regRes.body.data.user.id;
 
     // 创建组织
     const org = createTestOrganization(userId, { name: 'test-org' });
@@ -316,7 +327,7 @@ describe('Repos 路由', () => {
       .post('/api/projects')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'test-project', templateType: 'node', organizationId: orgId });
-    projectId = projectRes.body.id;
+    projectId = projectRes.body.data.id;
   });
 
   afterEach(() => {
@@ -337,8 +348,9 @@ describe('Repos 路由', () => {
         .get(`/api/projects/${projectId}/repos`)
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(1);
-      expect(res.body[0].repoName).toBe('repo');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].repoName).toBe('repo');
     });
 
     it('未登录应返回 401', async () => {
@@ -351,7 +363,7 @@ describe('Repos 路由', () => {
       const otherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'other', email: 'other@test.com', password: 'password123' });
-      const otherToken = otherRes.body.token;
+      const otherToken = otherRes.body.data.token;
 
       const res = await request(app)
         .get(`/api/projects/${projectId}/repos`)
@@ -382,8 +394,9 @@ describe('Repos 路由', () => {
         .send({ url: 'https://github.com/owner/frontend' });
 
       expect(res.status).toBe(201);
-      expect(res.body.repoName).toBe('owner/frontend');
-      expect(res.body.provider).toBe('github');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.repoName).toBe('owner/frontend');
+      expect(res.body.data.provider).toBe('github');
     });
 
     it('应成功添加 GitLab 仓库', async () => {
@@ -393,8 +406,9 @@ describe('Repos 路由', () => {
         .send({ url: 'https://gitlab.com/owner/backend.git' });
 
       expect(res.status).toBe(201);
-      expect(res.body.repoName).toBe('owner/backend');
-      expect(res.body.provider).toBe('gitlab');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.repoName).toBe('owner/backend');
+      expect(res.body.data.provider).toBe('gitlab');
     });
 
     it('应拒绝无效的 URL', async () => {
@@ -404,6 +418,7 @@ describe('Repos 路由', () => {
         .send({ url: 'https://bitbucket.org/owner/repo' });
 
       expect(res.status).toBe(400);
+      expect(res.body.code).toBe(20002);
       expect(res.body.error).toContain('仅支持 GitHub 和 GitLab');
     });
 
@@ -414,7 +429,8 @@ describe('Repos 路由', () => {
         .send({});
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('缺少仓库 URL');
+      expect(res.body.code).toBe(20001);
+      expect(res.body.error).toContain('仓库 URL');
     });
 
     it('未登录应返回 401', async () => {
@@ -429,7 +445,7 @@ describe('Repos 路由', () => {
       const otherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'other', email: 'other@test.com', password: 'password123' });
-      const otherToken = otherRes.body.token;
+      const otherToken = otherRes.body.data.token;
 
       const res = await request(app)
         .post(`/api/projects/${projectId}/repos`)
@@ -451,6 +467,7 @@ describe('Repos 路由', () => {
         .send({ url: 'https://github.com/owner/frontend' });
 
       expect(res.status).toBe(409);
+      expect(res.body.code).toBe(40003);
       expect(res.body.error).toContain('已添加');
     });
   });
@@ -489,7 +506,7 @@ describe('Repos 路由', () => {
       const otherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'other', email: 'other@test.com', password: 'password123' });
-      const otherToken = otherRes.body.token;
+      const otherToken = otherRes.body.data.token;
 
       const res = await request(app)
         .delete(`/api/projects/${projectId}/repos/${repoId}`)

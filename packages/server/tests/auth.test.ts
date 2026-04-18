@@ -32,10 +32,11 @@ describe('认证路由', () => {
         .post('/api/auth/register')
         .send({ name: '测试用户', email: 'test@test.com', password: 'password123' });
       expect(res.status).toBe(201);
-      expect(res.body.token).toBeDefined();
-      expect(res.body.user.name).toBe('测试用户');
-      expect(res.body.user.email).toBe('test@test.com');
-      expect(res.body.user).not.toHaveProperty('password_hash');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.token).toBeDefined();
+      expect(res.body.data.user.name).toBe('测试用户');
+      expect(res.body.data.user.email).toBe('test@test.com');
+      expect(res.body.data.user).not.toHaveProperty('password_hash');
     });
 
     it('缺少字段应返回 400', async () => {
@@ -68,8 +69,9 @@ describe('认证路由', () => {
         .post('/api/auth/login')
         .send({ email: 'login@test.com', password: 'mypassword' });
       expect(res.status).toBe(200);
-      expect(res.body.token).toBeDefined();
-      expect(res.body.user.email).toBe('login@test.com');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.token).toBeDefined();
+      expect(res.body.data.user.email).toBe('login@test.com');
     });
 
     it('错误密码应返回 401', async () => {
@@ -92,13 +94,14 @@ describe('认证路由', () => {
       const regRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Me测试', email: 'me@test.com', password: 'pass123' });
-      const token = regRes.body.token;
+      const token = regRes.body.data.token;
 
       const res = await request(app)
         .get('/api/auth/me')
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);
-      expect(res.body.email).toBe('me@test.com');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.email).toBe('me@test.com');
     });
 
     it('无 token 应返回 401', async () => {

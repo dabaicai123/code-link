@@ -11,6 +11,7 @@ import { eq } from 'drizzle-orm';
 import { Router } from 'express';
 import { encrypt, decrypt } from '../src/crypto/aes.js';
 import { createLogger } from '../src/logger/index.js';
+import { success, Errors } from '../src/utils/response.js';
 import {
   createTestUser,
   findClaudeConfigByUserId,
@@ -44,16 +45,16 @@ function createTestClaudeConfigRouter(): Router {
     const row = findClaudeConfigByUserId(userId);
 
     if (!row) {
-      res.json({ config: DEFAULT_CONFIG, hasConfig: false });
+      res.json(success({ config: DEFAULT_CONFIG, hasConfig: false }));
       return;
     }
 
     try {
       const config = JSON.parse(decrypt(row.config));
-      res.json({ config, hasConfig: true });
+      res.json(success({ config, hasConfig: true }));
     } catch (error) {
       logger.error('Failed to decrypt user config', error);
-      res.status(500).json({ error: '配置解密失败' });
+      res.status(500).json(Errors.internal('配置解密失败'));
     }
   });
 
@@ -63,17 +64,17 @@ function createTestClaudeConfigRouter(): Router {
     const { config } = req.body;
 
     if (!config) {
-      res.status(400).json({ error: '缺少 config 字段' });
+      res.status(400).json(Errors.paramMissing('config'));
       return;
     }
 
     if (!config.env || typeof config.env !== 'object') {
-      res.status(400).json({ error: 'config.env 必须是对象' });
+      res.status(400).json(Errors.paramInvalid('config.env', '必须是对象'));
       return;
     }
 
     if (!config.env.ANTHROPIC_AUTH_TOKEN) {
-      res.status(400).json({ error: 'ANTHROPIC_AUTH_TOKEN 不能为空' });
+      res.status(400).json(Errors.paramMissing('ANTHROPIC_AUTH_TOKEN'));
       return;
     }
 
@@ -93,10 +94,10 @@ function createTestClaudeConfigRouter(): Router {
           .run();
       }
 
-      res.json({ success: true });
+      res.json(success({ success: true }));
     } catch (error) {
       logger.error('Failed to save user config', error);
-      res.status(500).json({ error: '保存配置失败' });
+      res.status(500).json(Errors.internal('保存配置失败'));
     }
   });
 
@@ -104,7 +105,7 @@ function createTestClaudeConfigRouter(): Router {
   router.delete('/', (req, res) => {
     const userId = (req as any).userId;
     deleteTestClaudeConfig(userId);
-    res.json({ success: true });
+    res.json(success({ success: true }));
   });
 
   return router;
@@ -145,8 +146,9 @@ describe('Claude Config API', () => {
   it('should return default config when not configured', async () => {
     const res = await request(app).get('/api/claude-config');
     expect(res.status).toBe(200);
-    expect(res.body.hasConfig).toBe(false);
-    expect(res.body.config.env).toBeDefined();
+    expect(res.body.code).toBe(0);
+    expect(res.body.data.hasConfig).toBe(false);
+    expect(res.body.data.config.env).toBeDefined();
   });
 
   it('should save and retrieve config', async () => {
@@ -164,12 +166,14 @@ describe('Claude Config API', () => {
       .send({ config });
 
     expect(saveRes.status).toBe(200);
-    expect(saveRes.body.success).toBe(true);
+    expect(saveRes.body.code).toBe(0);
+    expect(saveRes.body.data.success).toBe(true);
 
     const getRes = await request(app).get('/api/claude-config');
     expect(getRes.status).toBe(200);
-    expect(getRes.body.hasConfig).toBe(true);
-    expect(getRes.body.config.env.ANTHROPIC_AUTH_TOKEN).toBe('sk-test');
+    expect(getRes.body.code).toBe(0);
+    expect(getRes.body.data.hasConfig).toBe(true);
+    expect(getRes.body.data.config.env.ANTHROPIC_AUTH_TOKEN).toBe('sk-test');
   });
 
   it('should reject empty auth_token', async () => {
@@ -182,6 +186,7 @@ describe('Claude Config API', () => {
       });
 
     expect(res.status).toBe(400);
+    expect(res.body.code).toBe(20001);
     expect(res.body.error).toContain('ANTHROPIC_AUTH_TOKEN');
   });
 
@@ -191,6 +196,7 @@ describe('Claude Config API', () => {
       .send({});
 
     expect(res.status).toBe(400);
+    expect(res.body.code).toBe(20001);
     expect(res.body.error).toContain('config');
   });
 
@@ -204,7 +210,8 @@ describe('Claude Config API', () => {
       });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toContain('env');
+    expect(res.body.code).toBe(20002);
+    expect(res.body.error).toContain('对象');
   });
 
   it('should delete config', async () => {
@@ -220,10 +227,12 @@ describe('Claude Config API', () => {
     // 删除配置
     const deleteRes = await request(app).delete('/api/claude-config');
     expect(deleteRes.status).toBe(200);
-    expect(deleteRes.body.success).toBe(true);
+    expect(deleteRes.body.code).toBe(0);
+    expect(deleteRes.body.data.success).toBe(true);
 
     // 验证已删除
     const getRes = await request(app).get('/api/claude-config');
-    expect(getRes.body.hasConfig).toBe(false);
+    expect(getRes.body.code).toBe(0);
+    expect(getRes.body.data.hasConfig).toBe(false);
   });
 });

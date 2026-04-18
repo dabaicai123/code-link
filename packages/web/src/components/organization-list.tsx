@@ -128,7 +128,7 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
               )}
             </div>
             <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '4px' }}>
-              创建于 {new Date(org.created_at).toLocaleDateString('zh-CN')}
+              创建于 {new Date(org.createdAt).toLocaleDateString('zh-CN')}
             </div>
           </div>
         ))}

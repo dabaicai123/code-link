@@ -52,7 +52,7 @@ export function DraftHeader({
     }
   };
 
-  const isOwner = members.find(m => m.user_id === currentUserId)?.role === 'owner';
+  const isOwner = members.find(m => m.userId === currentUserId)?.role === 'owner';
 
   return (
     <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
@@ -216,9 +216,9 @@ export function DraftHeader({
                   color: 'var(--text-primary)',
                 }}
               >
-                {(member.user_name?.[0] || '?').toUpperCase()}
+                {(member.userName?.[0] || '?').toUpperCase()}
               </div>
-              <span style={{ color: 'var(--text-primary)' }}>{member.user_name}</span>
+              <span style={{ color: 'var(--text-primary)' }}>{member.userName}</span>
               <span
                 style={{
                   fontSize: '9px',
@@ -235,12 +235,12 @@ export function DraftHeader({
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  backgroundColor: onlineUsers.some(u => u.userId === member.user_id)
+                  backgroundColor: onlineUsers.some(u => u.userId === member.userId)
                     ? 'var(--status-success)'
                     : 'var(--text-secondary)',
                   marginLeft: 'auto',
                 }}
-                title={onlineUsers.some(u => u.userId === member.user_id) ? '在线' : '离线'}
+                title={onlineUsers.some(u => u.userId === member.userId) ? '在线' : '离线'}
               />
             </div>
           ))}

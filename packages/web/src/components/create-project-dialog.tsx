@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api, ApiError, Organization, OrgRole } from '@/lib/api';
+import { useOrganization } from '@/lib/organization-context';
 
 type TemplateType = 'node' | 'node+java' | 'node+python';
 
@@ -14,12 +15,12 @@ const TEMPLATE_OPTIONS: { value: TemplateType; label: string; description: strin
 interface Project {
   id: number;
   name: string;
-  template_type: TemplateType;
-  organization_id: number;
-  container_id: string | null;
+  templateType: TemplateType;
+  organizationId: number;
+  containerId: string | null;
   status: 'created' | 'running' | 'stopped';
-  created_by: number;
-  created_at: string;
+  createdBy: number;
+  createdAt: string;
 }
 
 interface CreateProjectDialogProps {
@@ -29,6 +30,7 @@ interface CreateProjectDialogProps {
 }
 
 export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjectDialogProps) {
+  const { currentOrganization, organizations: allOrganizations } = useOrganization();
   const [name, setName] = useState('');
   const [templateType, setTemplateType] = useState<TemplateType>('node');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -39,28 +41,19 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
 
   useEffect(() => {
     if (isOpen) {
-      fetchOrganizations();
-    }
-  }, [isOpen]);
-
-  const fetchOrganizations = async () => {
-    setLoadingOrgs(true);
-    try {
-      const data = await api.getOrganizations();
-      // 只显示有权限创建项目的组织 (owner 或 developer)
-      const creatableOrgs = data.filter(
+      // 使用 context 中的组织列表，过滤出有权限创建项目的组织
+      const creatableOrgs = allOrganizations.filter(
         (org) => org.role === 'owner' || org.role === 'developer'
       );
       setOrganizations(creatableOrgs);
-      if (creatableOrgs.length > 0) {
+      // 默认选择当前组织（如果有权限）
+      if (currentOrganization && creatableOrgs.some(o => o.id === currentOrganization.id)) {
+        setSelectedOrgId(currentOrganization.id);
+      } else if (creatableOrgs.length > 0) {
         setSelectedOrgId(creatableOrgs[0].id);
       }
-    } catch (err) {
-      console.error('Failed to fetch organizations:', err);
-    } finally {
-      setLoadingOrgs(false);
     }
-  };
+  }, [isOpen, allOrganizations, currentOrganization]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,8 +69,8 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
     try {
       const project = await api.post<Project>('/projects', {
         name: name.trim(),
-        template_type: templateType,
-        organization_id: selectedOrgId,
+        templateType: templateType,
+        organizationId: selectedOrgId,
       });
       onSuccess(project);
       handleClose();

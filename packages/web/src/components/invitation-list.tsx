@@ -83,7 +83,7 @@ export function InvitationList({ invitations, onRefresh }: InvitationListProps) 
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>
-                  {inv.organization_name || `组织 #${inv.organization_id}`}
+                  {inv.organizationName || `组织 #${inv.organizationId}`}
                 </div>
                 <span
                   style={{
@@ -100,11 +100,11 @@ export function InvitationList({ invitations, onRefresh }: InvitationListProps) 
               </div>
 
               <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
-                邀请人: {inv.invited_by_name || '未知'}
+                邀请人: {inv.invitedByName || '未知'}
               </div>
 
               <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '4px' }}>
-                邀请时间: {new Date(inv.created_at).toLocaleDateString('zh-CN')}
+                邀请时间: {new Date(inv.createdAt).toLocaleDateString('zh-CN')}
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>

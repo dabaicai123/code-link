@@ -30,7 +30,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
 
   const handleConfirm = async (type: 'agree' | 'disagree' | 'suggest') => {
     try {
-      await draftsApi.confirmMessage(message.draft_id, message.id, type);
+      await draftsApi.confirmMessage(message.draftId, message.id, type);
       setUserConfirm(type);
       onConfirm?.(message.id, type);
     } catch (err) {
@@ -40,9 +40,9 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
 
   const loadConfirmations = async () => {
     try {
-      const result = await draftsApi.getConfirmations(message.draft_id, message.id);
+      const result = await draftsApi.getConfirmations(message.draftId, message.id);
       setConfirmations(result.confirmations as MessageConfirmation[]);
-      const userConf = result.confirmations.find((c) => c.user_id === currentUserId);
+      const userConf = result.confirmations.find((c) => c.userId === currentUserId);
       if (userConf) {
         setUserConfirm(userConf.type);
       }
@@ -58,12 +58,12 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
     setShowConfirmations(!showConfirmations);
   };
 
-  const isCode = message.message_type === 'code';
-  const isAICommand = message.message_type === 'ai_command';
+  const isCode = message.messageType === 'code';
+  const isAICommand = message.messageType === 'ai_command';
   const isAIResponse =
-    message.message_type === 'ai_response' ||
-    (message.message_type === 'system' && message.user_name === 'AI 助手');
-  const isSystem = message.message_type === 'system' && message.user_name !== 'AI 助手';
+    message.messageType === 'ai_response' ||
+    (message.messageType === 'system' && message.userName === 'AI 助手');
+  const isSystem = message.messageType === 'system' && message.userName !== 'AI 助手';
 
   // 解析 AI 响应元数据
   const aiMetadata = isAIResponse ? parseAIResponseMetadata(message.metadata) : null;
@@ -124,7 +124,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
                 AI 助手
               </span>
               <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                {formatTime(message.created_at)}
+                {formatTime(message.createdAt)}
               </span>
               {/* AI 命令类型标签 */}
               {aiMetadata?.commandType && (
@@ -217,17 +217,17 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
             flexShrink: 0,
           }}
         >
-          {isAICommand ? 'AI' : (message.user_name?.[0] || '?').toUpperCase()}
+          {isAICommand ? 'AI' : (message.userName?.[0] || '?').toUpperCase()}
         </div>
 
         {/* 消息内容 */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '2px' }}>
             <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)' }}>
-              {isAICommand ? 'AI 助手' : message.user_name || '未知用户'}
+              {isAICommand ? 'AI 助手' : message.userName || '未知用户'}
             </span>
             <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-              {formatTime(message.created_at)}
+              {formatTime(message.createdAt)}
             </span>
           </div>
 
@@ -359,7 +359,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
             <div style={{ marginTop: '8px', padding: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
               {confirmations.map((conf) => (
                 <div key={conf.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', fontSize: '11px' }}>
-                  <span style={{ color: 'var(--text-primary)' }}>{conf.user_name}</span>
+                  <span style={{ color: 'var(--text-primary)' }}>{conf.userName}</span>
                   <span
                     style={{
                       padding: '1px 4px',

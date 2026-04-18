@@ -17,7 +17,7 @@ describe('Express 服务器', () => {
     const app = createApp();
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: 'ok' });
+    expect(res.body).toEqual({ code: 0, data: { status: 'ok' } });
   });
 
   it('未知路由应返回 404', async () => {

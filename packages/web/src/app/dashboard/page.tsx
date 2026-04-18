@@ -6,14 +6,14 @@ import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/sidebar';
 import { Workspace } from '@/components/workspace';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 interface Project {
   id: number;
   name: string;
-  template_type: 'node' | 'node+java' | 'node+python';
+  templateType: 'node' | 'node+java' | 'node+python';
   status: 'created' | 'running' | 'stopped';
-  created_at: string;
+  createdAt: string;
 }
 
 export default function DashboardPage() {
@@ -55,12 +55,15 @@ export default function DashboardPage() {
         // 容器启动成功后再设置 activeProject
         setActiveProject({ ...project, status: 'running' });
         setProjectRefreshKey(k => k + 1);
-      } catch (err: any) {
-        if (err?.response?.data?.code === 'CLAUDE_CONFIG_MISSING') {
-          alert(err.response.data.error);
-          router.push('/settings');
+      } catch (err) {
+        if (err instanceof ApiError) {
+          alert(err.message);
+          if (err.code === 'CLAUDE_CONFIG_MISSING') {
+            router.push('/settings');
+          }
         } else {
           console.error('启动容器失败:', err);
+          alert('启动容器失败');
         }
       } finally {
         setIsStarting(false);
@@ -92,12 +95,18 @@ export default function DashboardPage() {
       await api.post(`/projects/${activeProject.id}/container/start`);
       setActiveProject({ ...activeProject, status: 'running' });
       setProjectRefreshKey(k => k + 1);
-    } catch (err: any) {
-      if (err?.response?.data?.code === 'CLAUDE_CONFIG_MISSING') {
-        alert(err.response.data.error);
-        router.push('/settings');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        alert(err.message);
+        if (err.code === 'CLAUDE_CONFIG_MISSING') {
+          router.push('/settings');
+        } else {
+          // 恢复原状态
+          setActiveProject(activeProject);
+        }
       } else {
         console.error('重启容器失败:', err);
+        alert('重启容器失败');
         // 恢复原状态
         setActiveProject(activeProject);
       }

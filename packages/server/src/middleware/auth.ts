@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { createLogger } from '../logger/index.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
 import { UserRepository, OrganizationRepository, ProjectRepository } from '../repositories/index.js';
+import { Errors, success } from '../utils/response.js';
 import type { OrgRole } from '../types.js';
 
 // 角色层级定义
@@ -36,14 +37,14 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     logger.debug('No auth token provided');
-    res.status(401).json({ error: '未提供认证令牌' });
+    res.status(401).json(Errors.unauthorized());
     return;
   }
 
   const token = header.slice(7);
   if (!token) {
     logger.debug('Empty auth token');
-    res.status(401).json({ error: '未提供认证令牌' });
+    res.status(401).json(Errors.unauthorized());
     return;
   }
 
@@ -51,7 +52,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     const payload = jwt.verify(token, JWT_SECRET);
     if (typeof payload !== 'object' || payload === null || typeof payload.userId !== 'number') {
       logger.warn('Invalid token payload structure');
-      res.status(401).json({ error: '无效的认证令牌' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
     logger.debug(`Token verified for userId=${payload.userId}`);
@@ -59,7 +60,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     next();
   } catch (err) {
     logger.warn('Token verification failed', err);
-    res.status(401).json({ error: '无效的认证令牌' });
+    res.status(401).json(Errors.unauthorized());
   }
 }
 
@@ -77,12 +78,12 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
     const orgId = parseInt(Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam || '', 10);
 
     if (!userId) {
-      res.status(401).json({ error: '未认证' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
     if (isNaN(orgId)) {
-      res.status(400).json({ error: '无效的组织 ID' });
+      res.status(400).json(Errors.paramInvalid('组织 ID'));
       return;
     }
 
@@ -98,12 +99,12 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
     const membership = await orgRepo.findUserMembership(orgId, userId);
 
     if (!membership) {
-      res.status(403).json({ error: '您不是该组织的成员' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
     if (ROLE_HIERARCHY[membership.role] < ROLE_HIERARCHY[minRole]) {
-      res.status(403).json({ error: '权限不足' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
@@ -129,12 +130,12 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
     const projectId = parseInt(Array.isArray(projectIdParam) ? projectIdParam[0] : projectIdParam || '', 10);
 
     if (!userId) {
-      res.status(401).json({ error: '未认证' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
@@ -148,7 +149,7 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
     // 获取项目所属组织
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(404).json({ error: '项目不存在' });
+      res.status(404).json(Errors.notFound('项目'));
       return;
     }
 
@@ -156,12 +157,12 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
 
     if (!membership) {
-      res.status(403).json({ error: '您不是该项目的成员' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
     if (ROLE_HIERARCHY[membership.role] < ROLE_HIERARCHY[minRole]) {
-      res.status(403).json({ error: '权限不足' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
@@ -181,7 +182,7 @@ export function createCanCreateOrgMiddleware() {
     const userId = (req as any).userId;
 
     if (!userId) {
-      res.status(401).json({ error: '未认证' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
@@ -195,7 +196,7 @@ export function createCanCreateOrgMiddleware() {
     // 检查用户是否是任何组织的 owner
     const isOwner = await orgRepo.isOwnerOfAny(userId);
     if (!isOwner) {
-      res.status(403).json({ error: '只有组织 owner 或超级管理员可以创建组织' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 

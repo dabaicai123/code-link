@@ -163,7 +163,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
                   {draft.title}
                 </span>
                 <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                  {formatDate(draft.updated_at)}
+                  {formatDate(draft.updatedAt)}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

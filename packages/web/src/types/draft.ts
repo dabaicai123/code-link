@@ -37,45 +37,45 @@ export interface AICommandMetadata {
 
 export interface Draft {
   id: number;
-  project_id: number;
+  projectId: number;
   title: string;
   status: DraftStatus;
-  created_by: number;
-  created_at: string;
-  updated_at: string;
+  createdBy: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DraftMember {
   id: number;
-  draft_id: number;
-  user_id: number;
+  draftId: number;
+  userId: number;
   role: DraftMemberRole;
-  joined_at: string;
-  user_name?: string;
-  user_email?: string;
+  joinedAt: string;
+  userName?: string;
+  userEmail?: string;
 }
 
 export interface DraftMessage {
   id: number;
-  draft_id: number;
-  parent_id: number | null;
-  user_id: number;
-  user_name?: string;
+  draftId: number;
+  parentId: number | null;
+  userId: number;
+  userName?: string;
   content: string;
-  message_type: MessageType;
+  messageType: MessageType;
   metadata: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MessageConfirmation {
   id: number;
-  message_id: number;
-  user_id: number;
+  messageId: number;
+  userId: number;
   type: ConfirmationType;
   comment: string | null;
-  created_at: string;
-  user_name?: string;
+  createdAt: string;
+  userName?: string;
 }
 
 export interface CreateDraftInput {

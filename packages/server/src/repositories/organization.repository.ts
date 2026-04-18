@@ -373,7 +373,7 @@ export class OrganizationRepository {
     userId: number,
     role: string,
     invitedBy: number
-  ): { org: SelectOrganization; member: OrganizationMemberWithUser } {
+  ): { organization: SelectOrganization; member: OrganizationMemberWithUser } {
     const sqliteDb = getSqliteDb();
     const db = getDb();
 

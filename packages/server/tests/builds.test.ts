@@ -90,8 +90,9 @@ describe('Builds API', () => {
         .send({ projectId: 1 });
 
       expect(res.status).toBe(201);
-      expect(res.body.projectId).toBe(1);
-      expect(res.body.status).toBe('pending');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.projectId).toBe(1);
+      expect(res.body.data.status).toBe('pending');
     });
 
     it('缺少 projectId 应返回 400', async () => {
@@ -103,6 +104,7 @@ describe('Builds API', () => {
         .send({});
 
       expect(res.status).toBe(400);
+      expect(res.body.code).toBe(20001);
       expect(res.body.error).toBeDefined();
     });
 
@@ -147,9 +149,9 @@ describe('Builds API', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(1);
-      expect(res.body[0].projectId).toBe(1);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBe(1);
+      expect(res.body.data[0].projectId).toBe(1);
     });
 
     it('无效的项目 ID 应返回 400', async () => {
@@ -188,12 +190,13 @@ describe('Builds API', () => {
         .send({ projectId: 1 });
 
       const res = await request(app)
-        .get(`/api/builds/${createRes.body.id}`)
+        .get(`/api/builds/${createRes.body.data.id}`)
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.id).toBe(createRes.body.id);
-      expect(res.body.projectId).toBe(1);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.id).toBe(createRes.body.data.id);
+      expect(res.body.data.projectId).toBe(1);
     });
 
     it('无效的构建 ID 应返回 400', async () => {
@@ -232,7 +235,7 @@ describe('Builds API', () => {
       const otherToken = jwt.sign({ userId: otherUser.id }, JWT_SECRET, { expiresIn: '24h' });
 
       const res = await request(app)
-        .get(`/api/builds/${createRes.body.id}`)
+        .get(`/api/builds/${createRes.body.data.id}`)
         .set('Authorization', `Bearer ${otherToken}`);
 
       expect(res.status).toBe(403);
@@ -248,6 +251,7 @@ describe('Builds API', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(404);
+      expect(res.body.code).toBe(40001);
       expect(res.body.error).toContain('预览容器');
     });
 

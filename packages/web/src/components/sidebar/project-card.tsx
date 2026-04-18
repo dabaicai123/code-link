@@ -8,7 +8,7 @@ import { api, ApiError, Repo } from '@/lib/api';
 interface Project {
   id: number;
   name: string;
-  template_type: 'node' | 'node+java' | 'node+python';
+  templateType: 'node' | 'node+java' | 'node+python';
   status: 'created' | 'running' | 'stopped';
 }
 
@@ -21,7 +21,7 @@ interface ProjectCardProps {
   onRefresh?: () => void;
 }
 
-const TEMPLATE_LABELS: Record<Project['template_type'], string> = {
+const TEMPLATE_LABELS: Record<Project['templateType'], string> = {
   node: 'Node.js',
   'node+java': 'Java',
   'node+python': 'Python',
@@ -138,7 +138,7 @@ export function ProjectCard({
 
         {/* 模板类型 */}
         <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginLeft: '20px' }}>
-          {TEMPLATE_LABELS[project.template_type]}
+          {TEMPLATE_LABELS[project.templateType]}
         </div>
 
         {/* 仓库数量摘要（折叠时显示） */}

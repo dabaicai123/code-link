@@ -61,7 +61,7 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
       {replyTo && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 8px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-            回复 {replyTo.user_name}:
+            回复 {replyTo.userName}:
           </span>
           <span style={{ fontSize: '11px', color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {replyTo.content.slice(0, 50)}{replyTo.content.length > 50 ? '...' : ''}
