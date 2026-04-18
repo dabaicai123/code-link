@@ -51,11 +51,11 @@ class TerminalManagerImpl {
     const sessionId = `term-${++this.sessionCounter}-${Date.now()}`;
 
     try {
-      // 启动交互式 shell，优先使用 bash，回退到 sh
+      // 启动交互式 shell，优先启动 claude，退出后回退到 bash/sh
       // 使用带用户环境变量的 exec
       const execSession = userEnv
-        ? await execWithUserEnv(containerId, ['/bin/sh', '-c', 'exec bash || exec sh'], true, userEnv)
-        : await streamExecOutput(containerId, ['/bin/sh', '-c', 'exec bash || exec sh'], true, { env: ['TERM=xterm-256color'] });
+        ? await execWithUserEnv(containerId, ['/bin/sh', '-c', 'claude || exec bash || exec sh'], true, userEnv)
+        : await streamExecOutput(containerId, ['/bin/sh', '-c', 'claude || exec bash || exec sh'], true, { env: ['TERM=xterm-256color'] });
 
       const session: TerminalSession = {
         id: sessionId,
