@@ -21,6 +21,12 @@ const logger = createLogger('drafts');
 
 const VALID_CONFIRMATION_TYPES: ConfirmationType[] = ['agree', 'disagree', 'suggest'];
 
+const VALID_DRAFT_STATUSES: DraftStatus[] = ['discussing', 'brainstorming', 'reviewing', 'developing', 'confirmed', 'archived'];
+
+function isValidDraftStatus(status: string): status is DraftStatus {
+  return VALID_DRAFT_STATUSES.includes(status as DraftStatus);
+}
+
 function isValidConfirmationType(type: string): type is ConfirmationType {
   return VALID_CONFIRMATION_TYPES.includes(type as ConfirmationType);
 }
@@ -72,11 +78,17 @@ export function createDraftsRouter(db: Database.Database): Router {
         if (memberIds && memberIds.length > 0) {
           for (const memberId of memberIds) {
             if (memberId !== userId) {
-              db.prepare('INSERT INTO draft_members (draft_id, user_id, role) VALUES (?, ?, ?)').run(
-                draftId,
-                memberId,
-                'participant'
-              );
+              // 验证成员是否为项目成员
+              const isProjectMember = db
+                .prepare('SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?')
+                .get(projectId, memberId);
+              if (isProjectMember) {
+                db.prepare('INSERT INTO draft_members (draft_id, user_id, role) VALUES (?, ?, ?)').run(
+                  draftId,
+                  memberId,
+                  'participant'
+                );
+              }
             }
           }
         }
@@ -270,6 +282,11 @@ export function createDraftsRouter(db: Database.Database): Router {
       return;
     }
 
+    if (!isValidDraftStatus(status)) {
+      res.status(400).json({ error: '无效的状态值' });
+      return;
+    }
+
     try {
       const membership = db
         .prepare('SELECT * FROM draft_members WHERE draft_id = ? AND user_id = ?')
@@ -413,6 +430,21 @@ export function createDraftsRouter(db: Database.Database): Router {
         return;
       }
 
+      // 验证新成员是否为项目成员
+      const draft = db.prepare('SELECT project_id FROM drafts WHERE id = ?').get(draftId) as { project_id: number } | undefined;
+      if (!draft) {
+        res.status(404).json({ error: 'Draft 不存在' });
+        return;
+      }
+
+      const isProjectMember = db
+        .prepare('SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?')
+        .get(draft.project_id, newUserId);
+      if (!isProjectMember) {
+        res.status(400).json({ error: '用户不是项目成员' });
+        return;
+      }
+
       db.prepare('INSERT INTO draft_members (draft_id, user_id, role) VALUES (?, ?, ?)').run(draftId, newUserId, 'participant');
 
       res.json({ success: true });
@@ -440,6 +472,21 @@ export function createDraftsRouter(db: Database.Database): Router {
 
       if (!membership || membership.role !== 'owner') {
         res.status(403).json({ error: '只有 Draft owner 可以移除成员' });
+        return;
+      }
+
+      // 检查被移除的成员是否为 owner
+      const targetMembership = db
+        .prepare('SELECT role FROM draft_members WHERE draft_id = ? AND user_id = ?')
+        .get(draftId, memberId) as { role: string } | undefined;
+
+      if (!targetMembership) {
+        res.status(404).json({ error: '成员不存在' });
+        return;
+      }
+
+      if (targetMembership.role === 'owner') {
+        res.status(400).json({ error: '无法移除 Draft owner' });
         return;
       }
 

@@ -203,14 +203,15 @@ describe('Drafts API', () => {
       expect(res.body.draft.status).toBe('brainstorming');
     });
 
-    it('should return 500 for invalid status value (database constraint)', async () => {
+    it('should return 400 for invalid status value', async () => {
       const res = await request(app)
         .put(`/api/drafts/${draftId}/status`)
         .set('Authorization', `Bearer ${authToken}`)
         .send({ status: 'invalid_status' });
 
-      // 数据库 CHECK 约束失败返回 500
-      expect(res.status).toBe(500);
+      // 应用层验证返回 400
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('无效的状态值');
     });
   });
 
