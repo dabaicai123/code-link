@@ -1,11 +1,11 @@
 // src/routes/terminal.ts
 import type WebSocket from 'ws';
-import type Database from 'better-sqlite3';
 import { getTerminalManager } from '../terminal/terminal-manager.js';
 import { getContainerStatus } from '../docker/container-manager.js';
 import { createLogger } from '../logger/index.js';
 import { decrypt, isEncryptionKeySet } from '../crypto/aes.js';
-import type { Project } from '../types.js';
+import { ProjectRepository, ClaudeConfigRepository, OrganizationRepository } from '../repositories/index.js';
+import type { SelectProject } from '../db/schema/index.js';
 
 const logger = createLogger('terminal');
 
@@ -66,15 +66,16 @@ type TerminalServerMessage = TerminalStartedMessage | TerminalOutputMessage | Te
  * @param ws WebSocket 连接
  * @param projectId 项目 ID
  * @param userId 用户 ID
- * @param db 数据库实例
  */
 export function handleTerminalConnection(
   ws: WebSocket,
   projectId: number,
-  userId: number,
-  db: Database.Database
+  userId: number
 ): void {
   const terminalManager = getTerminalManager();
+  const projectRepo = new ProjectRepository();
+  const claudeConfigRepo = new ClaudeConfigRepository();
+  const orgRepo = new OrganizationRepository();
 
   // 当前活跃的会话 ID
   let currentSessionId: string | null = null;
@@ -87,23 +88,19 @@ export function handleTerminalConnection(
   }
 
   // 权限检查：检查用户是否是项目成员
-  function checkProjectAccess(): { hasAccess: boolean; project?: Project } {
+  async function checkProjectAccess(): Promise<{ hasAccess: boolean; project?: SelectProject }> {
     // 检查项目是否存在
-    const project = db
-      .prepare('SELECT id, name, template_type, container_id, status, created_by, created_at FROM projects WHERE id = ?')
-      .get(projectId) as Project | undefined;
-
+    const project = await projectRepo.findById(projectId);
     if (!project) {
       return { hasAccess: false };
     }
 
-    // 检查用户是否是项目成员
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId);
-
-    if (!membership) {
-      return { hasAccess: false };
+    // 检查用户是否是项目所属组织的成员
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        return { hasAccess: false };
+      }
     }
 
     return { hasAccess: true, project };
@@ -111,7 +108,7 @@ export function handleTerminalConnection(
 
   // 处理 start 消息
   async function handleStart(msg: TerminalStartMessage): Promise<void> {
-    const access = checkProjectAccess();
+    const access = await checkProjectAccess();
     if (!access.hasAccess || !access.project) {
       sendMessage({ type: 'error', message: '项目不存在或无权访问' });
       return;
@@ -120,14 +117,14 @@ export function handleTerminalConnection(
     const project = access.project;
 
     // 检查项目是否有容器
-    if (!project.container_id) {
+    if (!project.containerId) {
       sendMessage({ type: 'error', message: '项目没有关联的容器，请先启动容器' });
       return;
     }
 
     // 检查容器状态
     try {
-      const status = await getContainerStatus(project.container_id);
+      const status = await getContainerStatus(project.containerId);
       if (status !== 'running') {
         sendMessage({ type: 'error', message: '容器未运行，请先启动容器' });
         return;
@@ -139,10 +136,7 @@ export function handleTerminalConnection(
     }
 
     // 查询用户 Claude 配置
-    const configRow = db
-      .prepare('SELECT config FROM user_claude_configs WHERE user_id = ?')
-      .get(userId) as { config: string } | undefined;
-
+    const configRow = await claudeConfigRepo.findByUserId(userId);
     if (!configRow) {
       sendMessage({ type: 'error', message: '请先在「设置 → Claude Code 配置」中完成配置后再使用终端' });
       return;
@@ -175,7 +169,7 @@ export function handleTerminalConnection(
     // 创建终端会话
     try {
       const sessionId = await terminalManager.createSession(
-        project.container_id,
+        project.containerId,
         ws,
         msg.cols || 80,
         msg.rows || 24,
@@ -230,7 +224,7 @@ export function handleTerminalConnection(
   }
 
   // 监听消息
-  ws.on('message', (data: Buffer) => {
+  ws.on('message', async (data: Buffer) => {
     let parsed: TerminalClientMessage;
     try {
       parsed = JSON.parse(data.toString());
@@ -241,13 +235,13 @@ export function handleTerminalConnection(
 
     switch (parsed.type) {
       case 'start':
-        handleStart(parsed as TerminalStartMessage);
+        await handleStart(parsed as TerminalStartMessage);
         break;
       case 'input':
         handleInput(parsed as TerminalInputMessage);
         break;
       case 'resize':
-        handleResize(parsed as TerminalResizeMessage);
+        await handleResize(parsed as TerminalResizeMessage);
         break;
       case 'ping':
         handlePing();

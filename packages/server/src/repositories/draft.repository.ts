@@ -1,4 +1,4 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { getDb, getSqliteDb } from '../db/index.js';
 import {
   drafts,
@@ -6,6 +6,7 @@ import {
   draftMessages,
   messageConfirmations,
   users,
+  projects,
 } from '../db/schema/index.js';
 import type {
   InsertDraft,
@@ -217,5 +218,70 @@ export class DraftRepository {
       .where(eq(messageConfirmations.messageId, messageId))
       .all();
     return result as Array<SelectMessageConfirmation & { userName: string }>;
+  }
+
+  /**
+   * 获取 Draft 的完整上下文（用于 AI）
+   */
+  async findDraftContext(draftId: number): Promise<{
+    draft: SelectDraft & { projectName: string; projectTemplate: string; containerId: string | null };
+    recentMessages: Array<{ userId: number; userName: string; content: string | null; messageType: string; createdAt: string }>;
+    members: Array<{ userId: number; userName: string; role: string }>;
+  } | null> {
+    const db = getDb();
+
+    // 获取 Draft 信息
+    const draftResult = db.select({
+      id: drafts.id,
+      projectId: drafts.projectId,
+      title: drafts.title,
+      status: drafts.status,
+      createdBy: drafts.createdBy,
+      createdAt: drafts.createdAt,
+      updatedAt: drafts.updatedAt,
+      projectName: projects.name,
+      projectTemplate: projects.templateType,
+      containerId: projects.containerId,
+    })
+      .from(drafts)
+      .innerJoin(projects, eq(drafts.projectId, projects.id))
+      .where(eq(drafts.id, draftId))
+      .get();
+
+    if (!draftResult) {
+      return null;
+    }
+
+    // 获取最近的消息（最多 20 条，按时间倒序）
+    const recentMessages = db.select({
+      userId: draftMessages.userId,
+      userName: users.name,
+      content: draftMessages.content,
+      messageType: draftMessages.messageType,
+      createdAt: draftMessages.createdAt,
+    })
+      .from(draftMessages)
+      .innerJoin(users, eq(draftMessages.userId, users.id))
+      .where(eq(draftMessages.draftId, draftId))
+      .orderBy(desc(draftMessages.createdAt))
+      .limit(20)
+      .all();
+
+    // 获取成员列表
+    const members = db.select({
+      userId: draftMembers.userId,
+      userName: users.name,
+      role: draftMembers.role,
+    })
+      .from(draftMembers)
+      .innerJoin(users, eq(draftMembers.userId, users.id))
+      .where(eq(draftMembers.draftId, draftId))
+      .all();
+
+    return {
+      draft: draftResult as SelectDraft & { projectName: string; projectTemplate: string; containerId: string | null },
+      recentMessages: recentMessages as Array<{ userId: number; userName: string; content: string | null; messageType: string; createdAt: string }>,
+      members: members as Array<{ userId: number; userName: string; role: string }>,
+    };
   }
 }

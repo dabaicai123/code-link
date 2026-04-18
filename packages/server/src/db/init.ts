@@ -1,7 +1,13 @@
 import type Database from 'better-sqlite3';
+import bcrypt from 'bcryptjs';
+import { getDb } from './drizzle.js';
+import { users } from './schema/index.js';
+import { eq } from 'drizzle-orm';
 import { createLogger } from '../logger/index.js';
 
 const logger = createLogger('db-init');
+
+const DEFAULT_ADMIN_EMAIL = 'admin@example.com';
 
 /**
  * 初始化数据库 Schema
@@ -172,4 +178,26 @@ export function initSchema(db: Database.Database): void {
   `);
 
   logger.info('Database schema initialized');
+}
+
+/**
+ * 初始化默认超级管理员账号
+ * 密码通过环境变量 ADMIN_PASSWORD 配置，默认为 test_123
+ */
+export async function initDefaultAdmin(): Promise<void> {
+  const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD || 'test_123';
+
+  const db = getDb();
+  const existingAdmin = await db.select().from(users).where(eq(users.email, adminEmail)).get();
+
+  if (!existingAdmin) {
+    const passwordHash = bcrypt.hashSync(adminPassword, 10);
+    await db.insert(users).values({
+      name: 'Admin',
+      email: adminEmail,
+      passwordHash,
+    }).returning().get();
+    logger.info(`Default admin created: ${adminEmail}`);
+  }
 }

@@ -2,6 +2,9 @@ export { UserRepository } from './user.repository.js';
 export { OrganizationRepository } from './organization.repository.js';
 export { ProjectRepository } from './project.repository.js';
 export { DraftRepository } from './draft.repository.js';
+export { ClaudeConfigRepository } from './claude-config.repository.js';
+export { TokenRepository } from './token.repository.js';
+export { BuildRepository } from './build.repository.js';
 export type {
   OrganizationWithRole,
   OrganizationMemberWithUser,

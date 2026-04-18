@@ -5,7 +5,7 @@ export { getDb, getSqliteDb, getNativeDb, closeDb } from './drizzle.js';
 export * from './schema/index.js';
 
 // 初始化
-export { initSchema } from './init.js';
+export { initSchema, initDefaultAdmin } from './init.js';
 
 // 迁移函数（保持兼容）
 export {

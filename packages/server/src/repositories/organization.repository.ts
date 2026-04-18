@@ -5,6 +5,7 @@ import {
   organizationMembers,
   organizationInvitations,
   users,
+  projects,
 } from '../db/schema/index.js';
 import type {
   InsertOrganization,
@@ -355,10 +356,11 @@ export class OrganizationRepository {
    * 统计组织下的项目数量
    */
   async countProjects(orgId: number): Promise<number> {
-    const sqliteDb = getSqliteDb();
-    const result = sqliteDb.prepare(
-      'SELECT COUNT(*) as count FROM projects WHERE organization_id = ?'
-    ).get(orgId) as { count: number };
-    return result.count;
+    const db = getDb();
+    const result = db.select({ id: projects.id })
+      .from(projects)
+      .where(eq(projects.organizationId, orgId))
+      .all();
+    return result.length;
   }
 }

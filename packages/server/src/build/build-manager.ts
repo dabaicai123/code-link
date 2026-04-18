@@ -1,26 +1,20 @@
 // src/build/build-manager.ts
-import type Database from 'better-sqlite3';
 import { getDockerClient } from '../docker/client.js';
 import { getVolumePath } from '../docker/volume-manager.js';
 import { getPreviewContainerManager } from './preview-container.js';
 import { getWebSocketServer } from '../websocket/server.js';
-import type { Build } from '../types.js';
+import { BuildRepository } from '../repositories/index.js';
+import type { SelectBuild } from '../db/schema/index.js';
 
 export class BuildManager {
-  private db: Database.Database;
+  private buildRepo: BuildRepository;
 
-  constructor(db: Database.Database) {
-    this.db = db;
+  constructor() {
+    this.buildRepo = new BuildRepository();
   }
 
-  async createBuild(projectId: number): Promise<Build> {
-    const result = this.db
-      .prepare('INSERT INTO builds (project_id, status) VALUES (?, ?)')
-      .run(projectId, 'pending');
-
-    const build = this.db
-      .prepare('SELECT * FROM builds WHERE id = ?')
-      .get(result.lastInsertRowid) as Build;
+  async createBuild(projectId: number): Promise<SelectBuild> {
+    const build = await this.buildRepo.create(projectId);
 
     // 通知 WebSocket 客户端
     this.notifyBuildStatus(projectId, 'pending');
@@ -29,14 +23,6 @@ export class BuildManager {
   }
 
   async startBuild(projectId: number, buildId: number): Promise<void> {
-    const project = this.db
-      .prepare('SELECT * FROM projects WHERE id = ?')
-      .get(projectId) as any;
-
-    if (!project) {
-      throw new Error('Project not found');
-    }
-
     // 更新状态为 running
     await this.updateBuildStatus(buildId, 'running');
 
@@ -76,37 +62,29 @@ export class BuildManager {
 
   async updateBuildStatus(
     buildId: number,
-    status: Build['status'],
+    status: 'pending' | 'running' | 'success' | 'failed',
     previewPort?: number
   ): Promise<void> {
-    this.db
-      .prepare('UPDATE builds SET status = ?, preview_port = ? WHERE id = ?')
-      .run(status, previewPort || null, buildId);
+    await this.buildRepo.updateStatus(buildId, status, previewPort);
 
     // 获取项目 ID 并通知 WebSocket 客户端
-    const build = this.getBuild(buildId);
+    const build = await this.getBuild(buildId);
     if (build) {
-      this.notifyBuildStatus(build.project_id, status, previewPort);
+      this.notifyBuildStatus(build.projectId, status, previewPort);
     }
   }
 
-  getBuild(buildId: number): Build | null {
-    const build = this.db
-      .prepare('SELECT * FROM builds WHERE id = ?')
-      .get(buildId) as Build | undefined;
+  async getBuild(buildId: number): Promise<SelectBuild | null> {
+    const build = await this.buildRepo.findById(buildId);
     return build ?? null;
   }
 
-  getProjectBuilds(projectId: number): Build[] {
-    return this.db
-      .prepare('SELECT * FROM builds WHERE project_id = ? ORDER BY created_at DESC')
-      .all(projectId) as Build[];
+  async getProjectBuilds(projectId: number): Promise<SelectBuild[]> {
+    return this.buildRepo.findByProjectId(projectId);
   }
 
-  getLatestBuild(projectId: number): Build | null {
-    const build = this.db
-      .prepare('SELECT * FROM builds WHERE project_id = ? ORDER BY created_at DESC, id DESC LIMIT 1')
-      .get(projectId) as Build | undefined;
+  async getLatestBuild(projectId: number): Promise<SelectBuild | null> {
+    const build = await this.buildRepo.findLatestByProjectId(projectId);
     return build ?? null;
   }
 
@@ -125,9 +103,9 @@ export class BuildManager {
 // 全局单例
 let buildManagerInstance: BuildManager | null = null;
 
-export function getBuildManager(db: Database.Database): BuildManager {
+export function getBuildManager(): BuildManager {
   if (!buildManagerInstance) {
-    buildManagerInstance = new BuildManager(db);
+    buildManagerInstance = new BuildManager();
   }
   return buildManagerInstance;
 }

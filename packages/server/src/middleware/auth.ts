@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
-import type Database from 'better-sqlite3';
 import jwt from 'jsonwebtoken';
 import { createLogger } from '../logger/index.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
+import { UserRepository, OrganizationRepository, ProjectRepository } from '../repositories/index.js';
 import type { OrgRole } from '../types.js';
 
 // 角色层级定义
@@ -66,11 +66,13 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 
 /**
  * 创建组织权限检查中间件
- * @param db 数据库实例
  * @param minRole 最低需要的角色
  */
-export function createOrgMemberMiddleware(db: Database.Database, minRole: OrgRole) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+export function createOrgMemberMiddleware(minRole: OrgRole) {
+  const userRepo = new UserRepository();
+  const orgRepo = new OrganizationRepository();
+
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = (req as any).userId;
     const orgIdParam = req.params.orgId || req.params.id || req.body.organization_id;
     const orgId = parseInt(Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam || '', 10);
@@ -86,18 +88,15 @@ export function createOrgMemberMiddleware(db: Database.Database, minRole: OrgRol
     }
 
     // 获取用户邮箱检查是否为超级管理员
-    const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
-
-    if (user && isSuperAdmin(user.email)) {
+    const userEmail = await userRepo.findEmailById(userId);
+    if (userEmail && isSuperAdmin(userEmail)) {
       (req as any).orgRole = 'owner';
       next();
       return;
     }
 
     // 检查组织成员角色
-    const membership = db.prepare(
-      'SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?'
-    ).get(orgId, userId) as { role: OrgRole } | undefined;
+    const membership = await orgRepo.findUserMembership(orgId, userId);
 
     if (!membership) {
       res.status(403).json({ error: '您不是该组织的成员' });
@@ -118,14 +117,14 @@ export function createOrgMemberMiddleware(db: Database.Database, minRole: OrgRol
  * 创建项目权限检查中间件
  * 通过项目关联的组织检查用户权限
  *
- * 前提条件：projects 表必须有 organization_id 字段
- * 此字段将在第二阶段迁移中添加
- *
- * @param db 数据库实例
  * @param minRole 最低需要的角色
  */
-export function createProjectMemberMiddleware(db: Database.Database, minRole: OrgRole) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+export function createProjectMemberMiddleware(minRole: OrgRole) {
+  const userRepo = new UserRepository();
+  const orgRepo = new OrganizationRepository();
+  const projectRepo = new ProjectRepository();
+
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = (req as any).userId;
     const projectIdParam = req.params.id || req.params.projectId;
     const projectId = parseInt(Array.isArray(projectIdParam) ? projectIdParam[0] : projectIdParam || '', 10);
@@ -141,26 +140,27 @@ export function createProjectMemberMiddleware(db: Database.Database, minRole: Or
     }
 
     // 获取用户邮箱检查是否为超级管理员
-    const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
-
-    if (user && isSuperAdmin(user.email)) {
+    const userEmail = await userRepo.findEmailById(userId);
+    if (userEmail && isSuperAdmin(userEmail)) {
       (req as any).projectRole = 'owner';
       next();
       return;
     }
 
     // 获取项目所属组织
-    const project = db.prepare('SELECT organization_id FROM projects WHERE id = ?').get(projectId) as { organization_id: number } | undefined;
-
+    const project = await projectRepo.findById(projectId);
     if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
     }
 
+    if (!project.organizationId) {
+      res.status(403).json({ error: '该项目未关联组织' });
+      return;
+    }
+
     // 检查组织成员角色
-    const membership = db.prepare(
-      'SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?'
-    ).get(project.organization_id, userId) as { role: OrgRole } | undefined;
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
 
     if (!membership) {
       res.status(403).json({ error: '您不是该项目的成员' });
@@ -181,8 +181,11 @@ export function createProjectMemberMiddleware(db: Database.Database, minRole: Or
  * 检查用户是否有权创建组织
  * 超级管理员或现有组织的 owner 可以创建
  */
-export function createCanCreateOrgMiddleware(db: Database.Database) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+export function createCanCreateOrgMiddleware() {
+  const userRepo = new UserRepository();
+  const orgRepo = new OrganizationRepository();
+
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = (req as any).userId;
 
     if (!userId) {
@@ -191,19 +194,15 @@ export function createCanCreateOrgMiddleware(db: Database.Database) {
     }
 
     // 获取用户邮箱检查是否为超级管理员
-    const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
-
-    if (user && isSuperAdmin(user.email)) {
+    const userEmail = await userRepo.findEmailById(userId);
+    if (userEmail && isSuperAdmin(userEmail)) {
       next();
       return;
     }
 
     // 检查用户是否是任何组织的 owner
-    const ownership = db.prepare(
-      "SELECT 1 FROM organization_members WHERE user_id = ? AND role = 'owner' LIMIT 1"
-    ).get(userId);
-
-    if (!ownership) {
+    const isOwner = await orgRepo.isOwnerOfAny(userId);
+    if (!isOwner) {
       res.status(403).json({ error: '只有组织 owner 或超级管理员可以创建组织' });
       return;
     }

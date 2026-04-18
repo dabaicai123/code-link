@@ -1,16 +1,18 @@
 // packages/server/src/routes/repos.ts
 import { Router } from 'express';
-import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
 import { RepoManager } from '../git/repo-manager.js';
-import { getContainerInfo } from '../docker/container-manager.js';
+import { ProjectRepository, UserRepository, OrganizationRepository } from '../repositories/index.js';
 
 const logger = createLogger('repos');
 
-export function createReposRouter(db: Database.Database): Router {
+export function createReposRouter(): Router {
   const router = Router({ mergeParams: true });
-  const repoManager = new RepoManager(db);
+  const projectRepo = new ProjectRepository();
+  const userRepo = new UserRepository();
+  const orgRepo = new OrganizationRepository();
+  const repoManager = new RepoManager();
 
   // 解析仓库 URL
   function parseRepoUrl(url: string): { provider: 'github' | 'gitlab'; repoName: string } | null {
@@ -39,48 +41,41 @@ export function createReposRouter(db: Database.Database): Router {
     }
   }
 
-  // 检查用户是否是项目成员
-  function isProjectMember(projectId: number, userId: number): boolean {
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId);
-    return !!membership;
-  }
-
-  // 检查用户是否是项目 owner
-  function isProjectOwner(projectId: number, userId: number): boolean {
-    const membership = db
-      .prepare('SELECT role FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId) as { role: string } | undefined;
-    return membership?.role === 'owner';
-  }
-
   // GET / - 获取项目的仓库列表
-  router.get('/', authMiddleware, (req, res) => {
+  router.get('/', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
+    const projectIdStr = req.params.projectId;
+    const projectId = parseInt(typeof projectIdStr === 'string' ? projectIdStr : projectIdStr[0], 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });
       return;
     }
 
-    if (!isProjectMember(projectId, userId)) {
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
     }
 
-    const repos = db
-      .prepare('SELECT id, provider, repo_url, repo_name, branch, cloned, created_at FROM project_repos WHERE project_id = ?')
-      .all(projectId);
+    // 检查用户是否是项目所属组织的成员
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+    }
 
+    const repos = await projectRepo.findRepos(projectId);
     res.json(repos);
   });
 
   // POST / - 添加仓库到项目
-  router.post('/', authMiddleware, (req, res) => {
+  router.post('/', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
+    const projectIdStr = req.params.projectId;
+    const projectId = parseInt(typeof projectIdStr === 'string' ? projectIdStr : projectIdStr[0], 10);
     const { url } = req.body;
 
     if (isNaN(projectId)) {
@@ -93,10 +88,19 @@ export function createReposRouter(db: Database.Database): Router {
       return;
     }
 
-    // 检查项目成员
-    if (!isProjectMember(projectId, userId)) {
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
+    }
+
+    // 检查用户是否是项目所属组织的成员
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
     }
 
     // 解析 URL
@@ -107,14 +111,12 @@ export function createReposRouter(db: Database.Database): Router {
     }
 
     try {
-      const result = db
-        .prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name) VALUES (?, ?, ?, ?)')
-        .run(projectId, parsed.provider, url, parsed.repoName);
-
-      const repo = db
-        .prepare('SELECT id, provider, repo_url, repo_name, branch, created_at FROM project_repos WHERE id = ?')
-        .get(result.lastInsertRowid);
-
+      const repo = await projectRepo.addRepo({
+        projectId,
+        provider: parsed.provider,
+        repoUrl: url,
+        repoName: parsed.repoName,
+      });
       res.status(201).json(repo);
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'SQLITE_CONSTRAINT') {
@@ -129,7 +131,8 @@ export function createReposRouter(db: Database.Database): Router {
   // POST /import - 导入仓库并克隆到容器
   router.post('/import', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
+    const projectIdStr = req.params.projectId;
+    const projectId = parseInt(typeof projectIdStr === 'string' ? projectIdStr : projectIdStr[0], 10);
     const { repoUrl, branch, containerId } = req.body;
 
     if (isNaN(projectId)) {
@@ -147,10 +150,19 @@ export function createReposRouter(db: Database.Database): Router {
       return;
     }
 
-    // 检查项目成员
-    if (!isProjectMember(projectId, userId)) {
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
+    }
+
+    // 检查用户是否是项目所属组织的成员
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
     }
 
     // 解析 URL
@@ -162,11 +174,14 @@ export function createReposRouter(db: Database.Database): Router {
 
     try {
       // 1. 添加仓库记录（标记为已克隆）
-      const result = db
-        .prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch, cloned) VALUES (?, ?, ?, ?, ?, 1)')
-        .run(projectId, parsed.provider, repoUrl, parsed.repoName, branch || 'main');
-
-      const repoId = result.lastInsertRowid;
+      const repo = await projectRepo.addRepo({
+        projectId,
+        provider: parsed.provider,
+        repoUrl,
+        repoName: parsed.repoName,
+        branch: branch || 'main',
+        cloned: true,
+      });
 
       // 2. 克隆到容器
       const cloneResult = await repoManager.cloneRepo(
@@ -178,14 +193,10 @@ export function createReposRouter(db: Database.Database): Router {
 
       if (!cloneResult.success) {
         // 克隆失败，删除数据库记录
-        db.prepare('DELETE FROM project_repos WHERE id = ?').run(repoId);
+        await projectRepo.deleteRepo(repo.id);
         res.status(500).json({ error: cloneResult.error || '克隆仓库失败' });
         return;
       }
-
-      const repo = db
-        .prepare('SELECT id, provider, repo_url, repo_name, branch, cloned, created_at FROM project_repos WHERE id = ?')
-        .get(repoId);
 
       res.status(201).json({ ...repo, path: cloneResult.path });
     } catch (error: any) {
@@ -199,79 +210,89 @@ export function createReposRouter(db: Database.Database): Router {
   });
 
   // DELETE /:repoId - 删除仓库
-  router.delete('/:repoId', authMiddleware, (req, res) => {
+  router.delete('/:repoId', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
-    const repoId = parseInt(req.params.repoId, 10);
+    const projectIdStr = req.params.projectId;
+    const projectId = parseInt(typeof projectIdStr === 'string' ? projectIdStr : projectIdStr[0], 10);
+    const repoIdStr = req.params.repoId;
+    const repoId = parseInt(typeof repoIdStr === 'string' ? repoIdStr : repoIdStr[0], 10);
 
     if (isNaN(projectId) || isNaN(repoId)) {
       res.status(400).json({ error: '无效的 ID' });
       return;
     }
 
-    // 检查项目成员
-    if (!isProjectMember(projectId, userId)) {
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
     }
 
-    // 检查仓库是否属于该项目
-    const repo = db
-      .prepare('SELECT * FROM project_repos WHERE id = ? AND project_id = ?')
-      .get(repoId, projectId);
+    // 检查用户是否是项目所属组织的成员
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+    }
 
+    // 检查仓库是否属于该项目
+    const repo = await projectRepo.findRepo(repoId, projectId);
     if (!repo) {
       res.status(404).json({ error: '仓库不存在' });
       return;
     }
 
-    db.prepare('DELETE FROM project_repos WHERE id = ?').run(repoId);
-
+    await projectRepo.deleteRepo(repoId);
     res.status(204).send();
   });
 
   // POST /:repoId/clone - Clone 仓库（仅 owner）
   router.post('/:repoId/clone', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
-    const repoId = parseInt(req.params.repoId, 10);
+    const projectIdStr = req.params.projectId;
+    const projectId = parseInt(typeof projectIdStr === 'string' ? projectIdStr : projectIdStr[0], 10);
+    const repoIdStr = req.params.repoId;
+    const repoId = parseInt(typeof repoIdStr === 'string' ? repoIdStr : repoIdStr[0], 10);
 
     if (isNaN(projectId) || isNaN(repoId)) {
       res.status(400).json({ error: '无效的 ID' });
       return;
     }
 
-    // 检查是否是 owner
-    if (!isProjectOwner(projectId, userId)) {
-      res.status(403).json({ error: '只有项目 owner 可以 clone 仓库' });
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
+      res.status(404).json({ error: '项目不存在' });
       return;
     }
 
-    // 获取仓库信息
-    const repo = db
-      .prepare('SELECT * FROM project_repos WHERE id = ? AND project_id = ?')
-      .get(repoId, projectId) as { repo_url: string } | undefined;
+    // 检查用户是否是项目所属组织的 owner
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership || membership.role !== 'owner') {
+        res.status(403).json({ error: '只有项目 owner 可以 clone 仓库' });
+        return;
+      }
+    }
 
+    // 获取仓库信息
+    const repo = await projectRepo.findRepo(repoId, projectId);
     if (!repo) {
       res.status(404).json({ error: '仓库不存在' });
       return;
     }
 
-    // 获取项目信息（包含 container_id）
-    const project = db
-      .prepare('SELECT container_id FROM projects WHERE id = ?')
-      .get(projectId) as { container_id: string | null } | undefined;
-
-    if (!project || !project.container_id) {
+    if (!project.containerId) {
       res.status(400).json({ error: '项目容器未启动' });
       return;
     }
 
     try {
       const result = await repoManager.cloneRepo(
-        project.container_id,
+        project.containerId,
         projectId,
-        repo.repo_url,
+        repo.repoUrl,
         userId
       );
 
@@ -281,7 +302,7 @@ export function createReposRouter(db: Database.Database): Router {
       }
 
       // 更新 cloned 状态
-      db.prepare('UPDATE project_repos SET cloned = 1 WHERE id = ?').run(repoId);
+      await projectRepo.updateRepoCloned(repoId, true);
 
       res.json({ path: result.path });
     } catch (error) {
@@ -293,8 +314,10 @@ export function createReposRouter(db: Database.Database): Router {
   // POST /:repoId/push - Push 仓库（仅 owner）
   router.post('/:repoId/push', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.projectId, 10);
-    const repoId = parseInt(req.params.repoId, 10);
+    const projectIdStr = req.params.projectId;
+    const projectId = parseInt(typeof projectIdStr === 'string' ? projectIdStr : projectIdStr[0], 10);
+    const repoIdStr = req.params.repoId;
+    const repoId = parseInt(typeof repoIdStr === 'string' ? repoIdStr : repoIdStr[0], 10);
     const { message } = req.body;
 
     if (isNaN(projectId) || isNaN(repoId)) {
@@ -307,37 +330,35 @@ export function createReposRouter(db: Database.Database): Router {
       return;
     }
 
-    // 检查是否是 owner
-    if (!isProjectOwner(projectId, userId)) {
-      res.status(403).json({ error: '只有项目 owner 可以 push 仓库' });
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
+      res.status(404).json({ error: '项目不存在' });
       return;
     }
 
-    // 获取仓库信息
-    const repo = db
-      .prepare('SELECT * FROM project_repos WHERE id = ? AND project_id = ?')
-      .get(repoId, projectId) as { repo_url: string; branch: string } | undefined;
+    // 检查用户是否是项目所属组织的 owner
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership || membership.role !== 'owner') {
+        res.status(403).json({ error: '只有项目 owner 可以 push 仓库' });
+        return;
+      }
+    }
 
+    // 获取仓库信息
+    const repo = await projectRepo.findRepo(repoId, projectId);
     if (!repo) {
       res.status(404).json({ error: '仓库不存在' });
       return;
     }
 
-    // 获取项目信息
-    const project = db
-      .prepare('SELECT container_id FROM projects WHERE id = ?')
-      .get(projectId) as { container_id: string | null } | undefined;
-
-    if (!project || !project.container_id) {
+    if (!project.containerId) {
       res.status(400).json({ error: '项目容器未启动' });
       return;
     }
 
     // 获取用户信息
-    const user = db
-      .prepare('SELECT name, email FROM users WHERE id = ?')
-      .get(userId) as { name: string; email: string } | undefined;
-
+    const user = await userRepo.findById(userId);
     if (!user) {
       res.status(500).json({ error: '用户信息不存在' });
       return;
@@ -345,9 +366,9 @@ export function createReposRouter(db: Database.Database): Router {
 
     try {
       const result = await repoManager.pushRepo(
-        project.container_id,
+        project.containerId,
         projectId,
-        repo.repo_url,
+        repo.repoUrl,
         repo.branch,
         message,
         userId,

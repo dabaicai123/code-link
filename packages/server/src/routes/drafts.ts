@@ -15,8 +15,6 @@ import {
   executeAICommand,
 } from '../ai/commands.js';
 import { isAIEnabled } from '../ai/client.js';
-import { getSqliteDb } from '../db/index.js';
-import type Database from 'better-sqlite3';
 
 const logger = createLogger('drafts');
 
@@ -113,8 +111,7 @@ export function createDraftsRouter(): Router {
       if (isAI && isAIEnabled()) {
         const command = parseAICommand(content);
         if (command) {
-          const db = getSqliteDb();
-          executeAICommand(db, draftId, command, userId)
+          executeAICommand(draftId, command, userId)
             .then(async (aiResult) => {
               const aiResponseContent = aiResult.success
                 ? aiResult.response

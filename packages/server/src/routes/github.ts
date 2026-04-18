@@ -1,13 +1,12 @@
 // packages/server/src/routes/github.ts
 import { Router } from 'express';
-import type Database from 'better-sqlite3';
-import { getGitHubOAuthUrl, exchangeGitHubCode, getOAuthConfig } from '../git/oauth.ts';
-import { TokenManager } from '../git/token-manager.ts';
-import { GitHubClient } from '../git/github-client.ts';
+import { getGitHubOAuthUrl, exchangeGitHubCode, getOAuthConfig } from '../git/oauth.js';
+import { TokenManager } from '../git/token-manager.js';
+import { GitHubClient } from '../git/github-client.js';
 
-export function createGitHubRouter(db: Database.Database): Router {
+export function createGitHubRouter(): Router {
   const router = Router();
-  const tokenManager = new TokenManager(db);
+  const tokenManager = new TokenManager();
 
   // GET /api/github/oauth - 获取 OAuth URL
   router.get('/oauth', (_req, res) => {
@@ -33,7 +32,7 @@ export function createGitHubRouter(db: Database.Database): Router {
         ? new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
         : undefined;
 
-      tokenManager.saveToken(
+      await tokenManager.saveToken(
         userId,
         'github',
         tokenResponse.access_token,
@@ -56,14 +55,14 @@ export function createGitHubRouter(db: Database.Database): Router {
       return;
     }
 
-    const token = tokenManager.getToken(Number(userId), 'github');
+    const token = await tokenManager.getToken(Number(userId), 'github');
     if (!token) {
       res.status(401).json({ error: '未授权 GitHub' });
       return;
     }
 
     try {
-      const client = new GitHubClient(token.access_token);
+      const client = new GitHubClient(token.accessToken);
       const repos = await client.getUserRepos();
       res.json(repos);
     } catch (error: any) {
@@ -81,14 +80,14 @@ export function createGitHubRouter(db: Database.Database): Router {
       return;
     }
 
-    const token = tokenManager.getToken(Number(userId), 'github');
+    const token = await tokenManager.getToken(Number(userId), 'github');
     if (!token) {
       res.status(401).json({ error: '未授权 GitHub' });
       return;
     }
 
     try {
-      const client = new GitHubClient(token.access_token);
+      const client = new GitHubClient(token.accessToken);
       const repoInfo = await client.getRepo(owner, repo);
       res.json(repoInfo);
     } catch (error: any) {
@@ -106,14 +105,14 @@ export function createGitHubRouter(db: Database.Database): Router {
       return;
     }
 
-    const token = tokenManager.getToken(Number(userId), 'github');
+    const token = await tokenManager.getToken(Number(userId), 'github');
     if (!token) {
       res.status(401).json({ error: '未授权 GitHub' });
       return;
     }
 
     try {
-      const client = new GitHubClient(token.access_token);
+      const client = new GitHubClient(token.accessToken);
       const branches = await client.getRepoBranches(owner, repo);
       res.json(branches);
     } catch (error: any) {
@@ -130,14 +129,14 @@ export function createGitHubRouter(db: Database.Database): Router {
       return;
     }
 
-    const token = tokenManager.getToken(Number(userId), 'github');
+    const token = await tokenManager.getToken(Number(userId), 'github');
     if (!token) {
       res.status(401).json({ error: '未授权 GitHub' });
       return;
     }
 
     try {
-      const client = new GitHubClient(token.access_token);
+      const client = new GitHubClient(token.accessToken);
       const webhook = await client.createWebhook(owner, repo, webhookUrl);
       res.status(201).json(webhook);
     } catch (error: any) {
@@ -146,7 +145,7 @@ export function createGitHubRouter(db: Database.Database): Router {
   });
 
   // DELETE /api/github/token - 删除 GitHub Token
-  router.delete('/token', (req, res) => {
+  router.delete('/token', async (req, res) => {
     const userId = req.query.userId;
 
     if (!userId) {
@@ -154,12 +153,12 @@ export function createGitHubRouter(db: Database.Database): Router {
       return;
     }
 
-    tokenManager.deleteToken(Number(userId), 'github');
+    await tokenManager.deleteToken(Number(userId), 'github');
     res.status(204).send();
   });
 
   // GET /api/github/status - 检查 GitHub 授权状态
-  router.get('/status', (req, res) => {
+  router.get('/status', async (req, res) => {
     const userId = req.query.userId;
 
     if (!userId) {
@@ -167,7 +166,7 @@ export function createGitHubRouter(db: Database.Database): Router {
       return;
     }
 
-    const hasToken = tokenManager.hasToken(Number(userId), 'github');
+    const hasToken = await tokenManager.hasToken(Number(userId), 'github');
     res.json({ authorized: hasToken });
   });
 

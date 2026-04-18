@@ -1,15 +1,17 @@
 // packages/server/src/routes/builds.ts
 import { Router } from 'express';
-import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
 import { getBuildManager } from '../build/build-manager.js';
 import { getPreviewContainerManager } from '../build/preview-container.js';
+import { ProjectRepository, OrganizationRepository } from '../repositories/index.js';
 
 const logger = createLogger('builds');
 
-export function createBuildsRouter(db: Database.Database): Router {
+export function createBuildsRouter(): Router {
   const router = Router();
+  const projectRepo = new ProjectRepository();
+  const orgRepo = new OrganizationRepository();
 
   // POST /api/builds - 创建构建
   router.post('/', authMiddleware, async (req, res) => {
@@ -22,17 +24,22 @@ export function createBuildsRouter(db: Database.Database): Router {
     }
 
     // 检查权限
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId);
-
-    if (!membership) {
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
       res.status(403).json({ error: '无权限访问此项目' });
       return;
     }
 
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(403).json({ error: '无权限访问此项目' });
+        return;
+      }
+    }
+
     try {
-      const buildManager = getBuildManager(db);
+      const buildManager = getBuildManager();
       const build = await buildManager.createBuild(projectId);
 
       // 异步启动构建（不等待）
@@ -58,17 +65,22 @@ export function createBuildsRouter(db: Database.Database): Router {
     }
 
     // 检查权限
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId);
-
-    if (!membership) {
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
       res.status(403).json({ error: '无权限访问此项目' });
       return;
     }
 
-    const buildManager = getBuildManager(db);
-    const builds = buildManager.getProjectBuilds(projectId);
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(403).json({ error: '无权限访问此项目' });
+        return;
+      }
+    }
+
+    const buildManager = getBuildManager();
+    const builds = await buildManager.getProjectBuilds(projectId);
 
     res.json(builds);
   });
@@ -84,8 +96,8 @@ export function createBuildsRouter(db: Database.Database): Router {
       return;
     }
 
-    const buildManager = getBuildManager(db);
-    const build = buildManager.getBuild(buildId);
+    const buildManager = getBuildManager();
+    const build = await buildManager.getBuild(buildId);
 
     if (!build) {
       res.status(404).json({ error: '构建不存在' });
@@ -93,10 +105,13 @@ export function createBuildsRouter(db: Database.Database): Router {
     }
 
     // 检查权限
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(build.project_id, userId);
+    const project = await projectRepo.findById(build.projectId);
+    if (!project || !project.organizationId) {
+      res.status(403).json({ error: '无权限访问此构建' });
+      return;
+    }
 
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
       res.status(403).json({ error: '无权限访问此构建' });
       return;
@@ -117,13 +132,18 @@ export function createBuildsRouter(db: Database.Database): Router {
     }
 
     // 检查权限
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId);
-
-    if (!membership) {
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
       res.status(403).json({ error: '无权限访问此项目' });
       return;
+    }
+
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(403).json({ error: '无权限访问此项目' });
+        return;
+      }
     }
 
     const previewManager = getPreviewContainerManager();
@@ -152,13 +172,18 @@ export function createBuildsRouter(db: Database.Database): Router {
     }
 
     // 检查权限
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId);
-
-    if (!membership) {
+    const project = await projectRepo.findById(projectId);
+    if (!project) {
       res.status(403).json({ error: '无权限访问此项目' });
       return;
+    }
+
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(403).json({ error: '无权限访问此项目' });
+        return;
+      }
     }
 
     const previewManager = getPreviewContainerManager();

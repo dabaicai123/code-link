@@ -1,7 +1,7 @@
-import type Database from 'better-sqlite3';
 import { execInContainer } from '../docker/container-manager.js';
 import { TokenManager } from './token-manager.js';
-import type { ProjectRepo } from '../types.js';
+import { ProjectRepository } from '../repositories/index.js';
+import type { SelectProjectRepo } from '../db/schema/index.js';
 
 interface CloneResult {
   success: boolean;
@@ -15,12 +15,12 @@ interface PushResult {
 }
 
 export class RepoManager {
-  private db: Database.Database;
   private tokenManager: TokenManager;
+  private projectRepo: ProjectRepository;
 
-  constructor(db: Database.Database) {
-    this.db = db;
-    this.tokenManager = new TokenManager(db);
+  constructor() {
+    this.tokenManager = new TokenManager();
+    this.projectRepo = new ProjectRepository();
   }
 
   // 转义 shell 命令参数，防止命令注入
@@ -37,7 +37,7 @@ export class RepoManager {
   ): Promise<CloneResult> {
     try {
       const provider = this.detectProvider(repoUrl);
-      const token = this.tokenManager.getToken(userId, provider);
+      const token = await this.tokenManager.getToken(userId, provider);
 
       if (!token) {
         return {
@@ -49,7 +49,7 @@ export class RepoManager {
 
       const repoName = this.extractRepoName(repoUrl);
       const clonePath = `/workspace/project-${projectId}/${repoName}`;
-      const authUrl = this.injectTokenIntoUrl(repoUrl, token.access_token);
+      const authUrl = this.injectTokenIntoUrl(repoUrl, token.accessToken);
 
       const { stdout, stderr, exitCode } = await execInContainer(containerId, [
         'bash', '-c',
@@ -78,7 +78,7 @@ export class RepoManager {
   ): Promise<PushResult> {
     try {
       const provider = this.detectProvider(repoUrl);
-      const token = this.tokenManager.getToken(userId, provider);
+      const token = await this.tokenManager.getToken(userId, provider);
 
       if (!token) {
         return {
@@ -88,7 +88,7 @@ export class RepoManager {
       }
 
       const repoName = this.extractRepoName(repoUrl);
-      const authUrl = this.injectTokenIntoUrl(repoUrl, token.access_token);
+      const authUrl = this.injectTokenIntoUrl(repoUrl, token.accessToken);
 
       // 使用用户真实身份配置 git（参数已转义防止命令注入）
       const commands = [
@@ -115,28 +115,32 @@ export class RepoManager {
     }
   }
 
-  addRepoAssociation(
+  async addRepoAssociation(
     projectId: number,
     provider: 'github' | 'gitlab',
     repoUrl: string,
     repoName: string,
     branch: string
-  ): void {
-    this.db
-      .prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)')
-      .run(projectId, provider, repoUrl, repoName, branch);
+  ): Promise<SelectProjectRepo> {
+    return this.projectRepo.addRepo({
+      projectId,
+      provider,
+      repoUrl,
+      repoName,
+      branch,
+    });
   }
 
-  getProjectRepos(projectId: number): ProjectRepo[] {
-    return this.db
-      .prepare('SELECT * FROM project_repos WHERE project_id = ?')
-      .all(projectId) as ProjectRepo[];
+  async getProjectRepos(projectId: number): Promise<SelectProjectRepo[]> {
+    return this.projectRepo.findRepos(projectId);
   }
 
-  removeRepoAssociation(projectId: number, repoUrl: string): void {
-    this.db
-      .prepare('DELETE FROM project_repos WHERE project_id = ? AND repo_url = ?')
-      .run(projectId, repoUrl);
+  async removeRepoAssociation(projectId: number, repoUrl: string): Promise<void> {
+    const repos = await this.projectRepo.findRepos(projectId);
+    const repo = repos.find(r => r.repoUrl === repoUrl);
+    if (repo) {
+      await this.projectRepo.deleteRepo(repo.id);
+    }
   }
 
   detectProvider(url: string): 'github' | 'gitlab' {

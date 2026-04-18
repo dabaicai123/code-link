@@ -1,56 +1,47 @@
-import type Database from 'better-sqlite3';
-import type { ProjectToken } from '../types.js';
+import { TokenRepository } from '../repositories/index.js';
+import type { SelectProjectToken } from '../db/schema/index.js';
 
 export class TokenManager {
-  private db: Database.Database;
+  private tokenRepo: TokenRepository;
 
-  constructor(db: Database.Database) {
-    this.db = db;
+  constructor() {
+    this.tokenRepo = new TokenRepository();
   }
 
-  saveToken(
+  async saveToken(
     userId: number,
     provider: 'github' | 'gitlab',
     accessToken: string,
     refreshToken?: string,
     expiresAt?: string
-  ): void {
-    const existing = this.db
-      .prepare('SELECT id FROM project_tokens WHERE user_id = ? AND provider = ?')
-      .get(userId, provider);
-
-    if (existing) {
-      this.db
-        .prepare('UPDATE project_tokens SET access_token = ?, refresh_token = ?, expires_at = ? WHERE user_id = ? AND provider = ?')
-        .run(accessToken, refreshToken || null, expiresAt || null, userId, provider);
-    } else {
-      this.db
-        .prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)')
-        .run(userId, provider, accessToken, refreshToken || null, expiresAt || null);
-    }
+  ): Promise<void> {
+    await this.tokenRepo.upsert({
+      userId,
+      provider,
+      accessToken,
+      refreshToken,
+      expiresAt,
+    });
   }
 
-  getToken(userId: number, provider: 'github' | 'gitlab'): ProjectToken | null {
-    const result = this.db
-      .prepare('SELECT * FROM project_tokens WHERE user_id = ? AND provider = ?')
-      .get(userId, provider);
-    return result ? (result as ProjectToken) : null;
+  async getToken(userId: number, provider: 'github' | 'gitlab'): Promise<SelectProjectToken | null> {
+    const result = await this.tokenRepo.findByUserAndProvider(userId, provider);
+    return result ?? null;
   }
 
-  deleteToken(userId: number, provider: 'github' | 'gitlab'): void {
-    this.db
-      .prepare('DELETE FROM project_tokens WHERE user_id = ? AND provider = ?')
-      .run(userId, provider);
+  async deleteToken(userId: number, provider: 'github' | 'gitlab'): Promise<void> {
+    await this.tokenRepo.delete(userId, provider);
   }
 
-  hasToken(userId: number, provider: 'github' | 'gitlab'): boolean {
-    return this.getToken(userId, provider) !== null;
+  async hasToken(userId: number, provider: 'github' | 'gitlab'): Promise<boolean> {
+    const token = await this.tokenRepo.findByUserAndProvider(userId, provider);
+    return token !== undefined;
   }
 
-  isTokenExpired(token: ProjectToken): boolean {
-    if (!token.expires_at) return false;
+  isTokenExpired(token: SelectProjectToken): boolean {
+    if (!token.expiresAt) return false;
 
-    const expiresAt = new Date(token.expires_at);
+    const expiresAt = new Date(token.expiresAt);
     const now = new Date();
 
     // 提前 5 分钟视为过期

@@ -1,13 +1,12 @@
 // packages/server/src/routes/gitlab.ts
 import { Router } from 'express';
-import type Database from 'better-sqlite3';
-import { getGitLabOAuthUrl, exchangeGitLabCode, getOAuthConfig } from '../git/oauth.ts';
-import { TokenManager } from '../git/token-manager.ts';
-import { GitLabClient } from '../git/gitlab-client.ts';
+import { getGitLabOAuthUrl, exchangeGitLabCode, getOAuthConfig } from '../git/oauth.js';
+import { TokenManager } from '../git/token-manager.js';
+import { GitLabClient } from '../git/gitlab-client.js';
 
-export function createGitLabRouter(db: Database.Database): Router {
+export function createGitLabRouter(): Router {
   const router = Router();
-  const tokenManager = new TokenManager(db);
+  const tokenManager = new TokenManager();
 
   // GET /api/gitlab/oauth - 获取 OAuth URL
   router.get('/oauth', (_req, res) => {
@@ -33,7 +32,7 @@ export function createGitLabRouter(db: Database.Database): Router {
         ? new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
         : undefined;
 
-      tokenManager.saveToken(
+      await tokenManager.saveToken(
         userId,
         'gitlab',
         tokenResponse.access_token,
@@ -56,7 +55,7 @@ export function createGitLabRouter(db: Database.Database): Router {
       return;
     }
 
-    const token = tokenManager.getToken(Number(userId), 'gitlab');
+    const token = await tokenManager.getToken(Number(userId), 'gitlab');
     if (!token) {
       res.status(401).json({ error: '未授权 GitLab' });
       return;
@@ -64,7 +63,7 @@ export function createGitLabRouter(db: Database.Database): Router {
 
     try {
       const config = getOAuthConfig();
-      const client = new GitLabClient(config.gitlabBaseUrl, token.access_token);
+      const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
       const projects = await client.getUserProjects();
       res.json(projects);
     } catch (error: any) {
@@ -87,7 +86,7 @@ export function createGitLabRouter(db: Database.Database): Router {
       return;
     }
 
-    const token = tokenManager.getToken(Number(userId), 'gitlab');
+    const token = await tokenManager.getToken(Number(userId), 'gitlab');
     if (!token) {
       res.status(401).json({ error: '未授权 GitLab' });
       return;
@@ -95,7 +94,7 @@ export function createGitLabRouter(db: Database.Database): Router {
 
     try {
       const config = getOAuthConfig();
-      const client = new GitLabClient(config.gitlabBaseUrl, token.access_token);
+      const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
       const project = await client.getProject(projectId);
       res.json(project);
     } catch (error: any) {
@@ -118,7 +117,7 @@ export function createGitLabRouter(db: Database.Database): Router {
       return;
     }
 
-    const token = tokenManager.getToken(Number(userId), 'gitlab');
+    const token = await tokenManager.getToken(Number(userId), 'gitlab');
     if (!token) {
       res.status(401).json({ error: '未授权 GitLab' });
       return;
@@ -126,7 +125,7 @@ export function createGitLabRouter(db: Database.Database): Router {
 
     try {
       const config = getOAuthConfig();
-      const client = new GitLabClient(config.gitlabBaseUrl, token.access_token);
+      const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
       const branches = await client.getProjectBranches(projectId);
       res.json(branches);
     } catch (error: any) {
@@ -135,7 +134,7 @@ export function createGitLabRouter(db: Database.Database): Router {
   });
 
   // DELETE /api/gitlab/token - 删除 GitLab Token
-  router.delete('/token', (req, res) => {
+  router.delete('/token', async (req, res) => {
     const userId = req.query.userId;
 
     if (!userId) {
@@ -143,12 +142,12 @@ export function createGitLabRouter(db: Database.Database): Router {
       return;
     }
 
-    tokenManager.deleteToken(Number(userId), 'gitlab');
+    await tokenManager.deleteToken(Number(userId), 'gitlab');
     res.status(204).send();
   });
 
   // GET /api/gitlab/status - 检查 GitLab 授权状态
-  router.get('/status', (req, res) => {
+  router.get('/status', async (req, res) => {
     const userId = req.query.userId;
 
     if (!userId) {
@@ -156,7 +155,7 @@ export function createGitLabRouter(db: Database.Database): Router {
       return;
     }
 
-    const hasToken = tokenManager.hasToken(Number(userId), 'gitlab');
+    const hasToken = await tokenManager.hasToken(Number(userId), 'gitlab');
     res.json({ authorized: hasToken });
   });
 

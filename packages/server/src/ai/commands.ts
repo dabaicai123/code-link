@@ -2,7 +2,6 @@ import { isAIEnabled, sendAIMessage, type AIMessage } from './client.js';
 import { buildContextForDraft, type DraftContext } from './context.js';
 import { getSystemPrompt, getCommandPrompt } from './prompts.js';
 import { createLogger } from '../logger/index.js';
-import type Database from 'better-sqlite3';
 
 const logger = createLogger('ai-commands');
 
@@ -73,7 +72,6 @@ export function parseAICommand(content: string): AICommand | null {
  * Execute AI command
  */
 export async function executeAICommand(
-  db: Database.Database,
   draftId: number,
   command: AICommand,
   _userId: number
@@ -90,7 +88,7 @@ export async function executeAICommand(
     logger.info('Executing AI command', { draftId, commandType: command.type });
 
     // Build context for the draft
-    const context = await buildContextForDraft(db, draftId);
+    const context = await buildContextForDraft(draftId);
 
     // Get system prompt with context
     const systemPrompt = getSystemPrompt(command.type, context);

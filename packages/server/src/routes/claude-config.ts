@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
 import { encrypt, decrypt, isEncryptionKeySet } from '../crypto/aes.js';
 import { createLogger } from '../logger/index.js';
+import { ClaudeConfigRepository } from '../repositories/index.js';
 
 const logger = createLogger('claude-config');
 
@@ -18,8 +18,9 @@ const DEFAULT_CONFIG = {
   skipDangerousModePermissionPrompt: true,
 };
 
-export function createClaudeConfigRouter(db: Database.Database): Router {
+export function createClaudeConfigRouter(): Router {
   const router = Router();
+  const claudeConfigRepo = new ClaudeConfigRepository();
 
   // 检查加密密钥是否设置
   if (!isEncryptionKeySet()) {
@@ -27,12 +28,10 @@ export function createClaudeConfigRouter(db: Database.Database): Router {
   }
 
   // 获取用户配置
-  router.get('/', authMiddleware, (req, res) => {
+  router.get('/', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
 
-    const row = db
-      .prepare('SELECT config FROM user_claude_configs WHERE user_id = ?')
-      .get(userId) as { config: string } | undefined;
+    const row = await claudeConfigRepo.findByUserId(userId);
 
     if (!row) {
       // 返回默认模板
@@ -50,7 +49,7 @@ export function createClaudeConfigRouter(db: Database.Database): Router {
   });
 
   // 保存用户配置
-  router.post('/', authMiddleware, (req, res) => {
+  router.post('/', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
     const { config } = req.body;
 
@@ -73,16 +72,7 @@ export function createClaudeConfigRouter(db: Database.Database): Router {
 
     try {
       const encryptedConfig = encrypt(JSON.stringify(config));
-
-      // 使用 UPSERT
-      db.prepare(`
-        INSERT INTO user_claude_configs (user_id, config, updated_at)
-        VALUES (?, ?, datetime('now'))
-        ON CONFLICT(user_id) DO UPDATE SET
-          config = excluded.config,
-          updated_at = datetime('now')
-      `).run(userId, encryptedConfig);
-
+      await claudeConfigRepo.upsert(userId, encryptedConfig);
       res.json({ success: true });
     } catch (error) {
       logger.error('Failed to save user config', error);
@@ -91,10 +81,9 @@ export function createClaudeConfigRouter(db: Database.Database): Router {
   });
 
   // 删除用户配置
-  router.delete('/', authMiddleware, (req, res) => {
+  router.delete('/', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
-
-    db.prepare('DELETE FROM user_claude_configs WHERE user_id = ?').run(userId);
+    await claudeConfigRepo.delete(userId);
     res.json({ success: true });
   });
 

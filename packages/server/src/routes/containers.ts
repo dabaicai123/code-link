@@ -1,38 +1,17 @@
 import { Router } from 'express';
-import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
 import { createProjectContainer, startContainer, stopContainer, removeContainer, getContainerStatus, getProjectContainer } from '../docker/container-manager.js';
 import { createProjectVolume, removeProjectVolume } from '../docker/volume-manager.js';
-import type { Project } from '../types.js';
+import { ProjectRepository, ClaudeConfigRepository, OrganizationRepository } from '../repositories/index.js';
 
 const logger = createLogger('containers');
 
-export function createContainersRouter(db: Database.Database): Router {
+export function createContainersRouter(): Router {
   const router = Router();
-
-  // 辅助函数：检查用户是否是项目成员
-  function isProjectMember(projectId: number, userId: number): boolean {
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId);
-    return !!membership;
-  }
-
-  // 辅助函数：检查用户是否是项目 owner
-  function isProjectOwner(projectId: number, userId: number): boolean {
-    const membership = db
-      .prepare('SELECT role FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId) as { role: string } | undefined;
-    return membership?.role === 'owner';
-  }
-
-  // 辅助函数：获取项目信息
-  function getProject(projectId: number): Project | undefined {
-    return db
-      .prepare('SELECT id, name, template_type, container_id, status, created_by, created_at FROM projects WHERE id = ?')
-      .get(projectId) as Project | undefined;
-  }
+  const projectRepo = new ProjectRepository();
+  const claudeConfigRepo = new ClaudeConfigRepository();
+  const orgRepo = new OrganizationRepository();
 
   // POST /api/projects/:id/container/start - 启动容器
   router.post('/:id/container/start', authMiddleware, async (req, res) => {
@@ -45,24 +24,25 @@ export function createContainersRouter(db: Database.Database): Router {
       return;
     }
 
-    // 检查用户是否是项目成员
-    if (!isProjectMember(projectId, userId)) {
-      res.status(404).json({ error: '项目不存在' });
-      return;
-    }
-
     // 获取项目信息
-    const project = getProject(projectId);
+    const project = await projectRepo.findById(projectId);
     if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
     }
 
+    // 检查用户是否是项目所属组织的成员
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+    }
+
     try {
       // 检查用户是否配置了 Claude Code
-      const configRow = db
-        .prepare('SELECT config FROM user_claude_configs WHERE user_id = ?')
-        .get(userId) as { config: string } | undefined;
+      const configRow = await claudeConfigRepo.findByUserId(userId);
 
       if (!configRow) {
         res.status(400).json({
@@ -72,7 +52,7 @@ export function createContainersRouter(db: Database.Database): Router {
         return;
       }
 
-      let containerId = project.container_id;
+      let containerId = project.containerId;
 
       // 如果容器不存在，创建容器
       if (!containerId) {
@@ -80,10 +60,10 @@ export function createContainersRouter(db: Database.Database): Router {
         await createProjectVolume(projectId);
 
         // 创建容器
-        containerId = await createProjectContainer(projectId, project.template_type, `/workspace/project-${projectId}`);
+        containerId = await createProjectContainer(projectId, project.templateType, `/workspace/project-${projectId}`);
 
         // 更新项目的 container_id
-        db.prepare('UPDATE projects SET container_id = ? WHERE id = ?').run(containerId, projectId);
+        await projectRepo.updateContainerId(projectId, containerId);
       }
 
       // 启动容器
@@ -93,7 +73,7 @@ export function createContainersRouter(db: Database.Database): Router {
       const status = await getContainerStatus(containerId);
 
       // 更新项目状态
-      db.prepare('UPDATE projects SET status = ? WHERE id = ?').run('running', projectId);
+      await projectRepo.updateStatus(projectId, 'running');
 
       res.json({ container_id: containerId, status });
     } catch (error) {
@@ -113,38 +93,41 @@ export function createContainersRouter(db: Database.Database): Router {
       return;
     }
 
-    // 检查用户是否是项目成员
-    if (!isProjectMember(projectId, userId)) {
-      res.status(404).json({ error: '项目不存在' });
-      return;
-    }
-
     // 获取项目信息
-    const project = getProject(projectId);
+    const project = await projectRepo.findById(projectId);
     if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
     }
 
-    if (!project.container_id) {
+    // 检查用户是否是项目所属组织的成员
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+    }
+
+    if (!project.containerId) {
       res.status(400).json({ error: '项目没有关联的容器' });
       return;
     }
 
     try {
       // 先检查容器状态，如果已经停止则跳过
-      const currentStatus = await getContainerStatus(project.container_id);
+      const currentStatus = await getContainerStatus(project.containerId);
       if (currentStatus === 'running') {
-        await stopContainer(project.container_id);
+        await stopContainer(project.containerId);
       }
 
       // 获取容器状态
-      const status = await getContainerStatus(project.container_id);
+      const status = await getContainerStatus(project.containerId);
 
       // 更新项目状态
-      db.prepare('UPDATE projects SET status = ? WHERE id = ?').run('stopped', projectId);
+      await projectRepo.updateStatus(projectId, 'stopped');
 
-      res.json({ container_id: project.container_id, status });
+      res.json({ container_id: project.containerId, status });
     } catch (error) {
       logger.error('停止容器失败', error);
       res.status(500).json({ error: '停止容器失败' });
@@ -162,28 +145,31 @@ export function createContainersRouter(db: Database.Database): Router {
       return;
     }
 
-    // 检查用户是否是项目成员
-    if (!isProjectMember(projectId, userId)) {
-      res.status(404).json({ error: '项目不存在' });
-      return;
-    }
-
     // 获取项目信息
-    const project = getProject(projectId);
+    const project = await projectRepo.findById(projectId);
     if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
     }
 
-    if (!project.container_id) {
+    // 检查用户是否是项目所属组织的成员
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+    }
+
+    if (!project.containerId) {
       res.status(404).json({ error: '容器不存在' });
       return;
     }
 
     try {
       // 获取容器状态
-      const status = await getContainerStatus(project.container_id);
-      res.json({ container_id: project.container_id, status });
+      const status = await getContainerStatus(project.containerId);
+      res.json({ container_id: project.containerId, status });
     } catch (error) {
       logger.error('获取容器状态失败', error);
       res.status(500).json({ error: '获取容器状态失败' });
@@ -201,30 +187,34 @@ export function createContainersRouter(db: Database.Database): Router {
       return;
     }
 
-    // 检查用户是否是项目 owner
-    if (!isProjectOwner(projectId, userId)) {
-      res.status(403).json({ error: '只有项目 owner 可以删除容器' });
-      return;
-    }
-
     // 获取项目信息
-    const project = getProject(projectId);
+    const project = await projectRepo.findById(projectId);
     if (!project) {
       res.status(404).json({ error: '项目不存在' });
       return;
     }
 
+    // 检查用户是否是项目所属组织的 owner
+    if (project.organizationId) {
+      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      if (!membership || membership.role !== 'owner') {
+        res.status(403).json({ error: '只有项目 owner 可以删除容器' });
+        return;
+      }
+    }
+
     try {
       // 删除容器
-      if (project.container_id) {
-        await removeContainer(project.container_id);
+      if (project.containerId) {
+        await removeContainer(project.containerId);
       }
 
       // 删除卷
       await removeProjectVolume(projectId);
 
       // 更新项目状态
-      db.prepare('UPDATE projects SET container_id = NULL, status = ? WHERE id = ?').run('created', projectId);
+      await projectRepo.updateContainerId(projectId, null);
+      await projectRepo.updateStatus(projectId, 'created');
 
       res.status(204).send();
     } catch (error) {

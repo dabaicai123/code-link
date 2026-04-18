@@ -1,7 +1,6 @@
-// packages/server/src/ai/context.ts
-import type Database from 'better-sqlite3';
 import { createLogger } from '../logger/index.js';
 import { getContainerStatus } from '../docker/container-manager.js';
+import { DraftRepository } from '../repositories/index.js';
 
 const logger = createLogger('ai-context');
 
@@ -37,80 +36,50 @@ export interface DraftContext {
 /**
  * 为 Draft 构建 AI 上下文
  */
-export async function buildContextForDraft(
-  db: Database.Database,
-  draftId: number
-): Promise<DraftContext> {
-  // 获取 Draft 信息
-  const draft = db.prepare(`
-    SELECT d.*, p.name as project_name, p.template_type as project_template, p.container_id
-    FROM drafts d
-    JOIN projects p ON d.project_id = p.id
-    WHERE d.id = ?
-  `).get(draftId) as any;
+export async function buildContextForDraft(draftId: number): Promise<DraftContext> {
+  const draftRepo = new DraftRepository();
 
-  if (!draft) {
+  const contextData = await draftRepo.findDraftContext(draftId);
+  if (!contextData) {
     throw new Error(`Draft ${draftId} not found`);
   }
 
-  // 获取最近的消息（最多 20 条）
-  const recentMessages = db.prepare(`
-    SELECT m.*, u.name as user_name
-    FROM draft_messages m
-    JOIN users u ON m.user_id = u.id
-    WHERE m.draft_id = ?
-    ORDER BY m.created_at DESC
-    LIMIT 20
-  `).all(draftId) as any[];
-
-  // 获取成员列表
-  const members = db.prepare(`
-    SELECT dm.*, u.name as user_name
-    FROM draft_members dm
-    JOIN users u ON dm.user_id = u.id
-    WHERE dm.draft_id = ?
-  `).all(draftId) as any[];
-
   // 获取容器信息（如果存在）
   let container: { id: string; status: string } | undefined;
-  if (draft.container_id) {
+  if (contextData.draft.containerId) {
     try {
-      const status = await getContainerStatus(draft.container_id);
-      container = { id: draft.container_id, status };
+      const status = await getContainerStatus(contextData.draft.containerId);
+      container = { id: contextData.draft.containerId, status };
     } catch (error) {
-      logger.warn('获取容器状态失败', { containerId: draft.container_id, error });
+      logger.warn('获取容器状态失败', { containerId: contextData.draft.containerId, error });
       // 容器可能已被删除，不包含容器信息
     }
   }
 
   // 格式化消息（反转顺序，从早到晚）
-  const formattedMessages = recentMessages
+  const formattedMessages = contextData.recentMessages
     .reverse()
     .map(m => ({
-      userId: m.user_id,
-      userName: m.user_name,
+      userId: m.userId,
+      userName: m.userName,
       content: m.content || '',
-      messageType: m.message_type,
-      createdAt: m.created_at,
+      messageType: m.messageType,
+      createdAt: m.createdAt,
     }));
 
   return {
     draftId,
-    projectId: draft.project_id,
+    projectId: contextData.draft.projectId,
     project: {
-      name: draft.project_name,
-      templateType: draft.project_template,
+      name: contextData.draft.projectName,
+      templateType: contextData.draft.projectTemplate,
     },
     draft: {
-      title: draft.title,
-      status: draft.status,
+      title: contextData.draft.title,
+      status: contextData.draft.status,
     },
     recentMessages: formattedMessages,
-    members: members.map(m => ({
-      userId: m.user_id,
-      userName: m.user_name,
-      role: m.role,
-    })),
+    members: contextData.members,
     container,
   };
 }

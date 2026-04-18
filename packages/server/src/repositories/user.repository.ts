@@ -51,4 +51,13 @@ export class UserRepository {
     const db = getDb();
     db.delete(users).where(eq(users.id, id)).run();
   }
+
+  /**
+   * 根据用户 ID 获取邮箱
+   */
+  async findEmailById(id: number): Promise<string | undefined> {
+    const db = getDb();
+    const result = db.select({ email: users.email }).from(users).where(eq(users.id, id)).get();
+    return result?.email;
+  }
 }
