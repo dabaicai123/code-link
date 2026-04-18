@@ -7,6 +7,12 @@ import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
 import { JWT_SECRET } from '../src/middleware/auth.js';
 import { resetBuildManagerInstance } from '../src/build/build-manager.js';
+import {
+  createTestUser,
+  createTestOrganization,
+  createTestOrganizationMember,
+  createTestProject,
+} from './helpers/test-db.js';
 import type Database from 'better-sqlite3';
 
 // Mock Docker 相关依赖，避免异步构建时的错误
@@ -47,23 +53,21 @@ describe('Builds API', () => {
     initSchema(db);
 
     // 创建测试用户
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run(
-      'test',
-      'test@test.com',
-      'hash'
-    );
+    const user = createTestUser({
+      name: 'test',
+      email: 'test@test.com',
+      passwordHash: 'hash',
+    });
 
     // 创建测试组织
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
-    db.prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)').run(1, 1, 'owner', 1);
+    const org = createTestOrganization(user.id, { name: 'test-org' });
+    createTestOrganizationMember(org.id, user.id, 'owner', user.id);
 
     // 创建测试项目
-    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run(
-      'test-project',
-      'node',
-      1,
-      1
-    );
+    createTestProject(user.id, org.id, {
+      name: 'test-project',
+      templateType: 'node',
+    });
 
     app = createApp();
 
@@ -104,12 +108,12 @@ describe('Builds API', () => {
 
     it('无权限访问项目应返回 403', async () => {
       // 创建另一个用户
-      db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run(
-        'other',
-        'other@test.com',
-        'hash'
-      );
-      const otherToken = jwt.sign({ userId: 2 }, JWT_SECRET, { expiresIn: '24h' });
+      const otherUser = createTestUser({
+        name: 'other',
+        email: 'other@test.com',
+        passwordHash: 'hash',
+      });
+      const otherToken = jwt.sign({ userId: otherUser.id }, JWT_SECRET, { expiresIn: '24h' });
 
       const res = await request(app)
         .post('/api/builds')
@@ -159,12 +163,12 @@ describe('Builds API', () => {
     });
 
     it('无权限应返回 403', async () => {
-      db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run(
-        'other',
-        'other@test.com',
-        'hash'
-      );
-      const otherToken = jwt.sign({ userId: 2 }, JWT_SECRET, { expiresIn: '24h' });
+      const otherUser = createTestUser({
+        name: 'other',
+        email: 'other@test.com',
+        passwordHash: 'hash',
+      });
+      const otherToken = jwt.sign({ userId: otherUser.id }, JWT_SECRET, { expiresIn: '24h' });
 
       const res = await request(app)
         .get('/api/builds/project/1')
@@ -220,12 +224,12 @@ describe('Builds API', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId: 1 });
 
-      db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run(
-        'other',
-        'other@test.com',
-        'hash'
-      );
-      const otherToken = jwt.sign({ userId: 2 }, JWT_SECRET, { expiresIn: '24h' });
+      const otherUser = createTestUser({
+        name: 'other',
+        email: 'other@test.com',
+        passwordHash: 'hash',
+      });
+      const otherToken = jwt.sign({ userId: otherUser.id }, JWT_SECRET, { expiresIn: '24h' });
 
       const res = await request(app)
         .get(`/api/builds/${createRes.body.id}`)
@@ -258,12 +262,12 @@ describe('Builds API', () => {
     });
 
     it('无权限应返回 403', async () => {
-      db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run(
-        'other',
-        'other@test.com',
-        'hash'
-      );
-      const otherToken = jwt.sign({ userId: 2 }, JWT_SECRET, { expiresIn: '24h' });
+      const otherUser = createTestUser({
+        name: 'other',
+        email: 'other@test.com',
+        passwordHash: 'hash',
+      });
+      const otherToken = jwt.sign({ userId: otherUser.id }, JWT_SECRET, { expiresIn: '24h' });
 
       const res = await request(app)
         .get('/api/builds/preview/1')
@@ -295,12 +299,12 @@ describe('Builds API', () => {
     });
 
     it('无权限应返回 403', async () => {
-      db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run(
-        'other',
-        'other@test.com',
-        'hash'
-      );
-      const otherToken = jwt.sign({ userId: 2 }, JWT_SECRET, { expiresIn: '24h' });
+      const otherUser = createTestUser({
+        name: 'other',
+        email: 'other@test.com',
+        passwordHash: 'hash',
+      });
+      const otherToken = jwt.sign({ userId: otherUser.id }, JWT_SECRET, { expiresIn: '24h' });
 
       const res = await request(app)
         .delete('/api/builds/preview/1')
