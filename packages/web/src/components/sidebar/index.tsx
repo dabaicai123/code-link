@@ -4,14 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProjectCard } from './project-card';
 import { UserSection } from './user-section';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, Organization } from '@/lib/api';
+import { useOrganization } from '@/lib/organization-context';
 
 interface Project {
   id: number;
   name: string;
-  template_type: 'node' | 'node+java' | 'node+python';
+  templateType: 'node' | 'node+java' | 'node+python';
   status: 'created' | 'running' | 'stopped';
-  created_at: string;
+  createdAt: string;
 }
 
 interface User {
@@ -32,17 +33,22 @@ interface SidebarProps {
 
 export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout, invitationCount }: SidebarProps) {
   const router = useRouter();
+  const { organizations, currentOrganization, setCurrentOrganization, loading: orgLoading } = useOrganization();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<number>>(new Set());
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
   useEffect(() => {
-    fetchProjects();
-  }, [refreshKey]);
+    if (!orgLoading && currentOrganization) {
+      fetchProjects();
+    }
+  }, [refreshKey, currentOrganization, orgLoading]);
 
   const fetchProjects = async () => {
+    if (!currentOrganization) return;
     try {
-      const data = await api.get<Project[]>('/projects');
+      const data = await api.get<Project[]>(`/projects?organizationId=${currentOrganization.id}`);
       setProjects(data);
     } catch (err) {
       console.error('Failed to fetch projects:', err);
@@ -83,10 +89,67 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
       </div>
 
       <div style={{ flex: 1, overflow: projects.length > 10 ? 'auto' : 'visible', padding: '12px' }}>
+        {/* 组织选择器 */}
+        <div style={{ marginBottom: '12px' }}>
+          <div
+            onClick={() => setShowOrgDropdown(!showOrgDropdown)}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              background: showOrgDropdown ? 'var(--bg-primary)' : 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-primary)',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              position: 'relative',
+            }}
+          >
+            <span>{currentOrganization?.name || '选择组织'}</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{showOrgDropdown ? '▲' : '▼'}</span>
+          </div>
+
+          {showOrgDropdown && organizations.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              width: 'calc(var(--sidebar-width) - 24px)',
+              marginTop: '4px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              zIndex: 100,
+            }}>
+              {organizations.map((org) => (
+                <div
+                  key={org.id}
+                  onClick={() => {
+                    setCurrentOrganization(org);
+                    setShowOrgDropdown(false);
+                    setLoading(true);
+                  }}
+                  style={{
+                    padding: '10px 12px',
+                    color: currentOrganization?.id === org.id ? 'var(--accent-color)' : 'var(--text-primary)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    borderBottom: org.id !== organizations[organizations.length - 1].id ? '1px solid var(--border-color)' : 'none',
+                  }}
+                >
+                  {org.name}
+                  {currentOrganization?.id === org.id && <span style={{ marginLeft: '8px', fontSize: '11px' }}>✓</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* 导航入口 */}
         <div style={{ marginBottom: '12px' }}>
           <button
-            onClick={() => router.push('/organizations')}
+            onClick={() => router.push('/settings')}
             style={{
               width: '100%',
               padding: '10px 12px',
@@ -101,7 +164,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
               justifyContent: 'space-between',
             }}
           >
-            <span>我的组织</span>
+            <span>组织设置</span>
             <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>→</span>
           </button>
 
