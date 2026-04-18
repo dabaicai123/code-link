@@ -23,6 +23,7 @@ import {
   executeAICommand,
 } from '../ai/commands.js';
 import { isAIEnabled } from '../ai/client.js';
+import { isSuperAdmin } from '../utils/super-admin.js';
 
 const logger = createLogger('drafts');
 
@@ -57,14 +58,31 @@ export function createDraftsRouter(db: Database.Database): Router {
     }
 
     try {
-      // 检查用户是否是项目成员
-      const projectMembership = db
-        .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-        .get(projectId, userId);
+      // 获取项目所属组织
+      const project = db
+        .prepare('SELECT organization_id FROM projects WHERE id = ?')
+        .get(projectId) as { organization_id: number } | undefined;
 
-      if (!projectMembership) {
-        res.status(403).json({ error: '您不是该项目的成员' });
+      if (!project) {
+        res.status(404).json({ error: '项目不存在' });
         return;
+      }
+
+      // 检查用户是否是组织成员（developer 或 owner 才能创建 Draft）
+      const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+      const isSuper = user && isSuperAdmin(user.email);
+
+      if (!isSuper) {
+        const membership = db
+          .prepare(
+            "SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ? AND role IN ('owner', 'developer')"
+          )
+          .get(project.organization_id, userId);
+
+        if (!membership) {
+          res.status(403).json({ error: '您没有权限在该项目下创建 Draft' });
+          return;
+        }
       }
 
       const createDraftTx = db.transaction(() => {
@@ -526,11 +544,11 @@ export function createDraftsRouter(db: Database.Database): Router {
         return;
       }
 
-      const isProjectMember = db
-        .prepare('SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?')
+      const isOrgMember = db
+        .prepare('SELECT 1 FROM organization_members WHERE organization_id = (SELECT organization_id FROM projects WHERE id = ?) AND user_id = ?')
         .get(draft.project_id, newUserId);
-      if (!isProjectMember) {
-        res.status(400).json({ error: '用户不是项目成员' });
+      if (!isOrgMember) {
+        res.status(400).json({ error: '用户不是项目所属组织的成员' });
         return;
       }
 
