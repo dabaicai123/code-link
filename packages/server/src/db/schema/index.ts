@@ -51,10 +51,6 @@ export type { InsertProjectToken, SelectProjectToken } from './tokens.js';
 export { projectRepos } from './repos.js';
 export type { InsertProjectRepo, SelectProjectRepo } from './repos.js';
 
-// Messages
-export { messages } from './messages.js';
-export type { InsertMessage, SelectMessage } from './messages.js';
-
 // Claude Configs
 export { userClaudeConfigs } from './claude-configs.js';
 export type { InsertUserClaudeConfig, SelectUserClaudeConfig } from './claude-configs.js';

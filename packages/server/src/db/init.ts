@@ -78,15 +78,6 @@ export function initSchema(db: Database.Database): void {
       UNIQUE(project_id, user_id)
     );
 
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-      user_id INTEGER NOT NULL REFERENCES users(id),
-      content TEXT NOT NULL,
-      type TEXT NOT NULL DEFAULT 'chat' CHECK (type IN ('chat', 'notification')),
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
     CREATE TABLE IF NOT EXISTS builds (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
