@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3';
 import { getTerminalManager } from '../terminal/terminal-manager.js';
 import { getContainerStatus } from '../docker/container-manager.js';
 import { createLogger } from '../logger/index.js';
+import { decrypt, isEncryptionKeySet } from '../crypto/aes.js';
 import type { Project } from '../types.js';
 
 const logger = createLogger('terminal');
@@ -137,13 +138,48 @@ export function handleTerminalConnection(
       return;
     }
 
+    // 查询用户 Claude 配置
+    const configRow = db
+      .prepare('SELECT config FROM user_claude_configs WHERE user_id = ?')
+      .get(userId) as { config: string } | undefined;
+
+    if (!configRow) {
+      sendMessage({ type: 'error', message: '请先在「设置 → Claude Code 配置」中完成配置后再使用终端' });
+      return;
+    }
+
+    // 解密配置并提取环境变量
+    let userEnv: Record<string, string> = {};
+    try {
+      if (!isEncryptionKeySet()) {
+        sendMessage({ type: 'error', message: '服务器加密密钥未配置，请联系管理员' });
+        return;
+      }
+
+      const config = JSON.parse(decrypt(configRow.config));
+      if (config.env && typeof config.env === 'object') {
+        userEnv = config.env;
+      }
+
+      // 验证 auth_token 是否存在
+      if (!userEnv.ANTHROPIC_AUTH_TOKEN) {
+        sendMessage({ type: 'error', message: 'ANTHROPIC_AUTH_TOKEN 未配置，请完善配置后再使用终端' });
+        return;
+      }
+    } catch (error) {
+      logger.error('Failed to decrypt user config', error);
+      sendMessage({ type: 'error', message: '用户配置解密失败，请重新配置' });
+      return;
+    }
+
     // 创建终端会话
     try {
       const sessionId = await terminalManager.createSession(
         project.container_id,
         ws,
         msg.cols || 80,
-        msg.rows || 24
+        msg.rows || 24,
+        userEnv
       );
       currentSessionId = sessionId;
       sendMessage({ type: 'started', sessionId });
