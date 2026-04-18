@@ -35,7 +35,7 @@ export function createApp(db: Database.Database): express.Express {
   });
 
   app.use('/api/auth', createAuthRouter());
-  app.use('/api/projects', createProjectsRouter(db));
+  app.use('/api/projects', createProjectsRouter());
   app.use('/api/projects', createContainersRouter(db));
   app.use('/api/github', createGitHubRouter(db));
   app.use('/api/gitlab', createGitLabRouter(db));
