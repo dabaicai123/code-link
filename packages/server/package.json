@@ -8,7 +8,11 @@
     "build": "tsc",
     "build:templates": "./scripts/build-templates.sh",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
@@ -17,6 +21,7 @@
     "cors": "^2.8.5",
     "dockerode": "^4.0.10",
     "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "ws": "^8.20.0"
@@ -30,6 +35,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/supertest": "^6.0.2",
     "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.10",
     "supertest": "^7.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
