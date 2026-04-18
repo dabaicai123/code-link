@@ -441,7 +441,7 @@ export class OrganizationRepository {
         throw new Error('成员添加失败');
       }
 
-      return { org, member: member as OrganizationMemberWithUser };
+      return { organization: org, member: member as OrganizationMemberWithUser };
     })();
   }
 }

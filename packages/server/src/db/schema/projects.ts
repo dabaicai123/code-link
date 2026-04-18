@@ -7,7 +7,7 @@ export const projects = sqliteTable('projects', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   templateType: text('template_type', { enum: ['node', 'node+java', 'node+python'] }).notNull(),
-  organizationId: integer('organization_id').references(() => organizations.id),
+  organizationId: integer('organization_id').notNull().references(() => organizations.id),
   containerId: text('container_id'),
   status: text('status', { enum: ['created', 'running', 'stopped'] }).notNull().default('created'),
   createdBy: integer('created_by').notNull().references(() => users.id),

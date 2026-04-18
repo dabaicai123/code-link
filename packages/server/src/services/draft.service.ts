@@ -30,7 +30,7 @@ export class DraftService {
     }
 
     const project = await this.projectRepo.findById(input.projectId);
-    if (!project || !project.organizationId) {
+    if (!project) {
       throw new Error('项目不存在');
     }
 
@@ -209,7 +209,7 @@ export class DraftService {
     }
 
     const project = await this.projectRepo.findById(draft.projectId);
-    if (!project || !project.organizationId) {
+    if (!project) {
       throw new Error('项目不存在');
     }
 

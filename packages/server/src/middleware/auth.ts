@@ -152,11 +152,6 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
       return;
     }
 
-    if (!project.organizationId) {
-      res.status(403).json({ error: '该项目未关联组织' });
-      return;
-    }
-
     // 检查组织成员角色
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
 

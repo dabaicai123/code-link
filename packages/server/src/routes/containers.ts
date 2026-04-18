@@ -32,12 +32,10 @@ export function createContainersRouter(): Router {
     }
 
     // 检查用户是否是项目所属组织的成员
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        res.status(404).json({ error: '项目不存在' });
-        return;
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership) {
+      res.status(404).json({ error: '项目不存在' });
+      return;
     }
 
     try {
@@ -101,12 +99,10 @@ export function createContainersRouter(): Router {
     }
 
     // 检查用户是否是项目所属组织的成员
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        res.status(404).json({ error: '项目不存在' });
-        return;
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership) {
+      res.status(404).json({ error: '项目不存在' });
+      return;
     }
 
     if (!project.containerId) {
@@ -153,12 +149,10 @@ export function createContainersRouter(): Router {
     }
 
     // 检查用户是否是项目所属组织的成员
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        res.status(404).json({ error: '项目不存在' });
-        return;
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership) {
+      res.status(404).json({ error: '项目不存在' });
+      return;
     }
 
     if (!project.containerId) {
@@ -195,12 +189,10 @@ export function createContainersRouter(): Router {
     }
 
     // 检查用户是否是项目所属组织的 owner
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership || membership.role !== 'owner') {
-        res.status(403).json({ error: '只有项目 owner 可以删除容器' });
-        return;
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership || membership.role !== 'owner') {
+      res.status(403).json({ error: '只有项目 owner 可以删除容器' });
+      return;
     }
 
     try {

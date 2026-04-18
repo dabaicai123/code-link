@@ -96,11 +96,9 @@ export function handleTerminalConnection(
     }
 
     // 检查用户是否是项目所属组织的成员
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        return { hasAccess: false };
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership) {
+      return { hasAccess: false };
     }
 
     return { hasAccess: true, project };

@@ -75,13 +75,13 @@ export class ProjectService {
     const isSuper = user && isSuperAdmin(user.email);
 
     if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(project.organizationId!, userId);
+      const membership = await this.orgRepo.findUserMembership(project.organizationId, userId);
       if (!membership) {
         throw new Error('您没有权限访问该项目');
       }
     }
 
-    const members = await this.projectRepo.findProjectMembers(project.organizationId!);
+    const members = await this.projectRepo.findProjectMembers(project.organizationId);
     const repos = await this.projectRepo.findRepos(projectId);
 
     return { ...project, members, repos };
@@ -101,7 +101,7 @@ export class ProjectService {
     const isSuper = user && isSuperAdmin(user.email);
 
     if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(project.organizationId!, userId);
+      const membership = await this.orgRepo.findUserMembership(project.organizationId, userId);
       if (!membership || membership.role !== 'owner') {
         throw new Error('只有组织 owner 可以删除项目');
       }
@@ -143,7 +143,7 @@ export class ProjectService {
    */
   async isProjectMember(projectId: number, userId: number): Promise<boolean> {
     const project = await this.projectRepo.findById(projectId);
-    if (!project || !project.organizationId) {
+    if (!project) {
       return false;
     }
 

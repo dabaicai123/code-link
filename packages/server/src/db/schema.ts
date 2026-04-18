@@ -49,6 +49,7 @@ export function initSchema(db: Database.Database): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       template_type TEXT NOT NULL CHECK (template_type IN ('node', 'node+java', 'node+python')),
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
       container_id TEXT,
       status TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created', 'running', 'stopped')),
       created_by INTEGER NOT NULL REFERENCES users(id),

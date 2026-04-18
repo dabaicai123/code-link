@@ -30,12 +30,10 @@ export function createBuildsRouter(): Router {
       return;
     }
 
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        res.status(403).json({ error: '无权限访问此项目' });
-        return;
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership) {
+      res.status(403).json({ error: '无权限访问此项目' });
+      return;
     }
 
     try {
@@ -71,12 +69,10 @@ export function createBuildsRouter(): Router {
       return;
     }
 
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        res.status(403).json({ error: '无权限访问此项目' });
-        return;
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership) {
+      res.status(403).json({ error: '无权限访问此项目' });
+      return;
     }
 
     const buildManager = getBuildManager();
@@ -106,7 +102,7 @@ export function createBuildsRouter(): Router {
 
     // 检查权限
     const project = await projectRepo.findById(build.projectId);
-    if (!project || !project.organizationId) {
+    if (!project) {
       res.status(403).json({ error: '无权限访问此构建' });
       return;
     }
@@ -138,12 +134,10 @@ export function createBuildsRouter(): Router {
       return;
     }
 
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        res.status(403).json({ error: '无权限访问此项目' });
-        return;
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership) {
+      res.status(403).json({ error: '无权限访问此项目' });
+      return;
     }
 
     const previewManager = getPreviewContainerManager();
@@ -178,12 +172,10 @@ export function createBuildsRouter(): Router {
       return;
     }
 
-    if (project.organizationId) {
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        res.status(403).json({ error: '无权限访问此项目' });
-        return;
-      }
+    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+    if (!membership) {
+      res.status(403).json({ error: '无权限访问此项目' });
+      return;
     }
 
     const previewManager = getPreviewContainerManager();
