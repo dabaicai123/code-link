@@ -18,7 +18,6 @@ declare global {
     interface Request {
       userId?: number;
       orgRole?: OrgRole;
-      projectRole?: OrgRole;
     }
   }
 }
@@ -142,7 +141,6 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
     // 获取用户邮箱检查是否为超级管理员
     const userEmail = await userRepo.findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
-      (req as any).projectRole = 'owner';
       next();
       return;
     }
@@ -172,7 +170,6 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
       return;
     }
 
-    (req as any).projectRole = membership.role;
     next();
   };
 }
