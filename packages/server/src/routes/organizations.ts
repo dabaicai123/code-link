@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { OrganizationService } from '../services/organization.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
+import { success, Errors } from '../utils/response.js';
 
 const logger = createLogger('organizations');
 
@@ -17,15 +18,15 @@ export function createOrganizationsRouter(): Router {
     const userId = (req as any).userId;
     try {
       const org = await orgService.create(userId, req.body);
-      res.status(201).json(org);
+      res.status(201).json(success(org));
     } catch (error: any) {
       if (error.message.includes('权限')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else if (error.message.includes('名称')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.conflict(error.message));
       } else {
         logger.error('创建组织失败', error);
-        res.status(500).json({ error: '创建组织失败' });
+        res.status(500).json(Errors.internal('创建组织失败'));
       }
     }
   });
@@ -35,10 +36,10 @@ export function createOrganizationsRouter(): Router {
     const userId = (req as any).userId;
     try {
       const organizations = await orgService.findByUserId(userId);
-      res.json(organizations);
+      res.json(success(organizations));
     } catch (error: any) {
       logger.error('获取组织列表失败', error);
-      res.status(500).json({ error: '获取组织列表失败' });
+      res.status(500).json(Errors.internal('获取组织列表失败'));
     }
   });
 
@@ -48,21 +49,21 @@ export function createOrganizationsRouter(): Router {
     const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
     if (isNaN(orgId)) {
-      res.status(400).json({ error: '无效的组织 ID' });
+      res.status(400).json(Errors.paramInvalid('组织 ID'));
       return;
     }
 
     try {
       const org = await orgService.findById(orgId, userId);
-      res.json(org);
+      res.json(success(org));
     } catch (error: any) {
       if (error.message.includes('不是')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else if (error.message.includes('不存在')) {
-        res.status(404).json({ error: error.message });
+        res.status(404).json(Errors.notFound('组织'));
       } else {
         logger.error('获取组织详情失败', error);
-        res.status(500).json({ error: '获取组织详情失败' });
+        res.status(500).json(Errors.internal('获取组织详情失败'));
       }
     }
   });
@@ -73,23 +74,23 @@ export function createOrganizationsRouter(): Router {
     const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
     if (isNaN(orgId)) {
-      res.status(400).json({ error: '无效的组织 ID' });
+      res.status(400).json(Errors.paramInvalid('组织 ID'));
       return;
     }
 
     try {
       const org = await orgService.updateName(orgId, userId, req.body);
-      res.json(org);
+      res.json(success(org));
     } catch (error: any) {
       if (error.message.includes('权限') || error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else if (error.message.includes('名称')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.conflict(error.message));
       } else if (error.message.includes('不存在')) {
-        res.status(404).json({ error: error.message });
+        res.status(404).json(Errors.notFound('组织'));
       } else {
         logger.error('修改组织名称失败', error);
-        res.status(500).json({ error: '修改组织名称失败' });
+        res.status(500).json(Errors.internal('修改组织名称失败'));
       }
     }
   });
@@ -100,7 +101,7 @@ export function createOrganizationsRouter(): Router {
     const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
     if (isNaN(orgId)) {
-      res.status(400).json({ error: '无效的组织 ID' });
+      res.status(400).json(Errors.paramInvalid('组织 ID'));
       return;
     }
 
@@ -109,14 +110,14 @@ export function createOrganizationsRouter(): Router {
       res.status(204).send();
     } catch (error: any) {
       if (error.message.includes('权限') || error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else if (error.message.includes('项目')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.conflict(error.message));
       } else if (error.message.includes('不存在')) {
-        res.status(404).json({ error: error.message });
+        res.status(404).json(Errors.notFound('组织'));
       } else {
         logger.error('删除组织失败', error);
-        res.status(500).json({ error: '删除组织失败' });
+        res.status(500).json(Errors.internal('删除组织失败'));
       }
     }
   });
@@ -128,7 +129,7 @@ export function createOrganizationsRouter(): Router {
     const targetUserId = parseInt(Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId, 10);
 
     if (isNaN(orgId) || isNaN(targetUserId)) {
-      res.status(400).json({ error: '无效的 ID' });
+      res.status(400).json(Errors.paramInvalid('ID'));
       return;
     }
 
@@ -137,19 +138,19 @@ export function createOrganizationsRouter(): Router {
         userId: targetUserId,
         role: req.body.role,
       });
-      res.json(member);
+      res.json(success(member));
     } catch (error: any) {
       if (error.message.includes('权限') || error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else if (error.message.includes('角色')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.conflict(error.message));
       } else if (error.message.includes('最后一个')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.conflict(error.message));
       } else if (error.message.includes('不存在') || error.message.includes('不是')) {
-        res.status(404).json({ error: error.message });
+        res.status(404).json(Errors.notFound('成员'));
       } else {
         logger.error('修改成员角色失败', error);
-        res.status(500).json({ error: '修改成员角色失败' });
+        res.status(500).json(Errors.internal('修改成员角色失败'));
       }
     }
   });
@@ -161,7 +162,7 @@ export function createOrganizationsRouter(): Router {
     const targetUserId = parseInt(Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId, 10);
 
     if (isNaN(orgId) || isNaN(targetUserId)) {
-      res.status(400).json({ error: '无效的 ID' });
+      res.status(400).json(Errors.paramInvalid('ID'));
       return;
     }
 
@@ -170,14 +171,14 @@ export function createOrganizationsRouter(): Router {
       res.status(204).send();
     } catch (error: any) {
       if (error.message.includes('权限') || error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else if (error.message.includes('自己') || error.message.includes('最后一个')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.conflict(error.message));
       } else if (error.message.includes('不存在') || error.message.includes('不是')) {
-        res.status(404).json({ error: error.message });
+        res.status(404).json(Errors.notFound('成员'));
       } else {
         logger.error('移除成员失败', error);
-        res.status(500).json({ error: '移除成员失败' });
+        res.status(500).json(Errors.internal('移除成员失败'));
       }
     }
   });
@@ -188,23 +189,23 @@ export function createOrganizationsRouter(): Router {
     const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
     if (isNaN(orgId)) {
-      res.status(400).json({ error: '无效的组织 ID' });
+      res.status(400).json(Errors.paramInvalid('组织 ID'));
       return;
     }
 
     try {
       const invitation = await orgService.inviteMember(orgId, userId, req.body);
-      res.status(201).json(invitation);
+      res.status(201).json(success(invitation));
     } catch (error: any) {
       if (error.message.includes('权限') || error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else if (error.message.includes('邮箱') || error.message.includes('角色')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.conflict(error.message));
       } else if (error.message.includes('已是') || error.message.includes('已有')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.conflict(error.message));
       } else {
         logger.error('邀请成员失败', error);
-        res.status(500).json({ error: '邀请成员失败' });
+        res.status(500).json(Errors.internal('邀请成员失败'));
       }
     }
   });
@@ -215,19 +216,19 @@ export function createOrganizationsRouter(): Router {
     const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
     if (isNaN(orgId)) {
-      res.status(400).json({ error: '无效的组织 ID' });
+      res.status(400).json(Errors.paramInvalid('组织 ID'));
       return;
     }
 
     try {
       const invitations = await orgService.findPendingInvitations(orgId, userId);
-      res.json(invitations);
+      res.json(success(invitations));
     } catch (error: any) {
       if (error.message.includes('权限') || error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('获取邀请列表失败', error);
-        res.status(500).json({ error: '获取邀请列表失败' });
+        res.status(500).json(Errors.internal('获取邀请列表失败'));
       }
     }
   });
@@ -239,7 +240,7 @@ export function createOrganizationsRouter(): Router {
     const invId = parseInt(Array.isArray(req.params.invId) ? req.params.invId[0] : req.params.invId, 10);
 
     if (isNaN(orgId) || isNaN(invId)) {
-      res.status(400).json({ error: '无效的 ID' });
+      res.status(400).json(Errors.paramInvalid('ID'));
       return;
     }
 
@@ -248,10 +249,10 @@ export function createOrganizationsRouter(): Router {
       res.status(204).send();
     } catch (error: any) {
       if (error.message.includes('权限') || error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('取消邀请失败', error);
-        res.status(500).json({ error: '取消邀请失败' });
+        res.status(500).json(Errors.internal('取消邀请失败'));
       }
     }
   });
