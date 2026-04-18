@@ -261,7 +261,12 @@ export function createReposRouter(db: Database.Database): Router {
     // 获取用户信息
     const user = db
       .prepare('SELECT name, email FROM users WHERE id = ?')
-      .get(userId) as { name: string; email: string };
+      .get(userId) as { name: string; email: string } | undefined;
+
+    if (!user) {
+      res.status(500).json({ error: '用户信息不存在' });
+      return;
+    }
 
     try {
       const result = await repoManager.pushRepo(

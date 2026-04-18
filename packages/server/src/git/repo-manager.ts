@@ -23,6 +23,12 @@ export class RepoManager {
     this.tokenManager = new TokenManager(db);
   }
 
+  // 转义 shell 命令参数，防止命令注入
+  private escapeShellArg(arg: string): string {
+    // 使用单引号包裹，并转义内部单引号
+    return `'${arg.replace(/'/g, "'\\''")}'`;
+  }
+
   async cloneRepo(
     containerId: string,
     projectId: number,
@@ -85,13 +91,13 @@ export class RepoManager {
       const repoPath = `/workspace/project-${projectId}/${repoName}`;
       const authUrl = this.injectTokenIntoUrl(repoUrl, token.access_token);
 
-      // 使用用户真实身份配置 git
+      // 使用用户真实身份配置 git（参数已转义防止命令注入）
       const commands = [
         `cd ${repoPath}`,
-        `git config user.name "${userName}"`,
-        `git config user.email "${userEmail}"`,
+        `git config user.name ${this.escapeShellArg(userName)}`,
+        `git config user.email ${this.escapeShellArg(userEmail)}`,
         `git add -A`,
-        `git commit -m "${commitMessage}"`,
+        `git commit -m ${this.escapeShellArg(commitMessage)}`,
         `git push ${authUrl} HEAD:${branch}`,
       ];
 

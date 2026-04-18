@@ -133,10 +133,10 @@ describe('RepoManager', () => {
       expect(result.success).toBe(true);
       const expectedCommand = [
         'cd /workspace/project-1/test-repo',
-        'git config user.name "Test User"',
-        'git config user.email "test@test.com"',
+        'git config user.name \'Test User\'',
+        'git config user.email \'test@test.com\'',
         'git add -A',
-        'git commit -m "Update files"',
+        'git commit -m \'Update files\'',
         'git push https://gh_token_yyy@github.com/user/test-repo.git HEAD:main',
       ].join('\n');
       expect(execInContainer).toHaveBeenCalledWith(
