@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import type Database from 'better-sqlite3';
-import { getDb, closeDb } from '../src/db/connection.js';
+import { getSqliteDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
 import { createDraftsRouter } from '../src/routes/drafts.js';
 import { createAuthRouter } from '../src/routes/auth.js';
@@ -14,6 +14,7 @@ describe('Drafts API', () => {
   let authToken: string;
   let userId: number;
   let projectId: number;
+  let orgId: number;
 
   beforeEach(async () => {
     db = getSqliteDb(':memory:');
@@ -21,8 +22,8 @@ describe('Drafts API', () => {
 
     app = express();
     app.use(express.json());
-    app.use('/api/auth', createAuthRouter(db));
-    app.use('/api/drafts', createDraftsRouter(db));
+    app.use('/api/auth', createAuthRouter());
+    app.use('/api/drafts', createDraftsRouter());
 
     // Create test user
     const registerRes = await request(app)
@@ -31,20 +32,26 @@ describe('Drafts API', () => {
     authToken = registerRes.body.token;
     userId = registerRes.body.user.id;
 
+    // Create test organization
+    const orgResult = db.prepare(
+      'INSERT INTO organizations (name, created_by) VALUES (?, ?)'
+    ).run('Test Org', userId);
+    orgId = orgResult.lastInsertRowid as number;
+
+    // Add user as organization member
+    db.prepare(
+      'INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)'
+    ).run(orgId, userId, 'owner', userId);
+
     // Create test project (directly insert into database)
     const projectResult = db.prepare(
-      'INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)'
-    ).run('Test Project', 'node', userId);
+      'INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)'
+    ).run('Test Project', 'node', userId, orgId);
     projectId = projectResult.lastInsertRowid as number;
-
-    // Add user as project member
-    db.prepare(
-      'INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)'
-    ).run(projectId, userId, 'owner');
   });
 
   afterEach(() => {
-    closeDb(db);
+    db.close();
   });
 
   describe('POST /api/drafts', () => {
@@ -56,10 +63,10 @@ describe('Drafts API', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.draft).toMatchObject({
-        project_id: projectId,
+        projectId: projectId,
         title: 'Test Draft',
         status: 'discussing',
-        created_by: userId,
+        createdBy: userId,
       });
       expect(res.body.draft.id).toBeDefined();
 
@@ -162,10 +169,10 @@ describe('Drafts API', () => {
         .send({ name: 'Another User', email: 'another@test.com', password: 'password123' });
       anotherUserId = anotherRes.body.user.id;
 
-      // Add as project member
+      // Add as organization member
       db.prepare(
-        'INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)'
-      ).run(projectId, anotherUserId, 'developer');
+        'INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)'
+      ).run(orgId, anotherUserId, 'developer', userId);
     });
 
     it('should add member to draft', async () => {
@@ -234,10 +241,10 @@ describe('Drafts API', () => {
       anotherUserId = anotherRes.body.user.id;
       anotherAuthToken = anotherRes.body.token;
 
-      // Add as project member
+      // Add as organization member
       db.prepare(
-        'INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)'
-      ).run(projectId, anotherUserId, 'developer');
+        'INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)'
+      ).run(orgId, anotherUserId, 'developer', userId);
     });
 
     it('should delete draft when owner requests', async () => {
@@ -488,7 +495,7 @@ describe('Drafts API', () => {
         .send({ content: 'Test message' });
       messageId = msgRes.body.message.id;
 
-      // 创建另一个用户并添加为项目成员
+      // 创建另一个用户并添加为组织成员
       const anotherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Another User', email: 'another4@test.com', password: 'password123' });
@@ -496,8 +503,8 @@ describe('Drafts API', () => {
       anotherAuthToken = anotherRes.body.token;
 
       db.prepare(
-        'INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)'
-      ).run(projectId, anotherUserId, 'developer');
+        'INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)'
+      ).run(orgId, anotherUserId, 'developer', userId);
 
       // 添加为 draft 成员
       db.prepare(

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { createApp } from '../src/index.js';
-import { getSqliteDb } from '../src/db/index.js';
+import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
 import { JWT_SECRET } from '../src/middleware/auth.js';
 import { resetBuildManagerInstance } from '../src/build/build-manager.js';
@@ -42,6 +42,7 @@ describe('Builds API', () => {
   let db: Database.Database;
 
   beforeEach(() => {
+    closeDb();
     db = getSqliteDb(':memory:');
     initSchema(db);
 

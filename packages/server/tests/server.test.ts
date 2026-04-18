@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/index.js';
-import { getSqliteDb } from '../src/db/index.js';
+import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
 
 describe('Express 服务器', () => {
@@ -11,6 +11,7 @@ describe('Express 服务器', () => {
   });
 
   it('GET /api/health 应返回 200', async () => {
+    closeDb();
     const db = getSqliteDb(':memory:');
     initSchema(db);
     const app = createApp();

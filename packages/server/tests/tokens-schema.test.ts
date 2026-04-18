@@ -67,7 +67,8 @@ describe('Project Tokens Schema', () => {
 
   it('should insert and retrieve project_repo', () => {
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)').run('test-project', 'node', 1);
+    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
+    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
 
     db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
       1, 'github', 'https://github.com/user/repo', 'user/repo', 'main'
@@ -82,7 +83,8 @@ describe('Project Tokens Schema', () => {
 
   it('should enforce unique constraint on project_id and repo_url', () => {
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)').run('test-project', 'node', 1);
+    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
+    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
 
     db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
       1, 'github', 'https://github.com/user/repo', 'user/repo', 'main'
@@ -98,7 +100,8 @@ describe('Project Tokens Schema', () => {
 
   it('should cascade delete project_repos when project is deleted', () => {
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)').run('test-project', 'node', 1);
+    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
+    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
     db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
       1, 'github', 'https://github.com/user/repo', 'user/repo', 'main'
     );
@@ -124,7 +127,8 @@ describe('Project Tokens Schema', () => {
 
   it('should only accept valid provider values for project_repos', () => {
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)').run('test-project', 'node', 1);
+    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
+    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
 
     // Invalid provider should fail
     expect(() => {

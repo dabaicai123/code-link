@@ -4,11 +4,13 @@ import { createServer } from 'http';
 import WebSocket from 'ws';
 import Database from 'better-sqlite3';
 import { createWebSocketServer, WebSocketServer, resetWebSocketServerInstance } from '../src/websocket/server.ts';
-import { getDb, closeDb } from '../src/db/connection.ts';
-import { initSchema } from '../src/db/schema.ts';
+import { getSqliteDb, closeDb, initSchema } from '../src/db/index.ts';
 import { resetTerminalManagerInstance, getTerminalManager } from '../src/terminal/terminal-manager.ts';
 import { getDockerClient } from '../src/docker/client.ts';
 import { setEncryptionKey, encrypt } from '../src/crypto/aes.ts';
+
+// 使用固定的测试加密密钥
+const TEST_ENCRYPTION_KEY = 'test-encryption-key-32-characters!';
 
 const TEST_PROJECT_ID = 9998;
 const TEST_VOLUME_PATH = '/tmp/test-volume-route';
@@ -47,6 +49,7 @@ describe('Terminal WebSocket Route', () => {
   let port: number;
   let testUserId: number;
   let testProjectId: number;
+  let testOrgId: number;
   let sharedContainerId: string | null = null;
   const docker = getDockerClient();
 
@@ -61,9 +64,11 @@ describe('Terminal WebSocket Route', () => {
   }, 5000);
 
   beforeEach(async () => {
-    // 设置加密密钥（测试用）
-    setEncryptionKey('test-encryption-key-for-terminal-route-test-32-chars');
+    // 设置加密密钥（测试用）- 必须在 encrypt 调用前设置
+    setEncryptionKey(TEST_ENCRYPTION_KEY);
 
+    // 关闭现有数据库连接，重置单例
+    closeDb();
     // 创建内存数据库
     db = getSqliteDb(':memory:');
     initSchema(db);
@@ -73,6 +78,17 @@ describe('Terminal WebSocket Route', () => {
       .prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)')
       .run('测试用户', 'test@test.com', 'hash123');
     testUserId = userResult.lastInsertRowid as number;
+
+    // 创建测试组织
+    const orgResult = db
+      .prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)')
+      .run('测试组织', testUserId);
+    testOrgId = orgResult.lastInsertRowid as number;
+
+    // 添加用户为组织成员
+    db
+      .prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)')
+      .run(testOrgId, testUserId, 'owner', testUserId);
 
     // 添加用户的 Claude 配置（加密存储）
     const config = {
@@ -85,20 +101,15 @@ describe('Terminal WebSocket Route', () => {
       .prepare('INSERT INTO user_claude_configs (user_id, config) VALUES (?, ?)')
       .run(testUserId, encryptedConfig);
 
-    // 创建测试项目，关联共享容器
+    // 创建测试项目，关联共享容器和组织
     const projectResult = db
-      .prepare('INSERT INTO projects (name, template_type, status, created_by, container_id) VALUES (?, ?, ?, ?, ?)')
-      .run('测试项目', 'node', 'running', testUserId, sharedContainerId);
+      .prepare('INSERT INTO projects (name, template_type, status, created_by, container_id, organization_id) VALUES (?, ?, ?, ?, ?, ?)')
+      .run('测试项目', 'node', 'running', testUserId, sharedContainerId, testOrgId);
     testProjectId = projectResult.lastInsertRowid as number;
-
-    // 添加用户为项目成员
-    db
-      .prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)')
-      .run(testProjectId, testUserId, 'owner');
 
     // 创建 HTTP 服务器
     httpServer = createServer();
-    wsServer = createWebSocketServer(httpServer, db);
+    wsServer = createWebSocketServer(httpServer);
 
     await new Promise<void>((resolve) => {
       httpServer.listen(0, () => {
@@ -116,10 +127,14 @@ describe('Terminal WebSocket Route', () => {
     getTerminalManager().closeAll();
     resetTerminalManagerInstance();
 
-    wsServer.close();
-    httpServer.close();
+    if (wsServer) {
+      wsServer.close();
+    }
+    if (httpServer) {
+      httpServer.close();
+    }
     resetWebSocketServerInstance();
-    closeDb(db);
+    closeDb();
   });
 
   describe('连接验证', () => {
@@ -289,13 +304,9 @@ describe('Terminal WebSocket Route', () => {
     it('应拒绝没有容器的项目', async () => {
       // 创建一个没有容器的新项目
       const noContainerProject = db
-        .prepare('INSERT INTO projects (name, template_type, status, created_by) VALUES (?, ?, ?, ?)')
-        .run('无容器项目', 'node', 'created', testUserId);
+        .prepare('INSERT INTO projects (name, template_type, status, created_by, organization_id) VALUES (?, ?, ?, ?, ?)')
+        .run('无容器项目', 'node', 'created', testUserId, testOrgId);
       const noContainerProjectId = noContainerProject.lastInsertRowid as number;
-
-      db
-        .prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)')
-        .run(noContainerProjectId, testUserId, 'owner');
 
       const client = new WebSocket(`ws://localhost:${port}/terminal?projectId=${noContainerProjectId}&userId=${testUserId}`);
 

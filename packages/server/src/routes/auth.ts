@@ -20,6 +20,11 @@ export function createAuthRouter(): Router {
   });
 
   router.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ error: '邮箱和密码为必填项' });
+      return;
+    }
     try {
       const result = await authService.login(req.body);
       res.json(result);

@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/index.js';
-import { getSqliteDb } from '../src/db/index.js';
+import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
 import type Database from 'better-sqlite3';
 
@@ -11,6 +11,7 @@ describe('GitHub OAuth 路由', () => {
   let db: Database.Database;
 
   beforeEach(() => {
+    closeDb();
     db = getSqliteDb(':memory:');
     initSchema(db);
     app = createApp();
@@ -280,6 +281,7 @@ describe('Repos 路由', () => {
   let orgId: number;
 
   beforeEach(async () => {
+    closeDb();
     db = getSqliteDb(':memory:');
     initSchema(db);
     app = createApp();
@@ -292,18 +294,22 @@ describe('Repos 路由', () => {
     token = regRes.body.token;
     userId = regRes.body.user.id;
 
-    // 创建组织
-    const orgRes = await request(app)
-      .post('/api/organizations')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'test-org' });
-    orgId = orgRes.body.id;
+    // 直接在数据库中创建组织（绕过权限检查）
+    const orgResult = db
+      .prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)')
+      .run('test-org', userId);
+    orgId = orgResult.lastInsertRowid as number;
+
+    // 添加用户为组织成员
+    db
+      .prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)')
+      .run(orgId, userId, 'owner', userId);
 
     // 创建项目
     const projectRes = await request(app)
       .post('/api/projects')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'test-project', template_type: 'node', organization_id: orgId });
+      .send({ name: 'test-project', templateType: 'node', organizationId: orgId });
     projectId = projectRes.body.id;
   });
 

@@ -13,13 +13,20 @@ let defaultDb: ReturnType<typeof drizzle> | null = null;
 
 /**
  * 获取 SQLite 数据库连接
+ * 当提供 dbPath 时，会重置单例并创建新的数据库连接
  */
 export function getSqliteDb(dbPath?: string): Database.Database {
   if (dbPath) {
-    const db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    return db;
+    // 如果有新路径，关闭旧连接并重置单例
+    if (defaultSqliteDb) {
+      defaultSqliteDb.close();
+      defaultSqliteDb = null;
+      defaultDb = null;
+    }
+    defaultSqliteDb = new Database(dbPath);
+    defaultSqliteDb.pragma('journal_mode = WAL');
+    defaultSqliteDb.pragma('foreign_keys = ON');
+    return defaultSqliteDb;
   }
   if (!defaultSqliteDb) {
     const dbPath = process.env.DB_PATH || path.join(DATA_DIR, 'code-link.db');
@@ -32,16 +39,25 @@ export function getSqliteDb(dbPath?: string): Database.Database {
 
 /**
  * 获取 Drizzle 数据库实例
+ * 当提供 dbPath 时，会重置单例并创建新的 Drizzle 实例
  */
 export function getDb(dbPath?: string): ReturnType<typeof drizzle> {
   if (dbPath) {
+    // 重置现有单例
+    if (defaultSqliteDb) {
+      defaultSqliteDb.close();
+      defaultSqliteDb = null;
+      defaultDb = null;
+    }
     const sqliteDb = new Database(dbPath);
     sqliteDb.pragma('journal_mode = WAL');
     sqliteDb.pragma('foreign_keys = ON');
-    return drizzle(sqliteDb, { schema });
+    defaultSqliteDb = sqliteDb;
+    defaultDb = drizzle(sqliteDb, { schema });
+    return defaultDb;
   }
   if (!defaultDb) {
-    const sqliteDb = getSqliteDb(dbPath);
+    const sqliteDb = getSqliteDb();
     defaultDb = drizzle(sqliteDb, { schema });
   }
   return defaultDb;

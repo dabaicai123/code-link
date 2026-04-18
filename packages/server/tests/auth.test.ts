@@ -1,19 +1,29 @@
 // packages/server/tests/auth.test.ts
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../src/index.ts';
-import { getDb } from '../src/db/connection.ts';
-import { initSchema } from '../src/db/schema.ts';
+import express from 'express';
+import { getSqliteDb, closeDb, initSchema } from '../src/db/index.js';
+import { createAuthRouter } from '../src/routes/auth.js';
 import type Database from 'better-sqlite3';
 
 describe('认证路由', () => {
-  let app: ReturnType<typeof createApp>;
+  let app: express.Express;
   let db: Database.Database;
 
   beforeEach(() => {
+    // 关闭现有数据库连接，重置单例
+    closeDb();
+    // 创建新的内存数据库
     db = getSqliteDb(':memory:');
     initSchema(db);
-    app = createApp(db);
+    // 创建独立的 Express 应用
+    app = express();
+    app.use(express.json());
+    app.use('/api/auth', createAuthRouter());
+  });
+
+  afterEach(() => {
+    closeDb();
   });
 
   describe('POST /api/auth/register', () => {

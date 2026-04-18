@@ -90,6 +90,7 @@ export function initSchema(db: Database.Database): void {
       repo_url TEXT NOT NULL,
       repo_name TEXT NOT NULL,
       branch TEXT NOT NULL DEFAULT 'main',
+      cloned INTEGER NOT NULL DEFAULT 0 CHECK (cloned IN (0, 1)),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(project_id, repo_url)
     );

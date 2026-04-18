@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { initSchema } from '../src/db/schema.js';
 import { RepoManager } from '../src/git/repo-manager.js';
 import { TokenManager } from '../src/git/token-manager.js';
-import { getSqliteDb } from '../src/db/index.js';
+import { getSqliteDb, closeDb } from '../src/db/index.js';
 
 // Mock execInContainer
 vi.mock('../src/docker/container-manager.js', () => ({
@@ -17,18 +17,22 @@ describe('RepoManager', () => {
   let manager: RepoManager;
 
   beforeEach(async () => {
+    closeDb();
     db = getSqliteDb(':memory:');
     initSchema(db);
     // 创建测试用户
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
+    // 创建测试组织
+    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
+    db.prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)').run(1, 1, 'owner', 1);
     // 创建测试项目
-    db.prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)').run('test-project', 'node', 1);
+    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
     manager = new RepoManager();
     vi.clearAllMocks();
   });
 
   afterEach(() => {
-    closeDb(db);
+    closeDb();
   });
 
   describe('cloneRepo', () => {
