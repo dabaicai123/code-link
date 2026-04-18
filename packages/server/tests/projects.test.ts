@@ -4,19 +4,21 @@ import request from 'supertest';
 import { createApp } from '../src/index.js';
 import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
-import type Database from 'better-sqlite3';
-
+import {
+  createTestOrganization,
+  createTestOrganizationMember,
+  findProjectById,
+} from './helpers/test-db.js';
 describe('项目路由', () => {
   let app: ReturnType<typeof createApp>;
-  let db: Database.Database;
   let token: string;
   let userId: number;
   let orgId: number;
 
   beforeEach(async () => {
     closeDb();
-    db = getSqliteDb(':memory:');
-    initSchema(db);
+    getSqliteDb(':memory:');
+    initSchema(getSqliteDb());
     app = createApp();
 
     // 创建测试用户并获取 token
@@ -27,15 +29,11 @@ describe('项目路由', () => {
     userId = regRes.body.user.id;
 
     // 直接在数据库中创建组织（绕过权限检查）
-    const orgResult = db
-      .prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)')
-      .run('测试组织', userId);
-    orgId = orgResult.lastInsertRowid as number;
+    const org = createTestOrganization(userId, { name: '测试组织' });
+    orgId = org.id;
 
     // 添加用户为组织成员
-    db
-      .prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)')
-      .run(orgId, userId, 'owner', userId);
+    createTestOrganizationMember(orgId, userId, 'owner', userId);
   });
 
   afterEach(() => {
@@ -163,7 +161,7 @@ describe('项目路由', () => {
       expect(res.status).toBe(401);
     });
 
-    it('非项目成员应返回 404', async () => {
+    it('非项目成员应返回 403', async () => {
       // 创建另一个用户
       const otherRes = await request(app)
         .post('/api/auth/register')
@@ -173,7 +171,7 @@ describe('项目路由', () => {
       const res = await request(app)
         .get(`/api/projects/${projectId}`)
         .set('Authorization', `Bearer ${otherToken}`);
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(403);
     });
   });
 
@@ -195,7 +193,7 @@ describe('项目路由', () => {
       expect(res.status).toBe(204);
 
       // 验证项目已删除
-      const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+      const project = findProjectById(projectId);
       expect(project).toBeUndefined();
     });
 
@@ -208,12 +206,7 @@ describe('项目路由', () => {
       const otherToken = otherRes.body.token;
 
       // 添加为组织 developer
-      db.prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)').run(
-        orgId,
-        otherUserId,
-        'developer',
-        userId
-      );
+      createTestOrganizationMember(orgId, otherUserId, 'developer', userId);
 
       const res = await request(app)
         .delete(`/api/projects/${projectId}`)
