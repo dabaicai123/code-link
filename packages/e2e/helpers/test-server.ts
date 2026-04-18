@@ -432,6 +432,301 @@ export function createTestApp(sqlite: Database.Database): express.Express {
     }
   });
 
+  // Organization detail
+  app.get('/api/organizations/:id', authMiddleware(db), async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(req.params.id as string, 10);
+
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
+      return;
+    }
+
+    try {
+      const org = await db
+        .select({
+          id: organizations.id,
+          name: organizations.name,
+          createdBy: organizations.createdBy,
+          createdAt: organizations.createdAt,
+          memberRole: organizationMembers.role,
+        })
+        .from(organizations)
+        .innerJoin(organizationMembers, eq(organizations.id, organizationMembers.organizationId))
+        .where(and(
+          eq(organizations.id, orgId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (!org) {
+        res.status(404).json({ error: '组织不存在或无权限访问' });
+        return;
+      }
+
+      res.json({ data: org });
+    } catch (error) {
+      console.error('Get organization error:', error);
+      res.status(500).json({ error: '获取组织详情失败' });
+    }
+  });
+
+  // Organization members list
+  app.get('/api/organizations/:id/members', authMiddleware(db), async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(req.params.id as string, 10);
+
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
+      return;
+    }
+
+    try {
+      // Check if user is a member of the organization
+      const membership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, orgId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (!membership) {
+        res.status(403).json({ error: '无权限访问此组织' });
+        return;
+      }
+
+      const members = await db
+        .select({
+          id: organizationMembers.id,
+          organizationId: organizationMembers.organizationId,
+          userId: organizationMembers.userId,
+          role: organizationMembers.role,
+          invitedBy: organizationMembers.invitedBy,
+          joinedAt: organizationMembers.joinedAt,
+          name: users.name,
+          email: users.email,
+          avatar: users.avatar,
+        })
+        .from(organizationMembers)
+        .innerJoin(users, eq(organizationMembers.userId, users.id))
+        .where(eq(organizationMembers.organizationId, orgId));
+
+      res.json({ data: members });
+    } catch (error) {
+      console.error('Get organization members error:', error);
+      res.status(500).json({ error: '获取成员列表失败' });
+    }
+  });
+
+  // Invite member
+  app.post('/api/organizations/:id/invitations', authMiddleware(db), async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(req.params.id as string, 10);
+    const { email, role } = req.body;
+
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
+      return;
+    }
+
+    if (!email) {
+      res.status(400).json({ error: '缺少邮箱地址' });
+      return;
+    }
+
+    try {
+      // Check if user is a member of the organization
+      const membership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, orgId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (!membership) {
+        res.status(403).json({ error: '无权限邀请成员' });
+        return;
+      }
+
+      // Check if there's already a pending invitation
+      const existingInvitation = await db
+        .select()
+        .from(organizationInvitations)
+        .where(and(
+          eq(organizationInvitations.organizationId, orgId),
+          eq(organizationInvitations.email, email.toLowerCase()),
+          eq(organizationInvitations.status, 'pending')
+        ))
+        .get();
+
+      if (existingInvitation) {
+        res.status(409).json({ error: '该邮箱已有待处理的邀请' });
+        return;
+      }
+
+      const invitation = await db
+        .insert(organizationInvitations)
+        .values({
+          organizationId: orgId,
+          email: email.toLowerCase(),
+          role: role || 'member',
+          invitedBy: userId,
+          status: 'pending',
+        })
+        .returning()
+        .get();
+
+      res.status(201).json({ data: invitation });
+    } catch (error) {
+      console.error('Create invitation error:', error);
+      res.status(500).json({ error: '发送邀请失败' });
+    }
+  });
+
+  // Organization invitations list
+  app.get('/api/organizations/:id/invitations', authMiddleware(db), async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(req.params.id as string, 10);
+
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
+      return;
+    }
+
+    try {
+      // Check if user is a member of the organization
+      const membership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, orgId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (!membership) {
+        res.status(403).json({ error: '无权限访问此组织' });
+        return;
+      }
+
+      const invitations = await db
+        .select({
+          id: organizationInvitations.id,
+          organizationId: organizationInvitations.organizationId,
+          email: organizationInvitations.email,
+          role: organizationInvitations.role,
+          invitedBy: organizationInvitations.invitedBy,
+          status: organizationInvitations.status,
+          createdAt: organizationInvitations.createdAt,
+          invitedByName: users.name,
+        })
+        .from(organizationInvitations)
+        .leftJoin(users, eq(organizationInvitations.invitedBy, users.id))
+        .where(eq(organizationInvitations.organizationId, orgId));
+
+      res.json({ data: invitations });
+    } catch (error) {
+      console.error('Get organization invitations error:', error);
+      res.status(500).json({ error: '获取邀请列表失败' });
+    }
+  });
+
+  // Update member role
+  app.put('/api/organizations/:orgId/members/:userId', authMiddleware(db), async (req, res) => {
+    const currentUserId = (req as any).userId;
+    const orgId = parseInt(req.params.orgId as string, 10);
+    const targetUserId = parseInt(req.params.userId as string, 10);
+    const { role } = req.body;
+
+    if (isNaN(orgId) || isNaN(targetUserId)) {
+      res.status(400).json({ error: '无效的 ID' });
+      return;
+    }
+
+    if (!role || !['owner', 'developer', 'member'].includes(role)) {
+      res.status(400).json({ error: '无效的角色' });
+      return;
+    }
+
+    try {
+      // Check if current user is an owner
+      const currentMembership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, orgId),
+          eq(organizationMembers.userId, currentUserId)
+        ))
+        .get();
+
+      if (!currentMembership || currentMembership.role !== 'owner') {
+        res.status(403).json({ error: '只有组织所有者可以更新成员角色' });
+        return;
+      }
+
+      // Update the target member's role
+      const result = await db
+        .update(organizationMembers)
+        .set({ role })
+        .where(and(
+          eq(organizationMembers.organizationId, orgId),
+          eq(organizationMembers.userId, targetUserId)
+        ))
+        .returning()
+        .get();
+
+      if (!result) {
+        res.status(404).json({ error: '成员不存在' });
+        return;
+      }
+
+      res.json({ data: result });
+    } catch (error) {
+      console.error('Update member role error:', error);
+      res.status(500).json({ error: '更新成员角色失败' });
+    }
+  });
+
+  // Delete organization
+  app.delete('/api/organizations/:id', authMiddleware(db), async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(req.params.id as string, 10);
+
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
+      return;
+    }
+
+    try {
+      // Check if user is an owner
+      const membership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, orgId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (!membership || membership.role !== 'owner') {
+        res.status(403).json({ error: '只有组织所有者可以删除组织' });
+        return;
+      }
+
+      // Delete organization (cascade will handle members, invitations, projects)
+      await db.delete(organizations).where(eq(organizations.id, orgId));
+
+      res.json({ data: { success: true } });
+    } catch (error) {
+      console.error('Delete organization error:', error);
+      res.status(500).json({ error: '删除组织失败' });
+    }
+  });
+
   // Drafts routes
   app.get('/api/drafts', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;

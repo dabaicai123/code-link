@@ -7,11 +7,24 @@ import {
   users,
   organizations,
   organizationMembers,
+  organizationInvitations,
   projects,
+  drafts,
+  draftMembers,
+  draftMessages,
 } from '@code-link/server/dist/db/schema/index.js';
 
 // Schema 对象（从 server 导入）
-const schema = { users, organizations, organizationMembers, projects };
+const schema = {
+  users,
+  organizations,
+  organizationMembers,
+  organizationInvitations,
+  projects,
+  drafts,
+  draftMembers,
+  draftMessages,
+};
 
 export interface TestUser {
   id: number;
@@ -111,4 +124,83 @@ export async function seedTestProject(
  */
 export function closeTestDb(sqlite: Database.Database): void {
   sqlite.close();
+}
+
+/**
+ * 创建测试草稿
+ */
+export async function seedTestDraft(
+  db: ReturnType<typeof drizzle>,
+  userId: number,
+  projectId: number,
+  overrides?: { title?: string; status?: 'discussing' | 'confirmed' | 'archived' }
+): Promise<number> {
+  const title = overrides?.title || 'Test Draft';
+  const status = overrides?.status || 'discussing';
+
+  const result = await db.insert(drafts).values({
+    projectId,
+    title,
+    status,
+    createdBy: userId,
+  }).returning().get();
+
+  const draftId = result.id;
+
+  // 添加用户为草稿成员
+  await db.insert(draftMembers).values({
+    draftId,
+    userId,
+    role: 'owner',
+  });
+
+  return draftId;
+}
+
+/**
+ * 创建测试消息
+ */
+export async function seedTestMessage(
+  db: ReturnType<typeof drizzle>,
+  draftId: number,
+  userId: number,
+  overrides?: { content?: string; messageType?: 'text' | 'system'; parentId?: number }
+): Promise<number> {
+  const content = overrides?.content || 'Test message content';
+  const messageType = overrides?.messageType || 'text';
+  const parentId = overrides?.parentId ?? null;
+
+  const result = await db.insert(draftMessages).values({
+    draftId,
+    userId,
+    content,
+    messageType,
+    parentId,
+  }).returning().get();
+
+  return result.id;
+}
+
+/**
+ * 创建测试邀请
+ */
+export async function seedTestInvitation(
+  db: ReturnType<typeof drizzle>,
+  organizationId: number,
+  invitedBy: number,
+  overrides?: { email?: string; role?: 'owner' | 'developer' | 'member'; status?: 'pending' | 'accepted' | 'declined' }
+): Promise<number> {
+  const email = overrides?.email || 'invited@example.com';
+  const role = overrides?.role || 'member';
+  const status = overrides?.status || 'pending';
+
+  const result = await db.insert(organizationInvitations).values({
+    organizationId,
+    email,
+    role,
+    invitedBy,
+    status,
+  }).returning().get();
+
+  return result.id;
 }
