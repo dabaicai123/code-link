@@ -1,410 +1,258 @@
 import { Router } from 'express';
-import type Database from 'better-sqlite3';
-import { authMiddleware, createOrgMemberMiddleware, createCanCreateOrgMiddleware } from '../middleware/auth.js';
+import { OrganizationService } from '../services/organization.service.js';
+import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
-import type { Organization, OrgRole } from '../types.js';
 
 const logger = createLogger('organizations');
 
-export function createOrganizationsRouter(db: Database.Database): Router {
+export function createOrganizationsRouter(): Router {
   const router = Router();
+  const orgService = new OrganizationService();
 
   // 所有路由都需要认证
   router.use(authMiddleware);
 
   // POST /api/organizations - 创建组织
-  router.post('/', createCanCreateOrgMiddleware(db), (req, res) => {
+  router.post('/', async (req, res) => {
     const userId = (req as any).userId;
-    const { name } = req.body;
-
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      res.status(400).json({ error: '组织名称不能为空' });
-      return;
-    }
-
-    if (name.length > 100) {
-      res.status(400).json({ error: '组织名称不能超过 100 个字符' });
-      return;
-    }
-
     try {
-      const createOrgTx = db.transaction(() => {
-        const result = db
-          .prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)')
-          .run(name.trim(), userId);
-
-        const orgId = result.lastInsertRowid as number;
-
-        // 创建者自动成为 owner
-        db.prepare(
-          'INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)'
-        ).run(orgId, userId, 'owner', userId);
-
-        return orgId;
-      });
-
-      const orgId = createOrgTx();
-
-      const org = db
-        .prepare('SELECT id, name, created_by, created_at FROM organizations WHERE id = ?')
-        .get(orgId) as Organization;
-
+      const org = await orgService.create(userId, req.body);
       res.status(201).json(org);
-    } catch (error) {
-      logger.error('创建组织失败', error);
-      res.status(500).json({ error: '创建组织失败' });
+    } catch (error: any) {
+      if (error.message.includes('权限')) {
+        res.status(403).json({ error: error.message });
+      } else if (error.message.includes('名称')) {
+        res.status(400).json({ error: error.message });
+      } else {
+        logger.error('创建组织失败', error);
+        res.status(500).json({ error: '创建组织失败' });
+      }
     }
   });
 
   // GET /api/organizations - 获取用户所属的组织列表
-  router.get('/', (req, res) => {
+  router.get('/', async (req, res) => {
     const userId = (req as any).userId;
-
     try {
-      const organizations = db
-        .prepare(
-          `SELECT o.id, o.name, o.created_by, o.created_at, om.role
-           FROM organizations o
-           JOIN organization_members om ON o.id = om.organization_id
-           WHERE om.user_id = ?
-           ORDER BY o.created_at DESC`
-        )
-        .all(userId) as Array<Organization & { role: OrgRole }>;
-
+      const organizations = await orgService.findByUserId(userId);
       res.json(organizations);
-    } catch (error) {
+    } catch (error: any) {
       logger.error('获取组织列表失败', error);
       res.status(500).json({ error: '获取组织列表失败' });
     }
   });
 
   // GET /api/organizations/:id - 获取组织详情
-  router.get('/:id', createOrgMemberMiddleware(db, 'member'), (req, res) => {
-    const idParam = req.params.id;
-    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
+  router.get('/:id', async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
+      return;
+    }
 
     try {
-      const org = db
-        .prepare('SELECT id, name, created_by, created_at FROM organizations WHERE id = ?')
-        .get(orgId) as Organization | undefined;
-
-      if (!org) {
-        res.status(404).json({ error: '组织不存在' });
-        return;
+      const org = await orgService.findById(orgId, userId);
+      res.json(org);
+    } catch (error: any) {
+      if (error.message.includes('不是')) {
+        res.status(403).json({ error: error.message });
+      } else if (error.message.includes('不存在')) {
+        res.status(404).json({ error: error.message });
+      } else {
+        logger.error('获取组织详情失败', error);
+        res.status(500).json({ error: '获取组织详情失败' });
       }
-
-      // 获取组织成员列表
-      const members = db
-        .prepare(
-          `SELECT u.id, u.name, u.email, u.avatar, om.role, om.joined_at
-           FROM organization_members om
-           JOIN users u ON om.user_id = u.id
-           WHERE om.organization_id = ?
-           ORDER BY om.joined_at ASC`
-        )
-        .all(orgId) as Array<{
-          id: number;
-          name: string;
-          email: string;
-          avatar: string | null;
-          role: OrgRole;
-          joined_at: string;
-        }>;
-
-      res.json({ ...org, members });
-    } catch (error) {
-      logger.error('获取组织详情失败', error);
-      res.status(500).json({ error: '获取组织详情失败' });
     }
   });
 
   // PUT /api/organizations/:id - 修改组织名称
-  router.put('/:id', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
-    const idParam = req.params.id;
-    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
-    const { name } = req.body;
+  router.put('/:id', async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      res.status(400).json({ error: '组织名称不能为空' });
-      return;
-    }
-
-    if (name.length > 100) {
-      res.status(400).json({ error: '组织名称不能超过 100 个字符' });
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
       return;
     }
 
     try {
-      const result = db
-        .prepare('UPDATE organizations SET name = ? WHERE id = ?')
-        .run(name.trim(), orgId);
-
-      if (result.changes === 0) {
-        res.status(404).json({ error: '组织不存在' });
-        return;
-      }
-
-      const org = db
-        .prepare('SELECT id, name, created_by, created_at FROM organizations WHERE id = ?')
-        .get(orgId) as Organization;
-
+      const org = await orgService.updateName(orgId, userId, req.body);
       res.json(org);
-    } catch (error) {
-      logger.error('修改组织名称失败', error);
-      res.status(500).json({ error: '修改组织名称失败' });
+    } catch (error: any) {
+      if (error.message.includes('权限') || error.message.includes('owner')) {
+        res.status(403).json({ error: error.message });
+      } else if (error.message.includes('名称')) {
+        res.status(400).json({ error: error.message });
+      } else if (error.message.includes('不存在')) {
+        res.status(404).json({ error: error.message });
+      } else {
+        logger.error('修改组织名称失败', error);
+        res.status(500).json({ error: '修改组织名称失败' });
+      }
     }
   });
 
   // DELETE /api/organizations/:id - 删除组织
-  router.delete('/:id', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
-    const idParam = req.params.id;
-    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
+  router.delete('/:id', async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
+      return;
+    }
 
     try {
-      // 检查组织下是否还有项目
-      const projectCount = db
-        .prepare('SELECT COUNT(*) as count FROM projects WHERE organization_id = ?')
-        .get(orgId) as { count: number };
-
-      if (projectCount.count > 0) {
-        res.status(400).json({ error: '组织下还有项目，请先删除或迁移项目' });
-        return;
-      }
-
-      const result = db.prepare('DELETE FROM organizations WHERE id = ?').run(orgId);
-
-      if (result.changes === 0) {
-        res.status(404).json({ error: '组织不存在' });
-        return;
-      }
-
+      await orgService.delete(orgId, userId);
       res.status(204).send();
-    } catch (error) {
-      logger.error('删除组织失败', error);
-      res.status(500).json({ error: '删除组织失败' });
+    } catch (error: any) {
+      if (error.message.includes('权限') || error.message.includes('owner')) {
+        res.status(403).json({ error: error.message });
+      } else if (error.message.includes('项目')) {
+        res.status(400).json({ error: error.message });
+      } else if (error.message.includes('不存在')) {
+        res.status(404).json({ error: error.message });
+      } else {
+        logger.error('删除组织失败', error);
+        res.status(500).json({ error: '删除组织失败' });
+      }
     }
   });
 
   // PUT /api/organizations/:id/members/:userId - 修改成员角色
-  router.put('/:id/members/:userId', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
-    const idParam = req.params.id;
-    const userIdParam = req.params.userId;
-    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
-    const targetUserId = parseInt(Array.isArray(userIdParam) ? userIdParam[0] : userIdParam, 10);
-    const { role } = req.body;
+  router.put('/:id/members/:userId', async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+    const targetUserId = parseInt(Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId, 10);
 
-    const validRoles: OrgRole[] = ['owner', 'developer', 'member'];
-    if (!role || !validRoles.includes(role)) {
-      res.status(400).json({ error: '无效的角色，必须是 owner、developer 或 member' });
+    if (isNaN(orgId) || isNaN(targetUserId)) {
+      res.status(400).json({ error: '无效的 ID' });
       return;
     }
 
     try {
-      // 检查目标成员是否存在
-      const membership = db
-        .prepare('SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?')
-        .get(orgId, targetUserId) as { role: OrgRole } | undefined;
-
-      if (!membership) {
-        res.status(404).json({ error: '该用户不是组织成员' });
-        return;
+      const member = await orgService.updateMemberRole(orgId, userId, {
+        userId: targetUserId,
+        role: req.body.role,
+      });
+      res.json(member);
+    } catch (error: any) {
+      if (error.message.includes('权限') || error.message.includes('owner')) {
+        res.status(403).json({ error: error.message });
+      } else if (error.message.includes('角色')) {
+        res.status(400).json({ error: error.message });
+      } else if (error.message.includes('最后一个')) {
+        res.status(400).json({ error: error.message });
+      } else if (error.message.includes('不存在') || error.message.includes('不是')) {
+        res.status(404).json({ error: error.message });
+      } else {
+        logger.error('修改成员角色失败', error);
+        res.status(500).json({ error: '修改成员角色失败' });
       }
-
-      // 检查是否是最后一个 owner
-      if (membership.role === 'owner' && role !== 'owner') {
-        const ownerCount = db
-          .prepare("SELECT COUNT(*) as count FROM organization_members WHERE organization_id = ? AND role = 'owner'")
-          .get(orgId) as { count: number };
-
-        if (ownerCount.count <= 1) {
-          res.status(400).json({ error: '不能修改最后一个 owner 的角色' });
-          return;
-        }
-      }
-
-      db.prepare('UPDATE organization_members SET role = ? WHERE organization_id = ? AND user_id = ?').run(role, orgId, targetUserId);
-
-      const updatedMember = db
-        .prepare(
-          `SELECT u.id, u.name, u.email, u.avatar, om.role, om.joined_at
-           FROM organization_members om
-           JOIN users u ON om.user_id = u.id
-           WHERE om.organization_id = ? AND om.user_id = ?`
-        )
-        .get(orgId, targetUserId) as {
-          id: number;
-          name: string;
-          email: string;
-          avatar: string | null;
-          role: OrgRole;
-          joined_at: string;
-        };
-
-      res.json(updatedMember);
-    } catch (error) {
-      logger.error('修改成员角色失败', error);
-      res.status(500).json({ error: '修改成员角色失败' });
     }
   });
 
   // DELETE /api/organizations/:id/members/:userId - 移除成员
-  router.delete('/:id/members/:userId', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
-    const idParam = req.params.id;
-    const userIdParam = req.params.userId;
-    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
-    const targetUserId = parseInt(Array.isArray(userIdParam) ? userIdParam[0] : userIdParam, 10);
-    const currentUserId = (req as any).userId;
+  router.delete('/:id/members/:userId', async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+    const targetUserId = parseInt(Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId, 10);
+
+    if (isNaN(orgId) || isNaN(targetUserId)) {
+      res.status(400).json({ error: '无效的 ID' });
+      return;
+    }
 
     try {
-      // 检查目标成员是否存在
-      const membership = db
-        .prepare('SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?')
-        .get(orgId, targetUserId) as { role: OrgRole } | undefined;
-
-      if (!membership) {
-        res.status(404).json({ error: '该用户不是组织成员' });
-        return;
-      }
-
-      // 不能移除自己
-      if (targetUserId === currentUserId) {
-        res.status(400).json({ error: '不能移除自己' });
-        return;
-      }
-
-      // 检查是否是最后一个 owner
-      if (membership.role === 'owner') {
-        const ownerCount = db
-          .prepare("SELECT COUNT(*) as count FROM organization_members WHERE organization_id = ? AND role = 'owner'")
-          .get(orgId) as { count: number };
-
-        if (ownerCount.count <= 1) {
-          res.status(400).json({ error: '不能移除最后一个 owner' });
-          return;
-        }
-      }
-
-      const result = db.prepare('DELETE FROM organization_members WHERE organization_id = ? AND user_id = ?').run(orgId, targetUserId);
-
-      if (result.changes === 0) {
-        res.status(404).json({ error: '成员不存在' });
-        return;
-      }
-
+      await orgService.removeMember(orgId, userId, targetUserId);
       res.status(204).send();
-    } catch (error) {
-      logger.error('移除成员失败', error);
-      res.status(500).json({ error: '移除成员失败' });
+    } catch (error: any) {
+      if (error.message.includes('权限') || error.message.includes('owner')) {
+        res.status(403).json({ error: error.message });
+      } else if (error.message.includes('自己') || error.message.includes('最后一个')) {
+        res.status(400).json({ error: error.message });
+      } else if (error.message.includes('不存在') || error.message.includes('不是')) {
+        res.status(404).json({ error: error.message });
+      } else {
+        logger.error('移除成员失败', error);
+        res.status(500).json({ error: '移除成员失败' });
+      }
     }
   });
 
   // POST /api/organizations/:id/invitations - 邀请成员
-  router.post('/:id/invitations', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
-    const idParam = req.params.id;
-    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
+  router.post('/:id/invitations', async (req, res) => {
     const userId = (req as any).userId;
-    const { email, role } = req.body;
+    const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
-    if (!email || typeof email !== 'string') {
-      res.status(400).json({ error: '邮箱地址不能为空' });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      res.status(400).json({ error: '邮箱地址格式不正确' });
-      return;
-    }
-
-    const validRoles: OrgRole[] = ['owner', 'developer', 'member'];
-    if (!role || !validRoles.includes(role)) {
-      res.status(400).json({ error: '无效的角色，必须是 owner、developer 或 member' });
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
       return;
     }
 
     try {
-      // 检查用户是否已是组织成员
-      const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: number } | undefined;
-      if (existingUser) {
-        const existingMember = db
-          .prepare('SELECT 1 FROM organization_members WHERE organization_id = ? AND user_id = ?')
-          .get(orgId, existingUser.id);
-        if (existingMember) {
-          res.status(400).json({ error: '该用户已是组织成员' });
-          return;
-        }
-      }
-
-      // 检查是否已有待处理邀请
-      const existingInvitation = db
-        .prepare("SELECT id FROM organization_invitations WHERE organization_id = ? AND email = ? AND status = 'pending'")
-        .get(orgId, email);
-      if (existingInvitation) {
-        res.status(400).json({ error: '该邮箱已有待处理的邀请' });
-        return;
-      }
-
-      const result = db
-        .prepare(
-          'INSERT INTO organization_invitations (organization_id, email, role, invited_by) VALUES (?, ?, ?, ?)'
-        )
-        .run(orgId, email.toLowerCase(), role, userId);
-
-      const invitation = db
-        .prepare('SELECT * FROM organization_invitations WHERE id = ?')
-        .get(result.lastInsertRowid);
-
+      const invitation = await orgService.inviteMember(orgId, userId, req.body);
       res.status(201).json(invitation);
-    } catch (error) {
-      logger.error('邀请成员失败', error);
-      res.status(500).json({ error: '邀请成员失败' });
+    } catch (error: any) {
+      if (error.message.includes('权限') || error.message.includes('owner')) {
+        res.status(403).json({ error: error.message });
+      } else if (error.message.includes('邮箱') || error.message.includes('角色')) {
+        res.status(400).json({ error: error.message });
+      } else if (error.message.includes('已是') || error.message.includes('已有')) {
+        res.status(400).json({ error: error.message });
+      } else {
+        logger.error('邀请成员失败', error);
+        res.status(500).json({ error: '邀请成员失败' });
+      }
     }
   });
 
   // GET /api/organizations/:id/invitations - 获取待处理邀请列表
-  router.get('/:id/invitations', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
-    const idParam = req.params.id;
-    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
+  router.get('/:id/invitations', async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+
+    if (isNaN(orgId)) {
+      res.status(400).json({ error: '无效的组织 ID' });
+      return;
+    }
 
     try {
-      const invitations = db
-        .prepare(
-          `SELECT oi.*, u.name as invited_by_name
-           FROM organization_invitations oi
-           LEFT JOIN users u ON oi.invited_by = u.id
-           WHERE oi.organization_id = ? AND oi.status = 'pending'
-           ORDER BY oi.created_at DESC`
-        )
-        .all(orgId);
-
+      const invitations = await orgService.findPendingInvitations(orgId, userId);
       res.json(invitations);
-    } catch (error) {
-      logger.error('获取邀请列表失败', error);
-      res.status(500).json({ error: '获取邀请列表失败' });
+    } catch (error: any) {
+      if (error.message.includes('权限') || error.message.includes('owner')) {
+        res.status(403).json({ error: error.message });
+      } else {
+        logger.error('获取邀请列表失败', error);
+        res.status(500).json({ error: '获取邀请列表失败' });
+      }
     }
   });
 
   // DELETE /api/organizations/:id/invitations/:invId - 取消邀请
-  router.delete('/:id/invitations/:invId', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
-    const idParam = req.params.id;
-    const invIdParam = req.params.invId;
-    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
-    const invId = parseInt(Array.isArray(invIdParam) ? invIdParam[0] : invIdParam, 10);
+  router.delete('/:id/invitations/:invId', async (req, res) => {
+    const userId = (req as any).userId;
+    const orgId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+    const invId = parseInt(Array.isArray(req.params.invId) ? req.params.invId[0] : req.params.invId, 10);
+
+    if (isNaN(orgId) || isNaN(invId)) {
+      res.status(400).json({ error: '无效的 ID' });
+      return;
+    }
 
     try {
-      const result = db
-        .prepare('DELETE FROM organization_invitations WHERE id = ? AND organization_id = ? AND status = ?')
-        .run(invId, orgId, 'pending');
-
-      if (result.changes === 0) {
-        res.status(404).json({ error: '邀请不存在或已处理' });
-        return;
-      }
-
+      await orgService.cancelInvitation(orgId, userId, invId);
       res.status(204).send();
-    } catch (error) {
-      logger.error('取消邀请失败', error);
-      res.status(500).json({ error: '取消邀请失败' });
+    } catch (error: any) {
+      if (error.message.includes('权限') || error.message.includes('owner')) {
+        res.status(403).json({ error: error.message });
+      } else {
+        logger.error('取消邀请失败', error);
+        res.status(500).json({ error: '取消邀请失败' });
+      }
     }
   });
 

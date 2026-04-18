@@ -42,8 +42,8 @@ export function createApp(db: Database.Database): express.Express {
   app.use('/api/projects/:projectId/repos', createReposRouter(db));
   app.use('/api/builds', createBuildsRouter(db));
   app.use('/api/claude-config', createClaudeConfigRouter(db));
-  app.use('/api/organizations', createOrganizationsRouter(db));
-  app.use('/api/invitations', createInvitationsRouter(db));
+  app.use('/api/organizations', createOrganizationsRouter());
+  app.use('/api/invitations', createInvitationsRouter());
   app.use('/api/drafts', createDraftsRouter(db));
 
   app.use((_req, res) => {
