@@ -2,7 +2,8 @@ import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
-import type { Project, ProjectMember, User } from '../types.js';
+import { isSuperAdmin } from '../utils/super-admin.js';
+import type { Project, OrgRole } from '../types.js';
 
 const logger = createLogger('projects');
 
@@ -19,10 +20,10 @@ export function createProjectsRouter(db: Database.Database): Router {
   // POST /api/projects - 创建项目
   router.post('/', authMiddleware, (req, res) => {
     const userId = (req as any).userId;
-    const { name, template_type } = req.body;
+    const { name, template_type, organization_id } = req.body;
 
-    if (!name || !template_type) {
-      res.status(400).json({ error: '缺少必填字段：name, template_type' });
+    if (!name || !template_type || !organization_id) {
+      res.status(400).json({ error: '缺少必填字段：name, template_type, organization_id' });
       return;
     }
 
@@ -37,28 +38,31 @@ export function createProjectsRouter(db: Database.Database): Router {
     }
 
     try {
-      // 使用事务确保原子性
-      const createProjectTx = db.transaction(() => {
-        const result = db
-          .prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)')
-          .run(name, template_type, userId);
+      // 检查用户是否有权限在该组织下创建项目（developer 或 owner）
+      const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+      const isSuper = user && isSuperAdmin(user.email);
 
-        const projectId = result.lastInsertRowid;
+      if (!isSuper) {
+        const membership = db
+          .prepare(
+            "SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ? AND role IN ('owner', 'developer')"
+          )
+          .get(organization_id, userId);
 
-        db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
-          projectId,
-          userId,
-          'owner'
-        );
+        if (!membership) {
+          res.status(403).json({ error: '您没有权限在该组织下创建项目' });
+          return;
+        }
+      }
 
-        return projectId;
-      });
+      const result = db
+        .prepare('INSERT INTO projects (name, template_type, organization_id, created_by) VALUES (?, ?, ?, ?)')
+        .run(name, template_type, organization_id, userId);
 
-      const projectId = createProjectTx();
+      const projectId = result.lastInsertRowid;
 
-      // 返回创建的项目
       const project = db
-        .prepare('SELECT id, name, template_type, container_id, status, created_by, created_at FROM projects WHERE id = ?')
+        .prepare('SELECT id, name, template_type, organization_id, container_id, status, created_by, created_at FROM projects WHERE id = ?')
         .get(projectId) as Project;
 
       res.status(201).json(project);
@@ -74,10 +78,10 @@ export function createProjectsRouter(db: Database.Database): Router {
 
     const projects = db
       .prepare(
-        `SELECT DISTINCT p.id, p.name, p.template_type, p.container_id, p.status, p.created_by, p.created_at
+        `SELECT DISTINCT p.id, p.name, p.template_type, p.organization_id, p.container_id, p.status, p.created_by, p.created_at
          FROM projects p
-         JOIN project_members pm ON p.id = pm.project_id
-         WHERE pm.user_id = ?
+         JOIN organization_members om ON p.organization_id = om.organization_id
+         WHERE om.user_id = ?
          ORDER BY p.created_at DESC`
       )
       .all(userId) as Project[];
@@ -88,95 +92,115 @@ export function createProjectsRouter(db: Database.Database): Router {
   // GET /api/projects/:id - 获取项目详情
   router.get('/:id', authMiddleware, (req, res) => {
     const userId = (req as any).userId;
-    const idParam = req.params.id;
-    const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
+    const projectId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });
       return;
     }
 
-    // 检查用户是否是项目成员
-    const membership = db
-      .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId);
+    try {
+      // 获取项目信息
+      const project = db
+        .prepare('SELECT id, name, template_type, organization_id, container_id, status, created_by, created_at FROM projects WHERE id = ?')
+        .get(projectId) as Project | undefined;
 
-    if (!membership) {
-      res.status(404).json({ error: '项目不存在' });
-      return;
-    }
+      if (!project) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
 
-    // 获取项目信息
-    const project = db
-      .prepare('SELECT id, name, template_type, container_id, status, created_by, created_at FROM projects WHERE id = ?')
-      .get(projectId) as Project | undefined;
+      // 检查用户是否是组织成员
+      const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+      const isSuper = user && isSuperAdmin(user.email);
 
-    if (!project) {
-      res.status(404).json({ error: '项目不存在' });
-      return;
-    }
+      if (!isSuper) {
+        const membership = db
+          .prepare('SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?')
+          .get(project.organization_id, userId);
 
-    // 获取项目成员列表
-    const members = db
-      .prepare(
-        `SELECT u.id, u.name, u.email, u.avatar, pm.role
-         FROM project_members pm
-         JOIN users u ON pm.user_id = u.id
-         WHERE pm.project_id = ?`
-      )
-      .all(projectId) as Array<{
-      id: number;
-      name: string;
-      email: string;
-      avatar: string | null;
-      role: 'owner' | 'developer' | 'product';
-    }>;
+        if (!membership) {
+          res.status(403).json({ error: '您没有权限访问该项目' });
+          return;
+        }
+      }
 
-    // 获取项目关联的仓库列表
-    const repos = db
-      .prepare('SELECT id, provider, repo_url, repo_name, branch, created_at FROM project_repos WHERE project_id = ?')
-      .all(projectId) as Array<{
+      // 获取组织成员作为项目成员列表
+      const members = db
+        .prepare(
+          `SELECT u.id, u.name, u.email, u.avatar, om.role
+           FROM organization_members om
+           JOIN users u ON om.user_id = u.id
+           WHERE om.organization_id = ?`
+        )
+        .all(project.organization_id) as Array<{
         id: number;
-        provider: 'github' | 'gitlab';
-        repo_url: string;
-        repo_name: string;
-        branch: string;
-        created_at: string;
+        name: string;
+        email: string;
+        avatar: string | null;
+        role: OrgRole;
       }>;
 
-    res.json({ ...project, members, repos });
+      // 获取项目关联的仓库列表
+      const repos = db
+        .prepare('SELECT id, provider, repo_url, repo_name, branch, created_at FROM project_repos WHERE project_id = ?')
+        .all(projectId);
+
+      res.json({ ...project, members, repos });
+    } catch (error) {
+      logger.error('获取项目详情失败', error);
+      res.status(500).json({ error: '获取项目详情失败' });
+    }
   });
 
   // DELETE /api/projects/:id - 删除项目（仅 owner 可删除）
   router.delete('/:id', authMiddleware, (req, res) => {
     const userId = (req as any).userId;
-    const idParam = req.params.id;
-    const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
+    const projectId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });
       return;
     }
 
-    // 检查用户是否是项目的 owner
-    const membership = db
-      .prepare('SELECT role FROM project_members WHERE project_id = ? AND user_id = ?')
-      .get(projectId, userId) as { role: string } | undefined;
+    try {
+      // 获取项目信息
+      const project = db
+        .prepare('SELECT organization_id FROM projects WHERE id = ?')
+        .get(projectId) as { organization_id: number } | undefined;
 
-    if (!membership || membership.role !== 'owner') {
-      res.status(403).json({ error: '只有项目 owner 可以删除项目' });
-      return;
+      if (!project) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+
+      // 检查用户是否是组织的 owner
+      const user = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as { email: string } | undefined;
+      const isSuper = user && isSuperAdmin(user.email);
+
+      if (!isSuper) {
+        const membership = db
+          .prepare("SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ? AND role = 'owner'")
+          .get(project.organization_id, userId);
+
+        if (!membership) {
+          res.status(403).json({ error: '只有组织 owner 可以删除项目' });
+          return;
+        }
+      }
+
+      const result = db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
+
+      if (result.changes === 0) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      logger.error('删除项目失败', error);
+      res.status(500).json({ error: '删除项目失败' });
     }
-
-    // 删除项目（会级联删除 project_members）
-    const result = db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
-
-    if (result.changes === 0) {
-      res.status(404).json({ error: '项目不存在' });
-      return;
-    }
-
-    res.status(204).send();
   });
 
   return router;
