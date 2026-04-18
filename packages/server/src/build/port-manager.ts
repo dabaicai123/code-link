@@ -89,3 +89,8 @@ export function getPortManager(): PortManager {
   }
   return portManagerInstance;
 }
+
+// 重置实例（用于测试）
+export function resetPortManagerInstance(): void {
+  portManagerInstance = null;
+}

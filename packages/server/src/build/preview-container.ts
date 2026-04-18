@@ -139,3 +139,11 @@ export function getPreviewContainerManager(): PreviewContainerManager {
   }
   return previewManagerInstance;
 }
+
+// 重置实例（用于测试）
+export function resetPreviewContainerManagerInstance(): void {
+  if (previewManagerInstance) {
+    previewManagerInstance.cleanupAll();
+  }
+  previewManagerInstance = null;
+}
