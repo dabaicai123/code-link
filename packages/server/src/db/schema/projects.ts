@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 import { organizations } from './organizations.js';
@@ -14,5 +14,18 @@ export const projects = sqliteTable('projects', {
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
 });
 
+export const projectMembers = sqliteTable('project_members', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  projectId: integer('project_id').notNull()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role', { enum: ['owner', 'developer', 'product'] }).notNull(),
+}, (table) => ({
+  projectUserUnique: unique().on(table.projectId, table.userId),
+}));
+
 export type InsertProject = typeof projects.$inferInsert;
 export type SelectProject = typeof projects.$inferSelect;
+export type InsertProjectMember = typeof projectMembers.$inferInsert;
+export type SelectProjectMember = typeof projectMembers.$inferSelect;

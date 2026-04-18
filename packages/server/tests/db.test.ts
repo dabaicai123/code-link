@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { getSqliteDb, closeDb } from '../src/db/index.ts';
-import { initSchema } from '../src/db/schema.ts';
+import { getSqliteDb, closeDb, getDb } from '../src/db/index.js';
+import { initSchema } from '../src/db/schema.js';
+import {
+  createTestUser,
+  createTestOrganization,
+  createTestProject,
+  deleteTestProject,
+  deleteTestUser,
+  findUserByEmail,
+} from './helpers/test-db.js';
+import { eq } from 'drizzle-orm';
+import { users, projects, projectMembers, organizations } from '../src/db/schema/index.js';
 
 describe('数据库 Schema', () => {
   it('应创建所有必要的表', () => {
@@ -25,90 +35,186 @@ describe('数据库 Schema', () => {
 
   it('应能插入用户', () => {
     closeDb();
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
-    const result = db
-      .prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)')
-      .run('测试用户', 'test@test.com', 'hash123');
-    expect(result.changes).toBe(1);
+    getDb(':memory:');
+    initSchema(getSqliteDb());
 
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get('test@test.com') as any;
+    const user = createTestUser({
+      name: '测试用户',
+      email: 'test@test.com',
+      passwordHash: 'hash123',
+    });
+
     expect(user.name).toBe('测试用户');
+    expect(user.email).toBe('test@test.com');
+
+    const foundUser = findUserByEmail('test@test.com');
+    expect(foundUser).toBeDefined();
+    expect(foundUser!.name).toBe('测试用户');
     closeDb();
   });
 
   it('不允许重复邮箱', () => {
     closeDb();
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('用户1', 'dup@test.com', 'hash');
+    getDb(':memory:');
+    initSchema(getSqliteDb());
+
+    createTestUser({
+      name: '用户1',
+      email: 'dup@test.com',
+      passwordHash: 'hash',
+    });
+
     expect(() => {
-      db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('用户2', 'dup@test.com', 'hash');
+      createTestUser({
+        name: '用户2',
+        email: 'dup@test.com',
+        passwordHash: 'hash',
+      });
     }).toThrow();
+
     closeDb();
   });
 
   it('应能创建项目并关联成员', () => {
     closeDb();
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('创建者', 'owner@test.com', 'hash');
-    const user = db.prepare('SELECT id FROM users WHERE email = ?').get('owner@test.com') as any;
+    getDb(':memory:');
+    initSchema(getSqliteDb());
 
-    // 创建组织
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('测试组织', user.id);
-    const org = db.prepare('SELECT id FROM organizations WHERE name = ?').get('测试组织') as any;
+    const user = createTestUser({
+      name: '创建者',
+      email: 'owner@test.com',
+      passwordHash: 'hash',
+    });
 
-    db.prepare('INSERT INTO projects (name, template_type, status, created_by, organization_id) VALUES (?, ?, ?, ?, ?)').run('测试项目', 'node', 'created', user.id, org.id);
-    const project = db.prepare('SELECT id FROM projects WHERE name = ?').get('测试项目') as any;
+    const org = createTestOrganization(user.id, { name: '测试组织' });
 
-    db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(project.id, user.id, 'owner');
-    const member = db.prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?').get(project.id, user.id) as any;
-    expect(member.role).toBe('owner');
+    const project = createTestProject(user.id, org.id, {
+      name: '测试项目',
+      templateType: 'node',
+      status: 'created',
+    });
+
+    const db = getDb();
+    // 创建项目成员
+    db.insert(projectMembers)
+      .values({
+        projectId: project.id,
+        userId: user.id,
+        role: 'owner',
+      })
+      .run();
+
+    const member = db
+      .select()
+      .from(projectMembers)
+      .where(
+        eq(projectMembers.projectId, project.id) &&
+        eq(projectMembers.userId, user.id)
+      )
+      .get();
+
+    expect(member).toBeDefined();
+    expect(member!.role).toBe('owner');
     closeDb();
   });
 
   it('外键约束应阻止插入无效的用户引用', () => {
     closeDb();
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
-    // 创建组织但不创建用户
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('temp', 'temp@test.com', 'hash');
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('temp-org', 1);
+    getDb(':memory:');
+    initSchema(getSqliteDb());
+
+    const user = createTestUser({
+      name: 'temp',
+      email: 'temp@test.com',
+      passwordHash: 'hash',
+    });
+
+    const org = createTestOrganization(user.id, { name: 'temp-org' });
+
+    const db = getDb();
     expect(() => {
-      db.prepare('INSERT INTO projects (name, template_type, status, created_by, organization_id) VALUES (?, ?, ?, ?, ?)').run('项目', 'node', 'created', 9999, 1);
+      db.insert(projects)
+        .values({
+          name: '项目',
+          templateType: 'node',
+          status: 'created',
+          createdBy: 9999, // 不存在的用户ID
+          organizationId: org.id,
+        })
+        .run();
     }).toThrow();
+
     closeDb();
   });
 
   it('CHECK 约束应拒绝无效的模板类型', () => {
     closeDb();
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('用户', 'check@test.com', 'hash');
-    const user = db.prepare('SELECT id FROM users WHERE email = ?').get('check@test.com') as any;
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('测试组织', user.id);
-    const org = db.prepare('SELECT id FROM organizations WHERE name = ?').get('测试组织') as any;
+    getDb(':memory:');
+    initSchema(getSqliteDb());
+
+    const user = createTestUser({
+      name: '用户',
+      email: 'check@test.com',
+      passwordHash: 'hash',
+    });
+
+    const org = createTestOrganization(user.id, { name: '测试组织' });
+
+    const db = getDb();
     expect(() => {
-      db.prepare('INSERT INTO projects (name, template_type, status, created_by, organization_id) VALUES (?, ?, ?, ?, ?)').run('项目', 'invalid_type', 'created', user.id, org.id);
+      db.insert(projects)
+        .values({
+          name: '项目',
+          templateType: 'invalid_type' as any, // 无效的模板类型
+          status: 'created',
+          createdBy: user.id,
+          organizationId: org.id,
+        })
+        .run();
     }).toThrow();
+
     closeDb();
   });
 
   it('ON DELETE CASCADE 应删除相关项目成员', () => {
     closeDb();
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('用户', 'cascade@test.com', 'hash');
-    const user = db.prepare('SELECT id FROM users WHERE email = ?').get('cascade@test.com') as any;
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('测试组织', user.id);
-    const org = db.prepare('SELECT id FROM organizations WHERE name = ?').get('测试组织') as any;
-    db.prepare('INSERT INTO projects (name, template_type, status, created_by, organization_id) VALUES (?, ?, ?, ?, ?)').run('项目', 'node', 'created', user.id, org.id);
-    const project = db.prepare('SELECT id FROM projects WHERE name = ?').get('项目') as any;
-    db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(project.id, user.id, 'owner');
+    getDb(':memory:');
+    initSchema(getSqliteDb());
 
-    db.prepare('DELETE FROM projects WHERE id = ?').run(project.id);
-    const members = db.prepare('SELECT * FROM project_members WHERE project_id = ?').all(project.id);
+    const user = createTestUser({
+      name: '用户',
+      email: 'cascade@test.com',
+      passwordHash: 'hash',
+    });
+
+    const org = createTestOrganization(user.id, { name: '测试组织' });
+
+    const project = createTestProject(user.id, org.id, {
+      name: '项目',
+      templateType: 'node',
+      status: 'created',
+    });
+
+    const db = getDb();
+    // 创建项目成员
+    db.insert(projectMembers)
+      .values({
+        projectId: project.id,
+        userId: user.id,
+        role: 'owner',
+      })
+      .run();
+
+    // 删除项目
+    deleteTestProject(project.id);
+
+    // 验证项目成员也被删除
+    const members = db
+      .select()
+      .from(projectMembers)
+      .where(eq(projectMembers.projectId, project.id))
+      .all();
+
     expect(members).toHaveLength(0);
     closeDb();
   });
