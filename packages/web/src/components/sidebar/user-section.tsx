@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 interface User {
   id: string;
   email: string;
@@ -12,6 +14,8 @@ interface UserSectionProps {
 }
 
 export function UserSection({ user, onLogout }: UserSectionProps) {
+  const router = useRouter();
+
   return (
     <div
       style={{
@@ -43,11 +47,18 @@ export function UserSection({ user, onLogout }: UserSectionProps) {
         <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{user.email}</div>
       </div>
       <button
+        onClick={() => router.push('/settings')}
+        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
+        title="设置"
+      >
+        ⚙️
+      </button>
+      <button
         onClick={onLogout}
         style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '14px' }}
         title="退出登录"
       >
-        ⚙️
+        🚪
       </button>
     </div>
   );

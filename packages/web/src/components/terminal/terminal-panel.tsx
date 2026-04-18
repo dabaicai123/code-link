@@ -5,6 +5,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { TerminalWebSocket } from '@/lib/terminal-websocket';
+import Link from 'next/link';
 import '@xterm/xterm/css/xterm.css';
 
 interface TerminalPanelProps {
@@ -19,6 +20,8 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<TerminalWebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [showConfigPrompt, setShowConfigPrompt] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -101,9 +104,17 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     });
 
     ws.setOnError((msg) => {
-      // 只在首次连接失败时显示错误，避免重连时重复显示
-      if (!isConnected && mountedRef.current) {
-        xtermRef.current?.write(`\r\n\x1b[31m[Error: ${msg}]\x1b[0m\r\n`);
+      if (!mountedRef.current) return;
+
+      // 检查是否是配置缺失错误
+      if (msg.includes('请先在「设置')) {
+        setShowConfigPrompt(true);
+        setErrorMessage(msg);
+      } else {
+        // 只在首次连接失败时显示错误，避免重连时重复显示
+        if (!isConnected) {
+          xtermRef.current?.write(`\r\n\x1b[31m[Error: ${msg}]\x1b[0m\r\n`);
+        }
       }
     });
 
@@ -148,6 +159,23 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
       window.removeEventListener('resize', handleResize);
     };
   }, [isConnected]);
+
+  // 显示配置提示
+  if (showConfigPrompt) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900">
+        <div className="text-center p-8">
+          <p className="text-gray-300 mb-4">{errorMessage}</p>
+          <Link
+            href="/settings"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            前往设置
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return <div ref={containerRef} style={{ height: '100%', width: '100%', backgroundColor: 'var(--bg-primary)' }} />;
 }
