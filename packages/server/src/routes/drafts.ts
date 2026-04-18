@@ -9,6 +9,7 @@ import {
   createDraftAIResponseEvent,
 } from '../websocket/types.js';
 import { createLogger } from '../logger/index.js';
+import { success, Errors } from '../utils/response.js';
 
 const logger = createLogger('drafts');
 
@@ -20,15 +21,15 @@ export function createDraftsRouter(): Router {
     const userId = (req as any).userId;
     try {
       const draft = await draftService.create(userId, req.body);
-      res.status(201).json({ draft });
+      res.status(201).json(success({ draft }));
     } catch (error: any) {
       if (error.message.includes('权限')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else if (error.message.includes('缺少') || error.message.includes('标题')) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.paramInvalid('', error.message));
       } else {
         logger.error('创建 Draft 失败', error);
-        res.status(500).json({ error: '创建 Draft 失败' });
+        res.status(500).json(Errors.internal('创建 Draft 失败'));
       }
     }
   });
@@ -37,10 +38,10 @@ export function createDraftsRouter(): Router {
     const userId = (req as any).userId;
     try {
       const drafts = await draftService.findByUserId(userId);
-      res.json(drafts);
+      res.json(success(drafts));
     } catch (error: any) {
       logger.error('获取 Draft 列表失败', error);
-      res.status(500).json({ error: '获取 Draft 列表失败' });
+      res.status(500).json(Errors.internal('获取 Draft 列表失败'));
     }
   });
 
@@ -49,19 +50,19 @@ export function createDraftsRouter(): Router {
     const draftId = parseInt(req.params.draftId as string, 10);
 
     if (isNaN(draftId)) {
-      res.status(400).json({ error: '无效的 Draft ID' });
+      res.status(400).json(Errors.paramInvalid('draftId', '无效的 Draft ID'));
       return;
     }
 
     try {
       const result = await draftService.findById(draftId, userId);
-      res.json(result);
+      res.json(success(result));
     } catch (error: any) {
       if (error.message.includes('不是')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('获取 Draft 详情失败', error);
-        res.status(500).json({ error: '获取 Draft 详情失败' });
+        res.status(500).json(Errors.internal('获取 Draft 详情失败'));
       }
     }
   });
@@ -72,7 +73,7 @@ export function createDraftsRouter(): Router {
     const { content, messageType, parentId, metadata } = req.body;
 
     if (isNaN(draftId) || !content) {
-      res.status(400).json({ error: '参数无效' });
+      res.status(400).json(Errors.paramInvalid('draftId 或 content'));
       return;
     }
 
@@ -125,13 +126,13 @@ export function createDraftsRouter(): Router {
           });
       }
 
-      res.status(201).json({ message });
+      res.status(201).json(success({ message }));
     } catch (error: any) {
       if (error.message.includes('不是')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('发送消息失败', error);
-        res.status(500).json({ error: '发送消息失败' });
+        res.status(500).json(Errors.internal('发送消息失败'));
       }
     }
   });
@@ -142,19 +143,19 @@ export function createDraftsRouter(): Router {
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
 
     if (isNaN(draftId)) {
-      res.status(400).json({ error: '无效的 Draft ID' });
+      res.status(400).json(Errors.paramInvalid('draftId', '无效的 Draft ID'));
       return;
     }
 
     try {
       const messages = await draftService.findMessages(draftId, userId, { limit });
-      res.json(messages);
+      res.json(success(messages));
     } catch (error: any) {
       if (error.message.includes('不是')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('获取消息列表失败', error);
-        res.status(500).json({ error: '获取消息列表失败' });
+        res.status(500).json(Errors.internal('获取消息列表失败'));
       }
     }
   });
@@ -165,7 +166,7 @@ export function createDraftsRouter(): Router {
     const { status } = req.body;
 
     if (isNaN(draftId) || !status) {
-      res.status(400).json({ error: '参数无效' });
+      res.status(400).json(Errors.paramInvalid('draftId 或 status'));
       return;
     }
 
@@ -178,13 +179,13 @@ export function createDraftsRouter(): Router {
         wsServer.broadcastDraftMessage(draftId, wsMessage);
       }
 
-      res.json({ draft });
+      res.json(success({ draft }));
     } catch (error: any) {
       if (error.message.includes('不是')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('更新 Draft 状态失败', error);
-        res.status(500).json({ error: '更新 Draft 状态失败' });
+        res.status(500).json(Errors.internal('更新 Draft 状态失败'));
       }
     }
   });
@@ -196,7 +197,7 @@ export function createDraftsRouter(): Router {
     const { type, comment } = req.body;
 
     if (isNaN(draftId) || isNaN(messageId) || !type) {
-      res.status(400).json({ error: '参数无效' });
+      res.status(400).json(Errors.paramInvalid('draftId、messageId 或 type'));
       return;
     }
 
@@ -218,13 +219,13 @@ export function createDraftsRouter(): Router {
         wsServer.broadcastDraftMessage(draftId, wsMessage);
       }
 
-      res.json({ success: true });
+      res.json(success({ success: true }));
     } catch (error: any) {
       if (error.message.includes('不是')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('确认消息失败', error);
-        res.status(500).json({ error: '确认消息失败' });
+        res.status(500).json(Errors.internal('确认消息失败'));
       }
     }
   });
@@ -235,19 +236,19 @@ export function createDraftsRouter(): Router {
     const messageId = parseInt(req.params.messageId as string, 10);
 
     if (isNaN(draftId) || isNaN(messageId)) {
-      res.status(400).json({ error: '参数无效' });
+      res.status(400).json(Errors.paramInvalid('draftId 或 messageId'));
       return;
     }
 
     try {
       const confirmations = await draftService.findConfirmations(draftId, messageId, userId);
-      res.json({ confirmations });
+      res.json(success(confirmations));
     } catch (error: any) {
       if (error.message.includes('不是')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('获取确认列表失败', error);
-        res.status(500).json({ error: '获取确认列表失败' });
+        res.status(500).json(Errors.internal('获取确认列表失败'));
       }
     }
   });
@@ -258,19 +259,19 @@ export function createDraftsRouter(): Router {
     const { newUserId } = req.body;
 
     if (isNaN(draftId) || !newUserId) {
-      res.status(400).json({ error: '参数无效' });
+      res.status(400).json(Errors.paramInvalid('draftId 或 newUserId'));
       return;
     }
 
     try {
       await draftService.addMember(draftId, userId, newUserId);
-      res.json({ success: true });
+      res.json(success({ success: true }));
     } catch (error: any) {
       if (error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('添加成员失败', error);
-        res.status(500).json({ error: '添加成员失败' });
+        res.status(500).json(Errors.internal('添加成员失败'));
       }
     }
   });
@@ -281,19 +282,19 @@ export function createDraftsRouter(): Router {
     const memberId = parseInt(req.params.memberId as string, 10);
 
     if (isNaN(draftId) || isNaN(memberId)) {
-      res.status(400).json({ error: '参数无效' });
+      res.status(400).json(Errors.paramInvalid('draftId 或 memberId'));
       return;
     }
 
     try {
       await draftService.removeMember(draftId, userId, memberId);
-      res.json({ success: true });
+      res.json(success({ success: true }));
     } catch (error: any) {
       if (error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('移除成员失败', error);
-        res.status(500).json({ error: '移除成员失败' });
+        res.status(500).json(Errors.internal('移除成员失败'));
       }
     }
   });
@@ -303,7 +304,7 @@ export function createDraftsRouter(): Router {
     const draftId = parseInt(req.params.draftId as string, 10);
 
     if (isNaN(draftId)) {
-      res.status(400).json({ error: '无效的 Draft ID' });
+      res.status(400).json(Errors.paramInvalid('draftId', '无效的 Draft ID'));
       return;
     }
 
@@ -312,10 +313,10 @@ export function createDraftsRouter(): Router {
       res.status(204).send();
     } catch (error: any) {
       if (error.message.includes('owner')) {
-        res.status(403).json({ error: error.message });
+        res.status(403).json(Errors.forbidden());
       } else {
         logger.error('删除 Draft 失败', error);
-        res.status(500).json({ error: '删除 Draft 失败' });
+        res.status(500).json(Errors.internal('删除 Draft 失败'));
       }
     }
   });
