@@ -6,6 +6,8 @@ import { ChannelManager } from './channels.js';
 import {
   parseMessage,
   createChatMessage,
+  createDraftMemberJoinedEvent,
+  createDraftMemberLeftEvent,
   type Message,
 } from './types.js';
 import { handleTerminalConnection } from '../routes/terminal.js';
@@ -36,12 +38,25 @@ interface FileChangeMessage {
   [key: string]: unknown;
 }
 
+interface DraftSubscribeMessage {
+  type: 'draft_subscribe';
+  draftId: number;
+  userId: number;
+  userName: string;
+}
+
+interface DraftUnsubscribeMessage {
+  type: 'draft_unsubscribe';
+  draftId: number;
+}
+
 interface IncomingMessage {
   type: string;
   projectId?: number;
   userId?: number;
   userName?: string;
   content?: string;
+  draftId?: number;
   [key: string]: unknown;
 }
 
@@ -165,6 +180,12 @@ export class WebSocketServer {
       case 'file_change':
         this.handleFileChange(ws, parsed as FileChangeMessage);
         break;
+      case 'draft_subscribe':
+        this.handleDraftSubscribe(ws, parsed as DraftSubscribeMessage);
+        break;
+      case 'draft_unsubscribe':
+        this.handleDraftUnsubscribe(ws, parsed as DraftUnsubscribeMessage);
+        break;
       default:
         ws.send(JSON.stringify({ type: 'error', message: 'Unknown message type' }));
     }
@@ -213,11 +234,11 @@ export class WebSocketServer {
   }
 
   private handleDisconnect(ws: WebSocket): void {
+    // 处理 Project 频道断开
     const info = this.channels.getClientInfo(ws);
     if (info) {
       this.channels.unsubscribe(ws, info.projectId);
 
-      // 通知其他用户
       const userLeftMsg = JSON.stringify({
         type: 'user_left',
         projectId: info.projectId,
@@ -226,6 +247,62 @@ export class WebSocketServer {
         timestamp: new Date().toISOString(),
       });
       this.channels.broadcast(info.projectId, userLeftMsg);
+    }
+
+    // 处理 Draft 频道断开
+    const draftInfo = this.channels.getDraftClientInfo(ws);
+    if (draftInfo) {
+      this.channels.unsubscribeFromDraft(ws, draftInfo.draftId);
+
+      const memberLeftMsg = JSON.stringify(
+        createDraftMemberLeftEvent(
+          draftInfo.draftId,
+          draftInfo.userId,
+          draftInfo.userName,
+          this.channels.getDraftChannelUserCount(draftInfo.draftId)
+        )
+      );
+      this.channels.broadcastToDraft(draftInfo.draftId, memberLeftMsg);
+    }
+  }
+
+  private handleDraftSubscribe(ws: WebSocket, msg: DraftSubscribeMessage): void {
+    this.channels.subscribeToDraft(ws, msg.draftId, msg.userId, msg.userName);
+
+    const memberJoinedMsg = JSON.stringify(
+      createDraftMemberJoinedEvent(
+        msg.draftId,
+        msg.userId,
+        msg.userName,
+        this.channels.getDraftChannelUserCount(msg.draftId)
+      )
+    );
+    this.channels.broadcastToDraft(msg.draftId, memberJoinedMsg, ws);
+
+    ws.send(
+      JSON.stringify({
+        type: 'draft_subscribed',
+        draftId: msg.draftId,
+        memberCount: this.channels.getDraftChannelUserCount(msg.draftId),
+        onlineUsers: this.channels.getDraftChannelUsers(msg.draftId),
+      })
+    );
+  }
+
+  private handleDraftUnsubscribe(ws: WebSocket, msg: DraftUnsubscribeMessage): void {
+    const info = this.channels.getDraftClientInfo(ws);
+    if (info) {
+      this.channels.unsubscribeFromDraft(ws, msg.draftId);
+
+      const memberLeftMsg = JSON.stringify(
+        createDraftMemberLeftEvent(
+          msg.draftId,
+          info.userId,
+          info.userName,
+          this.channels.getDraftChannelUserCount(msg.draftId)
+        )
+      );
+      this.channels.broadcastToDraft(msg.draftId, memberLeftMsg);
     }
   }
 
@@ -239,6 +316,24 @@ export class WebSocketServer {
       timestamp: new Date().toISOString(),
     });
     this.channels.broadcast(projectId, msg);
+  }
+
+  broadcastDraftMessage(draftId: number, message: unknown, excludeUserId?: number): void {
+    const msgStr = JSON.stringify(message);
+    const clients = this.channels.getDraftChannelClients(draftId);
+
+    for (const client of clients) {
+      if (client.readyState === WebSocket.OPEN) {
+        const info = this.channels.getDraftClientInfo(client);
+        if (!excludeUserId || info?.userId !== excludeUserId) {
+          client.send(msgStr);
+        }
+      }
+    }
+  }
+
+  getDraftOnlineUsers(draftId: number): Array<{ userId: number; userName: string }> {
+    return this.channels.getDraftChannelUsers(draftId);
   }
 
   close(): void {
