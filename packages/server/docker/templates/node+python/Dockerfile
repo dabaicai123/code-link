@@ -1,5 +1,5 @@
 # docker/templates/node+python/Dockerfile
-FROM node:20-slim
+FROM node:22-slim
 
 # 安装 Python 3.12
 RUN apt-get update && apt-get install -y \

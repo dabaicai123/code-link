@@ -17,7 +17,7 @@ export async function createProjectVolume(projectId: number): Promise<string> {
   await fs.mkdir(path.join(volumePath, 'src'), { recursive: true });
 
   // 创建默认 Dockerfile
-  const dockerfileContent = `FROM node:20-slim
+  const dockerfileContent = `FROM node:22-slim
 WORKDIR /app
 COPY . .
 RUN npm install

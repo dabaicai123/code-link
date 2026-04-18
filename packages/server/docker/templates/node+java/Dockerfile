@@ -1,5 +1,5 @@
 # docker/templates/node+java/Dockerfile
-FROM node:20-slim
+FROM node:22-slim
 
 # 安装 JDK 21
 RUN apt-get update && apt-get install -y \

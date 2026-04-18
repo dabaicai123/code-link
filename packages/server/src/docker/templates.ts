@@ -14,17 +14,17 @@ const TEMPLATE_CONFIGS: Record<TemplateType, TemplateConfig> = {
   node: {
     imageName: 'code-link-node:latest',
     dockerfileDir: path.join(process.cwd(), 'docker/templates/node'),
-    baseImage: 'node:20-slim',
+    baseImage: 'node:22-slim',
   },
   'node+java': {
     imageName: 'code-link-node-java:latest',
     dockerfileDir: path.join(process.cwd(), 'docker/templates/node+java'),
-    baseImage: 'node:20-slim',
+    baseImage: 'node:22-slim',
   },
   'node+python': {
     imageName: 'code-link-node-python:latest',
     dockerfileDir: path.join(process.cwd(), 'docker/templates/node+python'),
-    baseImage: 'node:20-slim',
+    baseImage: 'node:22-slim',
   },
 };
 

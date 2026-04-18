@@ -1,5 +1,5 @@
 # docker/templates/node/Dockerfile
-FROM node:20-slim
+FROM node:22-slim
 
 # 安装基础工具
 RUN apt-get update && apt-get install -y \
