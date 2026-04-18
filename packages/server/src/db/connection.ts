@@ -1,9 +1,15 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 let defaultDb: Database.Database | null = null;
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+// 获取项目根目录 (monorepo root)
+// connection.ts 位于 packages/server/src/db/connection.ts
+// 需要往上 4 层才能到达项目根目录
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
+const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 
 export function getDb(dbPath?: string): Database.Database {
   if (dbPath) {
