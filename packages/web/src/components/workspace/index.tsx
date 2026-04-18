@@ -15,7 +15,7 @@ interface Project {
 
 interface WorkspaceProps {
   project: Project | null;
-  userId: string;
+  userId: number;
   wsUrl?: string;
   onRestart?: () => void;
 }

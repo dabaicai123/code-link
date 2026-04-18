@@ -14,9 +14,10 @@ import { api, setToken, removeToken, ApiError } from './api';
  * 用户信息
  */
 interface User {
-  id: string;
+  id: number;
   email: string;
   name: string;
+  avatar?: string | null;
 }
 
 /**

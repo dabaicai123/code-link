@@ -13,7 +13,7 @@ interface Project {
 
 interface TerminalWorkspaceProps {
   project: Project | null;
-  userId: string;
+  userId: number;
   wsUrl?: string;
   elements: SelectedElement[];
   onRemoveElement: (id: string) => void;
@@ -77,7 +77,7 @@ export function TerminalWorkspace({
       <div style={{ flex: 1, minHeight: 0 }}>
         {tabs.map((tab) => (
           <div key={tab.id} style={{ height: '100%', display: activeTabId === tab.id ? 'block' : 'none' }}>
-            <TerminalPanel projectId={String(project.id)} userId={userId} wsUrl={wsUrl} />
+            <TerminalPanel projectId={String(project.id)} userId={String(userId)} wsUrl={wsUrl} />
           </div>
         ))}
       </div>

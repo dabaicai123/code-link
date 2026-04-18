@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 
 interface User {
-  id: string;
+  id: number;
   email: string;
   name: string;
 }

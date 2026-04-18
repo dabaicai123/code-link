@@ -14,7 +14,7 @@ interface Project {
 }
 
 interface User {
-  id: string;
+  id: number;
   email: string;
   name: string;
 }
@@ -79,7 +79,24 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
         <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '2px' }}>v1.0.0</div>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
+      <div style={{ flex: 1, overflow: projects.length > 10 ? 'auto' : 'visible', padding: '12px' }}>
+        <button
+          onClick={onCreateProject}
+          style={{
+            width: '100%',
+            padding: '10px',
+            background: 'transparent',
+            border: '1px dashed var(--border-light)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--text-secondary)',
+            fontSize: '13px',
+            cursor: 'pointer',
+            marginBottom: '16px',
+          }}
+        >
+          + 新建项目
+        </button>
+
         {loading ? (
           <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>加载中...</div>
         ) : (
@@ -121,22 +138,6 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                 ))}
               </div>
             )}
-
-            <button
-              onClick={onCreateProject}
-              style={{
-                width: '100%',
-                padding: '10px',
-                background: 'transparent',
-                border: '1px dashed var(--border-light)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-secondary)',
-                fontSize: '13px',
-                cursor: 'pointer',
-              }}
-            >
-              + 新建项目
-            </button>
           </>
         )}
       </div>
