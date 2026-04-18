@@ -10,7 +10,7 @@ import {
   findUserByEmail,
 } from './helpers/test-db.js';
 import { eq, and } from 'drizzle-orm';
-import { users, projects, projectMembers, organizations } from '../src/db/schema/index.js';
+import { users, projects, organizationMembers, organizations } from '../src/db/schema/index.js';
 
 describe('数据库 Schema', () => {
   it('应创建所有必要的表', () => {
@@ -22,7 +22,6 @@ describe('数据库 Schema', () => {
     const names = tables.map((t) => t.name);
     expect(names).toContain('users');
     expect(names).toContain('projects');
-    expect(names).toContain('project_members');
     expect(names).toContain('builds');
     expect(names).toContain('project_tokens');
     expect(names).toContain('project_repos');
@@ -95,22 +94,23 @@ describe('数据库 Schema', () => {
     });
 
     const db = getDb();
-    // 创建项目成员
-    db.insert(projectMembers)
+    // 创建组织成员（项目成员关系现在通过组织管理）
+    db.insert(organizationMembers)
       .values({
-        projectId: project.id,
+        organizationId: org.id,
         userId: user.id,
         role: 'owner',
+        invitedBy: user.id,
       })
       .run();
 
     const member = db
       .select()
-      .from(projectMembers)
+      .from(organizationMembers)
       .where(
         and(
-          eq(projectMembers.projectId, project.id),
-          eq(projectMembers.userId, user.id)
+          eq(organizationMembers.organizationId, org.id),
+          eq(organizationMembers.userId, user.id)
         )
       )
       .get();
@@ -178,7 +178,7 @@ describe('数据库 Schema', () => {
     closeDb();
   });
 
-  it('ON DELETE CASCADE 应删除相关项目成员', () => {
+  it('ON DELETE CASCADE 应删除相关组织成员', () => {
     closeDb();
     getDb(':memory:');
     initSchema(getSqliteDb());
@@ -191,30 +191,25 @@ describe('数据库 Schema', () => {
 
     const org = createTestOrganization(user.id, { name: '测试组织' });
 
-    const project = createTestProject(user.id, org.id, {
-      name: '项目',
-      templateType: 'node',
-      status: 'created',
-    });
-
     const db = getDb();
-    // 创建项目成员
-    db.insert(projectMembers)
+    // 创建组织成员
+    db.insert(organizationMembers)
       .values({
-        projectId: project.id,
+        organizationId: org.id,
         userId: user.id,
         role: 'owner',
+        invitedBy: user.id,
       })
       .run();
 
-    // 删除项目
-    deleteTestProject(project.id);
+    // 删除组织应级联删除组织成员
+    db.delete(organizations).where(eq(organizations.id, org.id)).run();
 
-    // 验证项目成员也被删除
+    // 验证组织成员也被删除
     const members = db
       .select()
-      .from(projectMembers)
-      .where(eq(projectMembers.projectId, project.id))
+      .from(organizationMembers)
+      .where(eq(organizationMembers.organizationId, org.id))
       .all();
 
     expect(members).toHaveLength(0);

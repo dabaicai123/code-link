@@ -67,8 +67,8 @@ describe('容器路由', () => {
     const regRes = await request(app)
       .post('/api/auth/register')
       .send({ name: '测试用户', email: 'test@test.com', password: 'password123' });
-    token = regRes.body.token;
-    userId = regRes.body.user.id;
+    token = regRes.body.data.token;
+    userId = regRes.body.data.user.id;
 
     // 直接在数据库中创建组织（绕过权限检查）
     const org = createTestOrganization(userId, { name: '测试组织' });
@@ -91,7 +91,7 @@ describe('容器路由', () => {
       .post('/api/projects')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: '测试项目', templateType: 'node', organizationId: orgId });
-    projectId = projectRes.body.id;
+    projectId = projectRes.body.data.id;
   });
 
   afterEach(() => {
@@ -104,8 +104,9 @@ describe('容器路由', () => {
         .post(`/api/projects/${projectId}/container/start`)
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);
-      expect(res.body.container_id).toBeDefined();
-      expect(res.body.status).toBe('running');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.containerId).toBeDefined();
+      expect(res.body.data.status).toBe('running');
     });
 
     it('未登录应返回 401', async () => {
@@ -118,7 +119,7 @@ describe('容器路由', () => {
       const otherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: '其他用户', email: 'other@test.com', password: 'password123' });
-      const otherToken = otherRes.body.token;
+      const otherToken = otherRes.body.data.token;
 
       const res = await request(app)
         .post(`/api/projects/${projectId}/container/start`)
@@ -138,7 +139,7 @@ describe('容器路由', () => {
       const noConfigRes = await request(app)
         .post('/api/auth/register')
         .send({ name: '无配置用户', email: 'noconfig@test.com', password: 'password123' });
-      const noConfigToken = noConfigRes.body.token;
+      const noConfigToken = noConfigRes.body.data.token;
 
       // 该用户不是组织成员，所以无权访问项目
       const res = await request(app)
@@ -160,8 +161,9 @@ describe('容器路由', () => {
         .post(`/api/projects/${projectId}/container/stop`)
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);
-      expect(res.body.container_id).toBeDefined();
-      expect(res.body.status).toBe('exited');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.containerId).toBeDefined();
+      expect(res.body.data.status).toBe('exited');
     });
 
     it('未登录应返回 401', async () => {
@@ -173,7 +175,7 @@ describe('容器路由', () => {
       const otherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: '其他用户', email: 'other2@test.com', password: 'password123' });
-      const otherToken = otherRes.body.token;
+      const otherToken = otherRes.body.data.token;
 
       const res = await request(app)
         .post(`/api/projects/${projectId}/container/stop`)
@@ -193,8 +195,9 @@ describe('容器路由', () => {
         .get(`/api/projects/${projectId}/container`)
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);
-      expect(res.body.container_id).toBeDefined();
-      expect(res.body.status).toBe('running');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.containerId).toBeDefined();
+      expect(res.body.data.status).toBe('running');
     });
 
     it('项目无容器应返回 404', async () => {
@@ -202,6 +205,7 @@ describe('容器路由', () => {
         .get(`/api/projects/${projectId}/container`)
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(404);
+      expect(res.body.code).toBe(40001);
       expect(res.body.error).toContain('容器不存在');
     });
 
@@ -214,7 +218,7 @@ describe('容器路由', () => {
       const otherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: '其他用户', email: 'other3@test.com', password: 'password123' });
-      const otherToken = otherRes.body.token;
+      const otherToken = otherRes.body.data.token;
 
       const res = await request(app)
         .get(`/api/projects/${projectId}/container`)
@@ -248,10 +252,10 @@ describe('容器路由', () => {
         .send({ name: '开发者', email: 'dev@test.com', password: 'password123' });
 
       // 直接添加为组织成员（developer 角色）
-      const otherUserId = otherRes.body.user.id;
+      const otherUserId = otherRes.body.data.user.id;
       createTestOrganizationMember(orgId, otherUserId, 'developer', userId);
 
-      const otherToken = otherRes.body.token;
+      const otherToken = otherRes.body.data.token;
 
       const res = await request(app)
         .delete(`/api/projects/${projectId}/container`)

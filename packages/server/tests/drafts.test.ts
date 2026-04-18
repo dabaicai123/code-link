@@ -35,8 +35,8 @@ describe('Drafts API', () => {
     const registerRes = await request(app)
       .post('/api/auth/register')
       .send({ name: 'Test User', email: 'test@test.com', password: 'password123' });
-    authToken = registerRes.body.token;
-    userId = registerRes.body.user.id;
+    authToken = registerRes.body.data.token;
+    userId = registerRes.body.data.user.id;
 
     // Create test organization
     const org = createTestOrganization(userId, { name: 'Test Org' });
@@ -62,16 +62,17 @@ describe('Drafts API', () => {
         .send({ projectId, title: 'Test Draft' });
 
       expect(res.status).toBe(201);
-      expect(res.body.draft).toMatchObject({
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.draft).toMatchObject({
         projectId: projectId,
         title: 'Test Draft',
         status: 'discussing',
         createdBy: userId,
       });
-      expect(res.body.draft.id).toBeDefined();
+      expect(res.body.data.draft.id).toBeDefined();
 
       // Verify creator is owner
-      const members = findDraftMembers(res.body.draft.id);
+      const members = findDraftMembers(res.body.data.draft.id);
       expect(members).toHaveLength(1);
       expect(members[0]).toMatchObject({
         userId: userId,
@@ -105,7 +106,7 @@ describe('Drafts API', () => {
         .post('/api/drafts')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId, title: 'Test Draft' });
-      draftId = res.body.draft.id;
+      draftId = res.body.data.draft.id;
     });
 
     it('should return draft with members', async () => {
@@ -114,9 +115,10 @@ describe('Drafts API', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.draft.id).toBe(draftId);
-      expect(res.body.members).toHaveLength(1);
-      expect(res.body.members[0].userId).toBe(userId);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.draft.id).toBe(draftId);
+      expect(res.body.data.members).toHaveLength(1);
+      expect(res.body.data.members[0].userId).toBe(userId);
     });
 
     it('should return 403 for non-existent draft (not a member)', async () => {
@@ -148,7 +150,8 @@ describe('Drafts API', () => {
 
       expect(res.status).toBe(200);
       // API 直接返回数组
-      expect(res.body).toHaveLength(2);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data).toHaveLength(2);
     });
   });
 
@@ -161,13 +164,13 @@ describe('Drafts API', () => {
         .post('/api/drafts')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId, title: 'Test Draft' });
-      draftId = res.body.draft.id;
+      draftId = res.body.data.draft.id;
 
       // Create another user
       const anotherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Another User', email: 'another@test.com', password: 'password123' });
-      anotherUserId = anotherRes.body.user.id;
+      anotherUserId = anotherRes.body.data.user.id;
 
       // Add as organization member
       createTestOrganizationMember(orgId, anotherUserId, 'developer', userId);
@@ -180,7 +183,8 @@ describe('Drafts API', () => {
         .send({ newUserId: anotherUserId });
 
       expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.success).toBe(true);
 
       const members = findDraftMembers(draftId);
       expect(members).toHaveLength(2);
@@ -195,7 +199,7 @@ describe('Drafts API', () => {
         .post('/api/drafts')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId, title: 'Test Draft' });
-      draftId = res.body.draft.id;
+      draftId = res.body.data.draft.id;
     });
 
     it('should update draft status', async () => {
@@ -205,7 +209,8 @@ describe('Drafts API', () => {
         .send({ status: 'brainstorming' });
 
       expect(res.status).toBe(200);
-      expect(res.body.draft.status).toBe('brainstorming');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.draft.status).toBe('brainstorming');
     });
 
     it('should return 400 for invalid status value', async () => {
@@ -229,14 +234,14 @@ describe('Drafts API', () => {
         .post('/api/drafts')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId, title: 'Test Draft' });
-      draftId = res.body.draft.id;
+      draftId = res.body.data.draft.id;
 
       // Create another user
       const anotherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Another User', email: 'another@test.com', password: 'password123' });
-      anotherUserId = anotherRes.body.user.id;
-      anotherAuthToken = anotherRes.body.token;
+      anotherUserId = anotherRes.body.data.user.id;
+      anotherAuthToken = anotherRes.body.data.token;
 
       // Add as organization member
       createTestOrganizationMember(orgId, anotherUserId, 'developer', userId);
@@ -264,7 +269,8 @@ describe('Drafts API', () => {
         .set('Authorization', `Bearer ${anotherAuthToken}`);
 
       expect(res.status).toBe(403);
-      expect(res.body.error).toBe('只有 Draft owner 可以删除 Draft');
+      expect(res.body.code).toBe(30002);
+      expect(res.body.error).toBe('权限不足');
     });
 
     it('should return 400 for invalid draftId', async () => {
@@ -273,6 +279,7 @@ describe('Drafts API', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(400);
+      expect(res.body.code).toBe(20002);
       expect(res.body.error).toBe('无效的 Draft ID');
     });
   });
@@ -285,7 +292,7 @@ describe('Drafts API', () => {
         .post('/api/drafts')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId, title: 'Test Draft' });
-      draftId = res.body.draft.id;
+      draftId = res.body.data.draft.id;
     });
 
     it('should send a text message', async () => {
@@ -295,7 +302,8 @@ describe('Drafts API', () => {
         .send({ content: 'Hello world' });
 
       expect(res.status).toBe(201);
-      expect(res.body.message).toMatchObject({
+      expect(res.body.code).toBe(0);
+      expect(res.body.data.message).toMatchObject({
         draftId: draftId,
         userId: userId,
         content: 'Hello world',
@@ -314,10 +322,10 @@ describe('Drafts API', () => {
       const res = await request(app)
         .post(`/api/drafts/${draftId}/messages`)
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ content: 'Reply message', parentId: parentRes.body.message.id });
+        .send({ content: 'Reply message', parentId: parentRes.body.data.message.id });
 
       expect(res.status).toBe(201);
-      expect(res.body.message.parentId).toBe(parentRes.body.message.id);
+      expect(res.body.data.message.parentId).toBe(parentRes.body.data.message.id);
     });
 
     it('should return 403 when non-member tries to send message', async () => {
@@ -325,7 +333,7 @@ describe('Drafts API', () => {
       const anotherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Another User', email: 'another2@test.com', password: 'password123' });
-      const anotherAuthToken = anotherRes.body.token;
+      const anotherAuthToken = anotherRes.body.data.token;
 
       const res = await request(app)
         .post(`/api/drafts/${draftId}/messages`)
@@ -344,7 +352,7 @@ describe('Drafts API', () => {
         .post('/api/drafts')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId, title: 'Test Draft' });
-      draftId = res.body.draft.id;
+      draftId = res.body.data.draft.id;
 
       // 发送几条消息
       await request(app)
@@ -363,16 +371,17 @@ describe('Drafts API', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body).toHaveLength(2);
-      expect(res.body[0].content).toBe('Message 1');
-      expect(res.body[1].content).toBe('Message 2');
+      expect(res.body.code).toBe(0);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data[0].content).toBe('Message 1');
+      expect(res.body.data[1].content).toBe('Message 2');
     });
 
     it('should return 403 when non-member tries to get messages', async () => {
       const anotherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Another User', email: 'another3@test.com', password: 'password123' });
-      const anotherAuthToken = anotherRes.body.token;
+      const anotherAuthToken = anotherRes.body.data.token;
 
       const res = await request(app)
         .get(`/api/drafts/${draftId}/messages`)
@@ -391,13 +400,13 @@ describe('Drafts API', () => {
         .post('/api/drafts')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId, title: 'Test Draft' });
-      draftId = draftRes.body.draft.id;
+      draftId = draftRes.body.data.draft.id;
 
       const msgRes = await request(app)
         .post(`/api/drafts/${draftId}/messages`)
         .set('Authorization', `Bearer ${authToken}`)
         .send({ content: 'Test message' });
-      messageId = msgRes.body.message.id;
+      messageId = msgRes.body.data.message.id;
     });
 
     it('should confirm a message with agree', async () => {
@@ -407,14 +416,16 @@ describe('Drafts API', () => {
         .send({ type: 'agree' });
 
       expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data).toMatchObject({ success: true });
 
       const confRes = await request(app)
         .get(`/api/drafts/${draftId}/messages/${messageId}/confirmations`)
         .set('Authorization', `Bearer ${authToken}`);
 
-      expect(confRes.body.confirmations).toHaveLength(1);
-      expect(confRes.body.confirmations[0]).toMatchObject({
+      expect(confRes.body.code).toBe(0);
+      expect(confRes.body.data).toHaveLength(1);
+      expect(confRes.body.data[0]).toMatchObject({
         userId: userId,
         type: 'agree',
       });
@@ -427,14 +438,15 @@ describe('Drafts API', () => {
         .send({ type: 'disagree', comment: 'I disagree with this' });
 
       expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data).toMatchObject({ success: true });
 
       const confRes = await request(app)
         .get(`/api/drafts/${draftId}/messages/${messageId}/confirmations`)
         .set('Authorization', `Bearer ${authToken}`);
 
-      expect(confRes.body.confirmations[0].type).toBe('disagree');
-      expect(confRes.body.confirmations[0].comment).toBe('I disagree with this');
+      expect(confRes.body.data[0].type).toBe('disagree');
+      expect(confRes.body.data[0].comment).toBe('I disagree with this');
     });
 
     it('should update confirmation on second confirm', async () => {
@@ -455,8 +467,9 @@ describe('Drafts API', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       // 应该只有一个确认，类型更新为 disagree
-      expect(confRes.body.confirmations).toHaveLength(1);
-      expect(confRes.body.confirmations[0].type).toBe('disagree');
+      expect(confRes.body.code).toBe(0);
+      expect(confRes.body.data).toHaveLength(1);
+      expect(confRes.body.data[0].type).toBe('disagree');
     });
 
     it('should return 404 for non-existent message', async () => {
@@ -481,20 +494,20 @@ describe('Drafts API', () => {
         .post('/api/drafts')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId, title: 'Test Draft' });
-      draftId = draftRes.body.draft.id;
+      draftId = draftRes.body.data.draft.id;
 
       const msgRes = await request(app)
         .post(`/api/drafts/${draftId}/messages`)
         .set('Authorization', `Bearer ${authToken}`)
         .send({ content: 'Test message' });
-      messageId = msgRes.body.message.id;
+      messageId = msgRes.body.data.message.id;
 
       // 创建另一个用户并添加为组织成员
       const anotherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: 'Another User', email: 'another4@test.com', password: 'password123' });
-      anotherUserId = anotherRes.body.user.id;
-      anotherAuthToken = anotherRes.body.token;
+      anotherUserId = anotherRes.body.data.user.id;
+      anotherAuthToken = anotherRes.body.data.token;
 
       createTestOrganizationMember(orgId, anotherUserId, 'developer', userId);
 
@@ -519,7 +532,8 @@ describe('Drafts API', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.confirmations).toHaveLength(2);
+      expect(res.body.code).toBe(0);
+      expect(res.body.data).toHaveLength(2);
     });
   });
 });
