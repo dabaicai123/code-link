@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 
 # 安装基础工具 + Python
 RUN apt-get update && apt-get install -y \
