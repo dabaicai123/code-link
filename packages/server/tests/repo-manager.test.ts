@@ -49,7 +49,7 @@ describe('RepoManager', () => {
       expect(result.path).toBe('/workspace/project-1/test-repo');
       expect(execInContainer).toHaveBeenCalledWith(
         'container-123',
-        ['bash', '-c', 'mkdir -p /workspace/project-1 && cd /workspace/project-1 && git clone --depth 1 https://gh_token_xxx@github.com/user/test-repo.git test-repo']
+        ['bash', '-c', "mkdir -p /workspace/project-1 && cd /workspace/project-1 && git clone --depth 1 'https://gh_token_xxx@github.com/user/test-repo.git' 'test-repo'"]
       );
     });
 
@@ -106,6 +106,28 @@ describe('RepoManager', () => {
       expect(result.success).toBe(true);
       expect(result.path).toBe('/workspace/project-1/my-project');
     });
+
+    it('should escape malicious characters in URL', async () => {
+      const tokenManager = new TokenManager(db);
+      tokenManager.saveToken(1, 'github', 'gh_token_xxx');
+
+      vi.mocked(execInContainer).mockResolvedValueOnce({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const result = await manager.cloneRepo(
+        'container-123',
+        1,
+        'https://github.com/user/repo$(whoami).git',
+        1
+      );
+
+      expect(result.success).toBe(true);
+      const callArgs = vi.mocked(execInContainer).mock.calls[0][1];
+      expect(callArgs[2]).toContain("'repo$(whoami)'"); // 特殊字符被转义
+    });
   });
 
   describe('pushRepo', () => {
@@ -137,7 +159,7 @@ describe('RepoManager', () => {
         'git config user.email \'test@test.com\'',
         'git add -A',
         'git commit -m \'Update files\'',
-        'git push https://gh_token_yyy@github.com/user/test-repo.git HEAD:main',
+        'git push \'https://gh_token_yyy@github.com/user/test-repo.git\' HEAD:\'main\'',
       ].join('\n');
       expect(execInContainer).toHaveBeenCalledWith(
         'container-123',
@@ -184,6 +206,32 @@ describe('RepoManager', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('fatal: Authentication failed');
+    });
+
+    it('should escape malicious commit message', async () => {
+      const tokenManager = new TokenManager(db);
+      tokenManager.saveToken(1, 'github', 'gh_token_yyy');
+
+      vi.mocked(execInContainer).mockResolvedValueOnce({
+        stdout: 'Changes pushed',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      const result = await manager.pushRepo(
+        'container-123',
+        1,
+        'https://github.com/user/test-repo.git',
+        'main',
+        'Update; rm -rf /',
+        1,
+        'Test User',
+        'test@test.com'
+      );
+
+      expect(result.success).toBe(true);
+      const callArgs = vi.mocked(execInContainer).mock.calls[0][1];
+      expect(callArgs[2]).toContain("'Update; rm -rf /'"); // 特殊字符被转义
     });
   });
 

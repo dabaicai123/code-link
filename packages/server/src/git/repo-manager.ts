@@ -53,7 +53,7 @@ export class RepoManager {
 
       const { stdout, stderr, exitCode } = await execInContainer(containerId, [
         'bash', '-c',
-        `mkdir -p /workspace/project-${projectId} && cd /workspace/project-${projectId} && git clone --depth 1 ${authUrl} ${repoName}`
+        `mkdir -p /workspace/project-${projectId} && cd /workspace/project-${projectId} && git clone --depth 1 ${this.escapeShellArg(authUrl)} ${this.escapeShellArg(repoName)}`
       ]);
 
       if (exitCode !== 0) {
@@ -98,7 +98,7 @@ export class RepoManager {
         `git config user.email ${this.escapeShellArg(userEmail)}`,
         `git add -A`,
         `git commit -m ${this.escapeShellArg(commitMessage)}`,
-        `git push ${authUrl} HEAD:${branch}`,
+        `git push ${this.escapeShellArg(authUrl)} HEAD:${this.escapeShellArg(branch)}`,
       ];
 
       const { stdout, stderr, exitCode } = await execInContainer(containerId, [
