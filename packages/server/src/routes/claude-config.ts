@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { encrypt, decrypt, isEncryptionKeySet } from '../crypto/aes.js';
 import { createLogger } from '../logger/index.js';
 import { ClaudeConfigRepository } from '../repositories/index.js';
+import { success, Errors } from '../utils/response.js';
 
 const logger = createLogger('claude-config');
 
@@ -35,16 +36,16 @@ export function createClaudeConfigRouter(): Router {
 
     if (!row) {
       // 返回默认模板
-      res.json({ config: DEFAULT_CONFIG, hasConfig: false });
+      res.json(success({ config: DEFAULT_CONFIG, hasConfig: false }));
       return;
     }
 
     try {
       const config = JSON.parse(decrypt(row.config));
-      res.json({ config, hasConfig: true });
+      res.json(success({ config, hasConfig: true }));
     } catch (error) {
       logger.error('Failed to decrypt user config', error);
-      res.status(500).json({ error: '配置解密失败' });
+      res.status(500).json(Errors.internal('配置解密失败'));
     }
   });
 
@@ -54,29 +55,29 @@ export function createClaudeConfigRouter(): Router {
     const { config } = req.body;
 
     if (!config) {
-      res.status(400).json({ error: '缺少 config 字段' });
+      res.status(400).json(Errors.paramMissing('config'));
       return;
     }
 
     // 验证 JSON 结构
     if (!config.env || typeof config.env !== 'object') {
-      res.status(400).json({ error: 'config.env 必须是对象' });
+      res.status(400).json(Errors.paramInvalid('config.env', '必须是对象'));
       return;
     }
 
     // 检查必填字段
     if (!config.env.ANTHROPIC_AUTH_TOKEN) {
-      res.status(400).json({ error: 'ANTHROPIC_AUTH_TOKEN 不能为空' });
+      res.status(400).json(Errors.paramMissing('ANTHROPIC_AUTH_TOKEN'));
       return;
     }
 
     try {
       const encryptedConfig = encrypt(JSON.stringify(config));
       await claudeConfigRepo.upsert(userId, encryptedConfig);
-      res.json({ success: true });
+      res.json(success({ success: true }));
     } catch (error) {
       logger.error('Failed to save user config', error);
-      res.status(500).json({ error: '保存配置失败' });
+      res.status(500).json(Errors.internal('保存配置失败'));
     }
   });
 
@@ -84,7 +85,7 @@ export function createClaudeConfigRouter(): Router {
   router.delete('/', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
     await claudeConfigRepo.delete(userId);
-    res.json({ success: true });
+    res.json(success({ success: true }));
   });
 
   return router;

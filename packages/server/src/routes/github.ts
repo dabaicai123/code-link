@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { getGitHubOAuthUrl, exchangeGitHubCode, getOAuthConfig } from '../git/oauth.js';
 import { TokenManager } from '../git/token-manager.js';
 import { GitHubClient } from '../git/github-client.js';
+import { success, Errors } from '../utils/response.js';
 
 export function createGitHubRouter(): Router {
   const router = Router();
@@ -12,7 +13,7 @@ export function createGitHubRouter(): Router {
   router.get('/oauth', (_req, res) => {
     const config = getOAuthConfig();
     const url = getGitHubOAuthUrl(config);
-    res.json({ url });
+    res.json(success({ url }));
   });
 
   // POST /api/github/oauth/callback - 处理 OAuth 回调
@@ -20,7 +21,7 @@ export function createGitHubRouter(): Router {
     const { code, userId } = req.body;
 
     if (!code || !userId) {
-      res.status(400).json({ error: '缺少 code 或 userId' });
+      res.status(400).json(Errors.paramMissing('code 或 userId'));
       return;
     }
 
@@ -40,9 +41,9 @@ export function createGitHubRouter(): Router {
         expiresAt
       );
 
-      res.json({ success: true });
+      res.json(success({ success: true }));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -51,22 +52,22 @@ export function createGitHubRouter(): Router {
     const userId = req.query.userId;
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
     const token = await tokenManager.getToken(Number(userId), 'github');
     if (!token) {
-      res.status(401).json({ error: '未授权 GitHub' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
     try {
       const client = new GitHubClient(token.accessToken);
       const repos = await client.getUserRepos();
-      res.json(repos);
+      res.json(success(repos));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -76,22 +77,22 @@ export function createGitHubRouter(): Router {
     const { owner, repo } = req.params;
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
     const token = await tokenManager.getToken(Number(userId), 'github');
     if (!token) {
-      res.status(401).json({ error: '未授权 GitHub' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
     try {
       const client = new GitHubClient(token.accessToken);
       const repoInfo = await client.getRepo(owner, repo);
-      res.json(repoInfo);
+      res.json(success(repoInfo));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -101,22 +102,22 @@ export function createGitHubRouter(): Router {
     const { owner, repo } = req.params;
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
     const token = await tokenManager.getToken(Number(userId), 'github');
     if (!token) {
-      res.status(401).json({ error: '未授权 GitHub' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
     try {
       const client = new GitHubClient(token.accessToken);
       const branches = await client.getRepoBranches(owner, repo);
-      res.json(branches);
+      res.json(success(branches));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -125,22 +126,22 @@ export function createGitHubRouter(): Router {
     const { userId, owner, repo, webhookUrl } = req.body;
 
     if (!userId || !owner || !repo || !webhookUrl) {
-      res.status(400).json({ error: '缺少必填参数' });
+      res.status(400).json(Errors.paramMissing('必填参数'));
       return;
     }
 
     const token = await tokenManager.getToken(Number(userId), 'github');
     if (!token) {
-      res.status(401).json({ error: '未授权 GitHub' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
     try {
       const client = new GitHubClient(token.accessToken);
       const webhook = await client.createWebhook(owner, repo, webhookUrl);
-      res.status(201).json(webhook);
+      res.status(201).json(success(webhook));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -149,7 +150,7 @@ export function createGitHubRouter(): Router {
     const userId = req.query.userId;
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
@@ -162,12 +163,12 @@ export function createGitHubRouter(): Router {
     const userId = req.query.userId;
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
     const hasToken = await tokenManager.hasToken(Number(userId), 'github');
-    res.json({ authorized: hasToken });
+    res.json(success({ authorized: hasToken }));
   });
 
   return router;

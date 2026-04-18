@@ -5,6 +5,7 @@ import { createLogger } from '../logger/index.js';
 import { getBuildManager } from '../build/build-manager.js';
 import { getPreviewContainerManager } from '../build/preview-container.js';
 import { ProjectRepository, OrganizationRepository } from '../repositories/index.js';
+import { success, Errors } from '../utils/response.js';
 
 const logger = createLogger('builds');
 
@@ -19,20 +20,20 @@ export function createBuildsRouter(): Router {
     const { projectId } = req.body;
 
     if (!projectId) {
-      res.status(400).json({ error: '缺少 projectId' });
+      res.status(400).json(Errors.paramMissing('projectId'));
       return;
     }
 
     // 检查权限
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(403).json({ error: '无权限访问此项目' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
-      res.status(403).json({ error: '无权限访问此项目' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
@@ -45,9 +46,9 @@ export function createBuildsRouter(): Router {
         logger.error('Build failed', error);
       });
 
-      res.status(201).json(build);
+      res.status(201).json(success(build));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -58,27 +59,27 @@ export function createBuildsRouter(): Router {
     const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     // 检查权限
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(403).json({ error: '无权限访问此项目' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
-      res.status(403).json({ error: '无权限访问此项目' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
     const buildManager = getBuildManager();
     const builds = await buildManager.getProjectBuilds(projectId);
 
-    res.json(builds);
+    res.json(success(builds));
   });
 
   // GET /api/builds/:id - 获取构建详情
@@ -88,7 +89,7 @@ export function createBuildsRouter(): Router {
     const buildId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(buildId)) {
-      res.status(400).json({ error: '无效的构建 ID' });
+      res.status(400).json(Errors.paramInvalid('构建 ID'));
       return;
     }
 
@@ -96,24 +97,24 @@ export function createBuildsRouter(): Router {
     const build = await buildManager.getBuild(buildId);
 
     if (!build) {
-      res.status(404).json({ error: '构建不存在' });
+      res.status(404).json(Errors.notFound('构建'));
       return;
     }
 
     // 检查权限
     const project = await projectRepo.findById(build.projectId);
     if (!project) {
-      res.status(403).json({ error: '无权限访问此构建' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
-      res.status(403).json({ error: '无权限访问此构建' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
-    res.json(build);
+    res.json(success(build));
   });
 
   // GET /api/builds/preview/:projectId - 获取项目预览 URL
@@ -123,20 +124,20 @@ export function createBuildsRouter(): Router {
     const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     // 检查权限
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(403).json({ error: '无权限访问此项目' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
-      res.status(403).json({ error: '无权限访问此项目' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
@@ -144,14 +145,14 @@ export function createBuildsRouter(): Router {
     const containerInfo = previewManager.getContainerInfo(projectId.toString());
 
     if (!containerInfo) {
-      res.status(404).json({ error: '预览容器未运行' });
+      res.status(404).json(Errors.notFound('预览容器'));
       return;
     }
 
-    res.json({
+    res.json(success({
       url: previewManager.getPreviewUrl(containerInfo.port),
       port: containerInfo.port,
-    });
+    }));
   });
 
   // DELETE /api/builds/preview/:projectId - 停止预览容器
@@ -161,20 +162,20 @@ export function createBuildsRouter(): Router {
     const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     // 检查权限
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(403).json({ error: '无权限访问此项目' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
-      res.status(403).json({ error: '无权限访问此项目' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
