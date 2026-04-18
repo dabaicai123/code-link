@@ -4,7 +4,18 @@ import request from 'supertest';
 import { createApp } from '../src/index.js';
 import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
-import type Database from 'better-sqlite3';
+import {
+  createTestUser,
+  createTestOrganization,
+  createTestOrganizationMember,
+  createTestToken,
+  findTokenByUserIdAndProvider,
+  deleteTestToken,
+  createTestRepo,
+  findReposByProjectId,
+  findRepoById,
+} from './helpers/test-db.js';
+import { getSqliteDb } from '../src/db/index.js';
 
 describe('GitHub OAuth 路由', () => {
   let app: ReturnType<typeof createApp>;
@@ -70,7 +81,7 @@ describe('GitHub OAuth 路由', () => {
       expect(res.body.success).toBe(true);
 
       // 验证 token 已保存
-      const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = 1 AND provider = ?').get('github');
+      const token = findTokenByUserIdAndProvider(1, 'github');
       expect(token).toBeDefined();
     });
 
@@ -103,7 +114,7 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
+      createTestToken(1, 'github', { accessToken: 'gh_token' });
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -137,7 +148,7 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
+      createTestToken(1, 'github', { accessToken: 'gh_token' });
 
       const res = await request(app).get('/api/github/status?userId=1');
       expect(res.status).toBe(200);
@@ -157,12 +168,12 @@ describe('GitHub OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'github', 'gh_token');
+      createTestToken(1, 'github', { accessToken: 'gh_token' });
 
       const res = await request(app).delete('/api/github/token?userId=1');
       expect(res.status).toBe(204);
 
-      const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = 1 AND provider = ?').get('github');
+      const token = findTokenByUserIdAndProvider(1, 'github');
       expect(token).toBeUndefined();
     });
   });
@@ -170,11 +181,11 @@ describe('GitHub OAuth 路由', () => {
 
 describe('GitLab OAuth 路由', () => {
   let app: ReturnType<typeof createApp>;
-  let db: Database.Database;
 
   beforeEach(() => {
-    db = getSqliteDb(':memory:');
-    initSchema(db);
+    closeDb();
+    getSqliteDb(':memory:');
+    initSchema(getSqliteDb());
     app = createApp();
     vi.restoreAllMocks();
   });
@@ -220,7 +231,7 @@ describe('GitLab OAuth 路由', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
 
-      const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = 1 AND provider = ?').get('gitlab');
+      const token = findTokenByUserIdAndProvider(1, 'gitlab');
       expect(token).toBeDefined();
     });
   });
@@ -241,7 +252,7 @@ describe('GitLab OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'gitlab', 'gl_token');
+      createTestToken(1, 'gitlab', { accessToken: 'gl_token' });
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -263,7 +274,7 @@ describe('GitLab OAuth 路由', () => {
         .post('/api/auth/register')
         .send({ name: 'test', email: 'test@test.com', password: 'password123' });
 
-      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token) VALUES (?, ?, ?)').run(1, 'gitlab', 'gl_token');
+      createTestToken(1, 'gitlab', { accessToken: 'gl_token' });
 
       const res = await request(app).get('/api/gitlab/status?userId=1');
       expect(res.status).toBe(200);
@@ -274,7 +285,6 @@ describe('GitLab OAuth 路由', () => {
 
 describe('Repos 路由', () => {
   let app: ReturnType<typeof createApp>;
-  let db: Database.Database;
   let token: string;
   let userId: number;
   let projectId: number;
@@ -282,8 +292,8 @@ describe('Repos 路由', () => {
 
   beforeEach(async () => {
     closeDb();
-    db = getSqliteDb(':memory:');
-    initSchema(db);
+    getSqliteDb(':memory:');
+    initSchema(getSqliteDb());
     app = createApp();
     vi.restoreAllMocks();
 
@@ -294,16 +304,12 @@ describe('Repos 路由', () => {
     token = regRes.body.token;
     userId = regRes.body.user.id;
 
-    // 直接在数据库中创建组织（绕过权限检查）
-    const orgResult = db
-      .prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)')
-      .run('test-org', userId);
-    orgId = orgResult.lastInsertRowid as number;
+    // 创建组织
+    const org = createTestOrganization(userId, { name: 'test-org' });
+    orgId = org.id;
 
     // 添加用户为组织成员
-    db
-      .prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)')
-      .run(orgId, userId, 'owner', userId);
+    createTestOrganizationMember(orgId, userId, 'owner', userId);
 
     // 创建项目
     const projectRes = await request(app)
@@ -320,9 +326,12 @@ describe('Repos 路由', () => {
   describe('GET /api/projects/:projectId/repos', () => {
     it('应返回项目关联的仓库', async () => {
       // 添加仓库关联
-      db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
-        projectId, 'github', 'https://github.com/user/repo.git', 'repo', 'main'
-      );
+      createTestRepo(projectId, {
+        provider: 'github',
+        repoUrl: 'https://github.com/user/repo.git',
+        repoName: 'repo',
+        branch: 'main',
+      });
 
       const res = await request(app)
         .get(`/api/projects/${projectId}/repos`)
@@ -451,10 +460,13 @@ describe('Repos 路由', () => {
 
     beforeEach(() => {
       // 添加仓库关联
-      const result = db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
-        projectId, 'github', 'https://github.com/user/repo.git', 'repo', 'main'
-      );
-      repoId = Number(result.lastInsertRowid);
+      const repo = createTestRepo(projectId, {
+        provider: 'github',
+        repoUrl: 'https://github.com/user/repo.git',
+        repoName: 'repo',
+        branch: 'main',
+      });
+      repoId = repo.id;
     });
 
     it('应成功删除仓库', async () => {
@@ -463,7 +475,7 @@ describe('Repos 路由', () => {
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(204);
 
-      const repo = db.prepare('SELECT * FROM project_repos WHERE id = ?').get(repoId);
+      const repo = findRepoById(repoId);
       expect(repo).toBeUndefined();
     });
 
