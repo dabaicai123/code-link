@@ -115,7 +115,7 @@ export class TerminalWebSocket {
   }
 
   private attemptReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts || this.isManualDisconnect) {
       console.error('Max terminal reconnect attempts reached');
       this.onErrorHandler?.('Connection lost. Please refresh to reconnect.');
       return;
@@ -126,7 +126,9 @@ export class TerminalWebSocket {
 
     console.log(`Reconnecting terminal... (attempt ${this.reconnectAttempts})`);
     setTimeout(() => {
-      this.createConnection();
+      if (!this.isManualDisconnect) {
+        this.createConnection();
+      }
     }, delay);
   }
 
