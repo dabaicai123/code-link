@@ -35,6 +35,34 @@ export interface ProjectMember {
   role: 'owner' | 'developer' | 'product';
 }
 
+export interface Organization {
+  id: number;
+  name: string;
+  created_by: number;
+  created_at: string;
+}
+
+export interface OrganizationMember {
+  id: number;
+  organization_id: number;
+  user_id: number;
+  role: 'owner' | 'developer' | 'member';
+  invited_by: number;
+  joined_at: string;
+}
+
+export interface OrganizationInvitation {
+  id: number;
+  organization_id: number;
+  email: string;
+  role: 'owner' | 'developer' | 'member';
+  invited_by: number;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+}
+
+export type OrgRole = 'owner' | 'developer' | 'member';
+
 export interface Message {
   id: number;
   project_id: number;
