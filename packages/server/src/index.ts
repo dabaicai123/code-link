@@ -16,6 +16,7 @@ import { createBuildsRouter } from './routes/builds.js';
 import { createClaudeConfigRouter } from './routes/claude-config.js';
 import { createDraftsRouter } from './routes/drafts.js';
 import { createOrganizationsRouter } from './routes/organizations.js';
+import { createInvitationsRouter } from './routes/invitations.js';
 import { createWebSocketServer } from './websocket/server.js';
 import { requestLoggingMiddleware, createLogger } from './logger/index.js';
 import { setEncryptionKey } from './crypto/aes.js';
@@ -43,6 +44,7 @@ export function createApp(db: Database.Database): express.Express {
   app.use('/api/builds', createBuildsRouter(db));
   app.use('/api/claude-config', createClaudeConfigRouter(db));
   app.use('/api/organizations', createOrganizationsRouter(db));
+  app.use('/api/invitations', createInvitationsRouter(db));
   app.use('/api/drafts', createDraftsRouter(db));
 
   app.use((_req, res) => {
