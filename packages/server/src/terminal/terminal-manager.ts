@@ -7,6 +7,9 @@ import {
   closeExecStdin,
   type ExecSession,
 } from './docker-exec.js';
+import { createLogger } from '../logger/index.js';
+
+const logger = createLogger('terminal-mgr');
 
 export interface TerminalSession {
   id: string;
@@ -73,7 +76,7 @@ class TerminalManagerImpl {
 
       // 监听 stream 错误
       execSession.stream.on('error', (error: Error) => {
-        console.error(`Terminal session ${sessionId} stream error:`, error);
+        logger.error(`Terminal session ${sessionId} stream error`, error);
         this.sendToWebSocket(ws, {
           type: 'error',
           message: error.message,
@@ -106,7 +109,7 @@ class TerminalManagerImpl {
   handleInput(sessionId: string, data: string): void {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      console.warn(`Session ${sessionId} not found for input`);
+      logger.warn(`Session ${sessionId} not found for input`);
       return;
     }
 
@@ -115,7 +118,7 @@ class TerminalManagerImpl {
       const decoded = Buffer.from(data, 'base64').toString();
       writeToExecStream(session.execSession.stream as unknown as NodeJS.WritableStream, decoded);
     } catch (error) {
-      console.error(`Failed to write input to session ${sessionId}:`, error);
+      logger.error(`Failed to write input to session ${sessionId}`, error);
     }
   }
 
@@ -128,7 +131,7 @@ class TerminalManagerImpl {
   async resize(sessionId: string, cols: number, rows: number): Promise<void> {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      console.warn(`Session ${sessionId} not found for resize`);
+      logger.warn(`Session ${sessionId} not found for resize`);
       return;
     }
 
@@ -137,7 +140,7 @@ class TerminalManagerImpl {
       session.cols = cols;
       session.rows = rows;
     } catch (error) {
-      console.error(`Failed to resize session ${sessionId}:`, error);
+      logger.error(`Failed to resize session ${sessionId}`, error);
       throw error;
     }
   }
@@ -167,7 +170,7 @@ class TerminalManagerImpl {
       // 从 sessions map 中删除
       this.sessions.delete(sessionId);
     } catch (error) {
-      console.error(`Error closing session ${sessionId}:`, error);
+      logger.error(`Error closing session ${sessionId}`, error);
       // 即使出错也要删除会话
       this.sessions.delete(sessionId);
     }
