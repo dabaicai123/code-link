@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthService } from '../services/auth.service.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { success, Errors } from '../utils/response.js';
 
 export function createAuthRouter(): Router {
   const router = Router();
@@ -9,12 +10,12 @@ export function createAuthRouter(): Router {
   router.post('/register', async (req, res) => {
     try {
       const result = await authService.register(req.body);
-      res.status(201).json(result);
+      res.status(201).json(success(result));
     } catch (error: any) {
       if (error.message === '该邮箱已被注册') {
-        res.status(409).json({ error: error.message });
+        res.status(409).json(Errors.alreadyExists('该邮箱'));
       } else {
-        res.status(400).json({ error: error.message });
+        res.status(400).json(Errors.paramInvalid('', error.message));
       }
     }
   });
@@ -22,14 +23,14 @@ export function createAuthRouter(): Router {
   router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
-      res.status(400).json({ error: '邮箱和密码为必填项' });
+      res.status(400).json(Errors.paramMissing('邮箱或密码'));
       return;
     }
     try {
       const result = await authService.login(req.body);
-      res.json(result);
+      res.json(success(result));
     } catch (error: any) {
-      res.status(401).json({ error: error.message });
+      res.status(401).json(Errors.unauthorized());
     }
   });
 
@@ -38,12 +39,12 @@ export function createAuthRouter(): Router {
     try {
       const user = await authService.getUser(userId);
       if (!user) {
-        res.status(404).json({ error: '用户不存在' });
+        res.status(404).json(Errors.notFound('用户'));
         return;
       }
-      res.json(user);
+      res.json(success(user));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
