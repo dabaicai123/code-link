@@ -18,6 +18,7 @@ import { createWebSocketServer } from './websocket/server.js';
 import { requestLoggingMiddleware, createLogger } from './logger/index.js';
 import { setEncryptionKey } from './crypto/aes.js';
 import { initAIClient } from './ai/client.js';
+import { success, Errors } from './utils/response.js';
 import type Database from 'better-sqlite3';
 
 const logger = createLogger('server');
@@ -30,7 +31,7 @@ export function createApp(): express.Express {
   app.use(requestLoggingMiddleware);
 
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok' });
+    res.json(success({ status: 'ok' }));
   });
 
   app.use('/api/auth', createAuthRouter());
@@ -46,7 +47,7 @@ export function createApp(): express.Express {
   app.use('/api/drafts', createDraftsRouter());
 
   app.use((_req, res) => {
-    res.status(404).json({ error: 'Not found' });
+    res.status(404).json(Errors.notFound('接口'));
   });
 
   return app;
