@@ -12,7 +12,7 @@ status: draft
 为项目容器实现安全的 Claude Code CLI 鉴权机制：
 - 容器以非 root 用户 `codelink` 运行
 - 用户配置运行时注入，不落盘存储
-- 镜像内置 bypass 权限白名单
+- 镜像内置 bypass 权限白名单和 onboarding 跳过配置
 
 ## 核心设计决策
 
@@ -52,6 +52,10 @@ RUN mkdir -p /home/codelink/.claude && \
 COPY claude-settings.json /home/codelink/.claude/settings.json
 RUN chown codelink:codelink /home/codelink/.claude/settings.json
 
+# 内置 ~/.claude.json（跳过 onboarding）
+COPY claude.json /home/codelink/.claude.json
+RUN chown codelink:codelink /home/codelink/.claude.json
+
 # 创建工作目录并授权
 WORKDIR /workspace
 RUN chown -R codelink:codelink /workspace
@@ -89,6 +93,22 @@ ENTRYPOINT ["/entrypoint.sh"]
   }
 }
 ```
+
+### 1.3 跳过 Onboarding 配置
+
+**文件：** `packages/server/docker/templates/claude.json`
+
+Claude Code CLI 首次运行时会检查 `~/.claude.json` 中的 `hasCompletedOnboarding` 字段。需要在镜像中预置此文件以跳过新手引导流程。
+
+```json
+{
+  "hasCompletedOnboarding": true
+}
+```
+
+**作用：**
+- 跳过 Claude Code CLI 的首次运行欢迎界面
+- 用户直接进入可使用状态，无需手动完成 onboarding
 
 ## 二、用户配置存储
 
@@ -257,6 +277,7 @@ async function createTerminalSession(
 | `packages/server/src/docker/templates.ts` | 支持非 root 用户容器创建 |
 | `packages/server/docker/templates/*/Dockerfile` | 创建 codelink 用户，内置配置 |
 | `packages/server/docker/templates/claude-settings.json` | 新增权限白名单文件 |
+| `packages/server/docker/templates/claude.json` | 新增跳过 onboarding 配置文件 |
 | `packages/server/src/terminal/docker-exec.ts` | 注入用户环境变量 |
 | `packages/server/src/routes/auth.ts` | 新增用户配置 CRUD 接口 |
 | `packages/web/src/app/settings/page.tsx` | 新增 Claude Code 配置界面 |
