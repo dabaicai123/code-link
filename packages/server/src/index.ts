@@ -16,6 +16,7 @@ import { createDraftsRouter } from './routes/drafts.js';
 import { createWebSocketServer } from './websocket/server.js';
 import { requestLoggingMiddleware, createLogger } from './logger/index.js';
 import { setEncryptionKey } from './crypto/aes.js';
+import { initAIClient } from './ai/client.js';
 
 const logger = createLogger('server');
 
@@ -71,6 +72,9 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
     logger.warn('CLAUDE_CONFIG_ENCRYPTION_KEY not set. User config encryption disabled.');
   }
   setEncryptionKey(encryptionKey);
+
+  // 初始化 AI 客户端
+  initAIClient();
 
   startServer(db, process.env.PORT ? parseInt(process.env.PORT) : 4000);
 }
