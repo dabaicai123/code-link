@@ -5,9 +5,22 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import type Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import { AddressInfo } from 'net';
+import {
+  users,
+  organizations,
+  organizationMembers,
+  projects,
+  drafts,
+  draftMembers,
+  draftMessages,
+} from '@code-link/server/dist/db/schema/index.js';
 
 export const TEST_JWT_SECRET = 'test-secret-key-for-e2e';
+
+type DrizzleDb = ReturnType<typeof drizzle>;
 
 /**
  * 测试服务器实例
@@ -20,10 +33,11 @@ export interface TestServer {
 }
 
 /**
- * 创建测试 Express 应用（简化版，包含核心 API）
+ * 创建测试 Express 应用（使用 Drizzle ORM）
  */
-export function createTestApp(db: Database.Database): express.Express {
+export function createTestApp(sqlite: Database.Database): express.Express {
   const app = express();
+  const db = drizzle(sqlite);
 
   app.use(cors());
   app.use(express.json());
@@ -43,27 +57,18 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      // 检查邮箱是否已存在
-      const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+      const existing = await db.select().from(users).where(eq(users.email, email)).get();
       if (existing) {
         res.status(409).json({ error: '该邮箱已被注册' });
         return;
       }
 
-      // 创建用户
       const passwordHash = bcrypt.hashSync(password, 10);
-      const result = db.prepare(`
-        INSERT INTO users (name, email, password_hash)
-        VALUES (?, ?, ?)
-      `).run(name, email, passwordHash);
+      const result = await db.insert(users).values({ name, email, passwordHash }).returning().get();
 
-      const userId = result.lastInsertRowid as number;
-      const user = db.prepare('SELECT id, name, email, avatar, created_at FROM users WHERE id = ?').get(userId);
+      const token = jwt.sign({ userId: result.id }, TEST_JWT_SECRET, { expiresIn: '7d' });
 
-      // 生成 JWT token
-      const token = jwt.sign({ userId }, TEST_JWT_SECRET, { expiresIn: '7d' });
-
-      res.status(201).json({ data: { token, user } });
+      res.status(201).json({ data: { token, user: result } });
     } catch (error) {
       console.error('Register error:', error);
       res.status(500).json({ error: '注册失败' });
@@ -79,29 +84,29 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+      const user = await db.select().from(users).where(eq(users.email, email)).get();
       if (!user) {
         res.status(401).json({ error: '认证失败' });
         return;
       }
 
-      const valid = bcrypt.compareSync(password, (user as any).password_hash);
+      const valid = bcrypt.compareSync(password, user.passwordHash);
       if (!valid) {
         res.status(401).json({ error: '认证失败' });
         return;
       }
 
-      const token = jwt.sign({ userId: (user as any).id }, TEST_JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user.id }, TEST_JWT_SECRET, { expiresIn: '7d' });
 
       res.json({
         data: {
           token,
           user: {
-            id: (user as any).id,
-            name: (user as any).name,
-            email: (user as any).email,
-            avatar: (user as any).avatar,
-            createdAt: (user as any).created_at,
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar,
+            createdAt: user.createdAt,
           },
         },
       });
@@ -114,7 +119,7 @@ export function createTestApp(db: Database.Database): express.Express {
   app.get('/api/auth/me', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;
     try {
-      const user = db.prepare('SELECT id, name, email, avatar, created_at FROM users WHERE id = ?').get(userId);
+      const user = await db.select().from(users).where(eq(users.id, userId)).get();
       if (!user) {
         res.status(404).json({ error: '用户不存在' });
         return;
@@ -129,15 +134,24 @@ export function createTestApp(db: Database.Database): express.Express {
   app.get('/api/projects', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;
     try {
-      // 通过组织成员关系获取项目
-      const projects = db.prepare(`
-        SELECT p.*, om.role as member_role
-        FROM projects p
-        JOIN organization_members om ON p.organization_id = om.organization_id
-        WHERE om.user_id = ?
-        ORDER BY p.created_at DESC
-      `).all(userId);
-      res.json({ data: projects });
+      const result = await db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          templateType: projects.templateType,
+          organizationId: projects.organizationId,
+          containerId: projects.containerId,
+          status: projects.status,
+          createdBy: projects.createdBy,
+          createdAt: projects.createdAt,
+          memberRole: organizationMembers.role,
+        })
+        .from(projects)
+        .innerJoin(organizationMembers, eq(projects.organizationId, organizationMembers.organizationId))
+        .where(eq(organizationMembers.userId, userId))
+        .orderBy(desc(projects.createdAt));
+
+      res.json({ data: result });
     } catch (error) {
       res.status(500).json({ error: '获取项目列表失败' });
     }
@@ -158,23 +172,32 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      // 检查用户是否是组织成员
-      const membership = db.prepare(`
-        SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?
-      `).get(organizationId, userId);
+      const membership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, organizationId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
 
       if (!membership) {
         res.status(403).json({ error: '无权限在此组织创建项目' });
         return;
       }
 
-      const result = db.prepare(`
-        INSERT INTO projects (name, template_type, organization_id, created_by, status)
-        VALUES (?, ?, ?, ?, 'created')
-      `).run(name, templateType || 'node', organizationId, userId);
+      const project = await db
+        .insert(projects)
+        .values({
+          name,
+          templateType: templateType || 'node',
+          organizationId,
+          createdBy: userId,
+          status: 'created',
+        })
+        .returning()
+        .get();
 
-      const projectId = result.lastInsertRowid as number;
-      const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
       res.status(201).json({ data: project });
     } catch (error) {
       console.error('Create project error:', error);
@@ -184,7 +207,7 @@ export function createTestApp(db: Database.Database): express.Express {
 
   app.delete('/api/projects/:id', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = parseInt(req.params.id, 10);
+    const projectId = parseInt(req.params.id as string, 10);
 
     if (isNaN(projectId)) {
       res.status(400).json({ error: '无效的项目 ID' });
@@ -192,26 +215,28 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      // 获取项目所属组织
-      const project = db.prepare('SELECT organization_id FROM projects WHERE id = ?').get(projectId) as { organization_id: number } | undefined;
+      const project = await db.select().from(projects).where(eq(projects.id, projectId)).get();
 
       if (!project) {
         res.status(404).json({ error: '项目不存在' });
         return;
       }
 
-      // 检查用户是否是组织成员
-      const membership = db.prepare(`
-        SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?
-      `).get(project.organization_id, userId);
+      const membership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, project.organizationId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
 
       if (!membership) {
         res.status(403).json({ error: '无权限删除此项目' });
         return;
       }
 
-      // 删除项目（cascade 会删除相关数据）
-      db.prepare('DELETE FROM projects WHERE id = ?').run(projectId);
+      await db.delete(projects).where(eq(projects.id, projectId));
       res.json({ data: { success: true } });
     } catch (error) {
       res.status(500).json({ error: '删除项目失败' });
@@ -222,14 +247,20 @@ export function createTestApp(db: Database.Database): express.Express {
   app.get('/api/organizations', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;
     try {
-      const orgs = db.prepare(`
-        SELECT o.*, om.role as member_role
-        FROM organizations o
-        JOIN organization_members om ON o.id = om.organization_id
-        WHERE om.user_id = ?
-        ORDER BY o.created_at DESC
-      `).all(userId);
-      res.json({ data: orgs });
+      const result = await db
+        .select({
+          id: organizations.id,
+          name: organizations.name,
+          createdBy: organizations.createdBy,
+          createdAt: organizations.createdAt,
+          memberRole: organizationMembers.role,
+        })
+        .from(organizations)
+        .innerJoin(organizationMembers, eq(organizations.id, organizationMembers.organizationId))
+        .where(eq(organizationMembers.userId, userId))
+        .orderBy(desc(organizations.createdAt));
+
+      res.json({ data: result });
     } catch (error) {
       res.status(500).json({ error: '获取组织列表失败' });
     }
@@ -245,20 +276,20 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      const result = db.prepare(`
-        INSERT INTO organizations (name, created_by)
-        VALUES (?, ?)
-      `).run(name, userId);
+      const result = await db
+        .insert(organizations)
+        .values({ name, createdBy: userId })
+        .returning()
+        .get();
 
-      const orgId = result.lastInsertRowid as number;
+      await db.insert(organizationMembers).values({
+        organizationId: result.id,
+        userId,
+        role: 'owner',
+        invitedBy: userId,
+      });
 
-      db.prepare(`
-        INSERT INTO organization_members (organization_id, user_id, role, invited_by)
-        VALUES (?, ?, 'owner', ?)
-      `).run(orgId, userId, userId);
-
-      const org = db.prepare('SELECT * FROM organizations WHERE id = ?').get(orgId);
-      res.status(201).json({ data: org });
+      res.status(201).json({ data: result });
     } catch (error) {
       console.error('Create organization error:', error);
       res.status(500).json({ error: '创建组织失败' });
@@ -268,28 +299,32 @@ export function createTestApp(db: Database.Database): express.Express {
   // Drafts routes
   app.get('/api/drafts', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;
-    const projectId = req.query.projectId;
+    const projectIdQuery = req.query.projectId;
+    const projectId = projectIdQuery ? parseInt(projectIdQuery as string, 10) : undefined;
 
     try {
-      let drafts;
-      if (projectId) {
-        drafts = db.prepare(`
-          SELECT d.*, dm.role as member_role
-          FROM drafts d
-          JOIN draft_members dm ON d.id = dm.draft_id
-          WHERE dm.user_id = ? AND d.project_id = ?
-          ORDER BY d.updated_at DESC
-        `).all(userId, projectId);
-      } else {
-        drafts = db.prepare(`
-          SELECT d.*, dm.role as member_role
-          FROM drafts d
-          JOIN draft_members dm ON d.id = dm.draft_id
-          WHERE dm.user_id = ?
-          ORDER BY d.updated_at DESC
-        `).all(userId);
+      const conditions = [eq(draftMembers.userId, userId)];
+      if (projectId && !isNaN(projectId)) {
+        conditions.push(eq(drafts.projectId, projectId));
       }
-      res.json({ data: drafts });
+
+      const result = await db
+        .select({
+          id: drafts.id,
+          projectId: drafts.projectId,
+          title: drafts.title,
+          status: drafts.status,
+          createdBy: drafts.createdBy,
+          createdAt: drafts.createdAt,
+          updatedAt: drafts.updatedAt,
+          memberRole: draftMembers.role,
+        })
+        .from(drafts)
+        .innerJoin(draftMembers, eq(drafts.id, draftMembers.draftId))
+        .where(and(...conditions))
+        .orderBy(desc(drafts.updatedAt));
+
+      res.json({ data: result });
     } catch (error) {
       res.status(500).json({ error: '获取草稿列表失败' });
     }
@@ -305,20 +340,24 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      const result = db.prepare(`
-        INSERT INTO drafts (project_id, title, status, created_by)
-        VALUES (?, ?, 'discussing', ?)
-      `).run(projectId, title, userId);
+      const result = await db
+        .insert(drafts)
+        .values({
+          projectId,
+          title,
+          status: 'discussing',
+          createdBy: userId,
+        })
+        .returning()
+        .get();
 
-      const draftId = result.lastInsertRowid as number;
+      await db.insert(draftMembers).values({
+        draftId: result.id,
+        userId,
+        role: 'owner',
+      });
 
-      db.prepare(`
-        INSERT INTO draft_members (draft_id, user_id, role)
-        VALUES (?, ?, 'owner')
-      `).run(draftId, userId);
-
-      const draft = db.prepare('SELECT * FROM drafts WHERE id = ?').get(draftId);
-      res.status(201).json({ data: draft });
+      res.status(201).json({ data: result });
     } catch (error) {
       console.error('Create draft error:', error);
       res.status(500).json({ error: '创建草稿失败' });
@@ -327,7 +366,7 @@ export function createTestApp(db: Database.Database): express.Express {
 
   // Draft messages
   app.get('/api/drafts/:draftId/messages', authMiddleware(db), async (req, res) => {
-    const draftId = parseInt(req.params.draftId, 10);
+    const draftId = parseInt(req.params.draftId as string, 10);
 
     if (isNaN(draftId)) {
       res.status(400).json({ error: '无效的草稿 ID' });
@@ -335,14 +374,26 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      const messages = db.prepare(`
-        SELECT dm.*, u.name as user_name, u.email as user_email
-        FROM draft_messages dm
-        LEFT JOIN users u ON dm.user_id = u.id
-        WHERE dm.draft_id = ?
-        ORDER BY dm.created_at ASC
-      `).all(draftId);
-      res.json({ data: messages });
+      const result = await db
+        .select({
+          id: draftMessages.id,
+          draftId: draftMessages.draftId,
+          parentId: draftMessages.parentId,
+          userId: draftMessages.userId,
+          content: draftMessages.content,
+          messageType: draftMessages.messageType,
+          metadata: draftMessages.metadata,
+          createdAt: draftMessages.createdAt,
+          updatedAt: draftMessages.updatedAt,
+          userName: users.name,
+          userEmail: users.email,
+        })
+        .from(draftMessages)
+        .leftJoin(users, eq(draftMessages.userId, users.id))
+        .where(eq(draftMessages.draftId, draftId))
+        .orderBy(asc(draftMessages.createdAt));
+
+      res.json({ data: result });
     } catch (error) {
       res.status(500).json({ error: '获取消息列表失败' });
     }
@@ -350,7 +401,7 @@ export function createTestApp(db: Database.Database): express.Express {
 
   app.post('/api/drafts/:draftId/messages', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;
-    const draftId = parseInt(req.params.draftId, 10);
+    const draftId = parseInt(req.params.draftId as string, 10);
     const { content, messageType, parentId } = req.body;
 
     if (isNaN(draftId)) {
@@ -364,14 +415,19 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      const result = db.prepare(`
-        INSERT INTO draft_messages (draft_id, user_id, content, message_type, parent_id)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(draftId, userId, content, messageType || 'text', parentId ?? null);
+      const result = await db
+        .insert(draftMessages)
+        .values({
+          draftId,
+          userId,
+          content,
+          messageType: messageType || 'text',
+          parentId: parentId ?? null,
+        })
+        .returning()
+        .get();
 
-      const messageId = result.lastInsertRowid as number;
-      const message = db.prepare('SELECT * FROM draft_messages WHERE id = ?').get(messageId);
-      res.status(201).json({ data: message });
+      res.status(201).json({ data: result });
     } catch (error) {
       console.error('Create message error:', error);
       res.status(500).json({ error: '发送消息失败' });
@@ -389,7 +445,7 @@ export function createTestApp(db: Database.Database): express.Express {
 /**
  * 认证中间件
  */
-function authMiddleware(db: Database.Database) {
+function authMiddleware(db: DrizzleDb) {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
