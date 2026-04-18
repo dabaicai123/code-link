@@ -16,9 +16,24 @@ export type MessageType =
   | 'code'
   | 'document_card'
   | 'ai_command'
+  | 'ai_response'
   | 'system';
 
+export type AICommandType =
+  | 'generate'
+  | 'analyze'
+  | 'suggest'
+  | 'explain'
+  | 'review'
+  | 'refactor'
+  | 'test';
+
 export type ConfirmationType = 'agree' | 'disagree' | 'suggest';
+
+export interface AICommandMetadata {
+  aiCommandType?: AICommandType;
+  model?: string;
+}
 
 export interface Draft {
   id: number;
