@@ -2,6 +2,7 @@ import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
+const AUTH_TAG_LENGTH = 16;
 
 let encryptionKey: string | null = null;
 
@@ -43,7 +44,14 @@ export function decrypt(combined: string): string {
 
   const [ivHex, authTagHex, ciphertext] = parts;
   const iv = Buffer.from(ivHex, 'hex');
+  if (iv.length !== IV_LENGTH) {
+    throw new Error('Invalid IV length');
+  }
+
   const authTag = Buffer.from(authTagHex, 'hex');
+  if (authTag.length !== AUTH_TAG_LENGTH) {
+    throw new Error('Invalid auth tag length');
+  }
 
   const key = crypto.createHash('sha256').update(encryptionKey).digest();
 
