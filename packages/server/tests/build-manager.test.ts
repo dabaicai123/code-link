@@ -1,9 +1,15 @@
 // tests/build-manager.test.ts
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Database from 'better-sqlite3';
+import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
 import { BuildManager, resetBuildManagerInstance } from '../src/build/build-manager.js';
 import { resetWebSocketServerInstance } from '../src/websocket/server.js';
+import {
+  createTestUser,
+  createTestOrganization,
+  createTestOrganizationMember,
+  createTestProject,
+} from './helpers/test-db.js';
 
 // Mock dependencies
 vi.mock('../src/docker/client.js', () => ({
@@ -31,29 +37,31 @@ vi.mock('../src/websocket/server.js', () => ({
 }));
 
 describe('BuildManager', () => {
-  let db: Database.Database;
   let manager: BuildManager;
 
   beforeEach(() => {
-    db = new Database(':memory:');
-    initSchema(db);
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
-    db.prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)').run(1, 1, 'owner', 1);
-    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
-    manager = new BuildManager(db);
+    closeDb();
+    getSqliteDb(':memory:');
+    initSchema(getSqliteDb());
+
+    const user = createTestUser();
+    const org = createTestOrganization(user.id);
+    createTestOrganizationMember(org.id, user.id, 'owner', user.id);
+    createTestProject(user.id, org.id);
+
+    manager = new BuildManager();
   });
 
   afterEach(() => {
     resetBuildManagerInstance();
     resetWebSocketServerInstance();
-    db.close();
+    closeDb();
   });
 
   it('should create build record', async () => {
     const build = await manager.createBuild(1);
 
-    expect(build.project_id).toBe(1);
+    expect(build.projectId).toBe(1);
     expect(build.status).toBe('pending');
   });
 
@@ -61,7 +69,7 @@ describe('BuildManager', () => {
     const build = await manager.createBuild(1);
 
     await manager.updateBuildStatus(build.id, 'running');
-    const updated = manager.getBuild(build.id);
+    const updated = await manager.getBuild(build.id);
 
     expect(updated?.status).toBe('running');
   });
@@ -70,7 +78,7 @@ describe('BuildManager', () => {
     await manager.createBuild(1);
     await manager.createBuild(1);
 
-    const builds = manager.getProjectBuilds(1);
+    const builds = await manager.getProjectBuilds(1);
 
     expect(builds.length).toBe(2);
   });
@@ -82,9 +90,9 @@ describe('BuildManager', () => {
     // 模拟构建完成
     await manager.updateBuildStatus(build.id, 'success', 30001);
 
-    const updated = manager.getBuild(build.id);
+    const updated = await manager.getBuild(build.id);
     expect(updated?.status).toBe('success');
-    expect(updated?.preview_port).toBe(30001);
+    expect(updated?.previewPort).toBe(30001);
   });
 
   it('should get latest build for project', async () => {
@@ -93,22 +101,22 @@ describe('BuildManager', () => {
     await new Promise(resolve => setTimeout(resolve, 10));
     const build2 = await manager.createBuild(1);
 
-    const latest = manager.getLatestBuild(1);
+    const latest = await manager.getLatestBuild(1);
     expect(latest?.id).toBe(build2.id);
   });
 
-  it('should return null for non-existent build', () => {
-    const build = manager.getBuild(999);
+  it('should return null for non-existent build', async () => {
+    const build = await manager.getBuild(999);
     expect(build).toBeNull();
   });
 
-  it('should return empty array for project with no builds', () => {
-    const builds = manager.getProjectBuilds(999);
+  it('should return empty array for project with no builds', async () => {
+    const builds = await manager.getProjectBuilds(999);
     expect(builds).toEqual([]);
   });
 
-  it('should return null for latest build of non-existent project', () => {
-    const build = manager.getLatestBuild(999);
+  it('should return null for latest build of non-existent project', async () => {
+    const build = await manager.getLatestBuild(999);
     expect(build).toBeNull();
   });
 });
