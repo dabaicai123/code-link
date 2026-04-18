@@ -2,7 +2,7 @@ import { defineWorkspace } from 'vitest/config';
 
 // 定义工作区，将容器集成测试与普通测试隔离
 export default defineWorkspace([
-  // 普通单元测试（可并行）
+  // 普通单元测试（默认运行）
   {
     test: {
       include: ['tests/**/*.test.ts'],
@@ -22,7 +22,8 @@ export default defineWorkspace([
       name: 'unit',
     },
   },
-  // 容器集成测试（真实 Docker，串行执行）
+  // 容器集成测试（需要显式运行：npm run test:container）
+  // 运行命令：vitest run --project container-integration
   {
     test: {
       include: [
@@ -30,23 +31,20 @@ export default defineWorkspace([
         'tests/preview-container.test.ts',
       ],
       globals: false,
-      // 强制单线程串行执行
+      pool: 'threads',
       poolOptions: {
         threads: {
           maxThreads: 1,
           minThreads: 1,
-        },
-        forks: {
-          maxForks: 1,
-          minForks: 1,
+          singleThread: true,
         },
       },
       testTimeout: 180000,
       hookTimeout: 180000,
-      // 测试之间顺序执行
       sequence: {
         concurrent: false,
       },
+      fileParallelism: false,
       name: 'container-integration',
     },
   },
