@@ -185,6 +185,119 @@ export function createOrganizationsRouter(db: Database.Database): Router {
     }
   });
 
+  // PUT /api/organizations/:id/members/:userId - 修改成员角色
+  router.put('/:id/members/:userId', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
+    const idParam = req.params.id;
+    const userIdParam = req.params.userId;
+    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
+    const targetUserId = parseInt(Array.isArray(userIdParam) ? userIdParam[0] : userIdParam, 10);
+    const { role } = req.body;
+
+    const validRoles: OrgRole[] = ['owner', 'developer', 'member'];
+    if (!role || !validRoles.includes(role)) {
+      res.status(400).json({ error: '无效的角色，必须是 owner、developer 或 member' });
+      return;
+    }
+
+    try {
+      // 检查目标成员是否存在
+      const membership = db
+        .prepare('SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?')
+        .get(orgId, targetUserId) as { role: OrgRole } | undefined;
+
+      if (!membership) {
+        res.status(404).json({ error: '该用户不是组织成员' });
+        return;
+      }
+
+      // 检查是否是最后一个 owner
+      if (membership.role === 'owner' && role !== 'owner') {
+        const ownerCount = db
+          .prepare("SELECT COUNT(*) as count FROM organization_members WHERE organization_id = ? AND role = 'owner'")
+          .get(orgId) as { count: number };
+
+        if (ownerCount.count <= 1) {
+          res.status(400).json({ error: '不能修改最后一个 owner 的角色' });
+          return;
+        }
+      }
+
+      db.prepare('UPDATE organization_members SET role = ? WHERE organization_id = ? AND user_id = ?').run(role, orgId, targetUserId);
+
+      const updatedMember = db
+        .prepare(
+          `SELECT u.id, u.name, u.email, u.avatar, om.role, om.joined_at
+           FROM organization_members om
+           JOIN users u ON om.user_id = u.id
+           WHERE om.organization_id = ? AND om.user_id = ?`
+        )
+        .get(orgId, targetUserId) as {
+          id: number;
+          name: string;
+          email: string;
+          avatar: string | null;
+          role: OrgRole;
+          joined_at: string;
+        };
+
+      res.json(updatedMember);
+    } catch (error) {
+      logger.error('修改成员角色失败', error);
+      res.status(500).json({ error: '修改成员角色失败' });
+    }
+  });
+
+  // DELETE /api/organizations/:id/members/:userId - 移除成员
+  router.delete('/:id/members/:userId', createOrgMemberMiddleware(db, 'owner'), (req, res) => {
+    const idParam = req.params.id;
+    const userIdParam = req.params.userId;
+    const orgId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
+    const targetUserId = parseInt(Array.isArray(userIdParam) ? userIdParam[0] : userIdParam, 10);
+    const currentUserId = (req as any).userId;
+
+    try {
+      // 检查目标成员是否存在
+      const membership = db
+        .prepare('SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?')
+        .get(orgId, targetUserId) as { role: OrgRole } | undefined;
+
+      if (!membership) {
+        res.status(404).json({ error: '该用户不是组织成员' });
+        return;
+      }
+
+      // 不能移除自己
+      if (targetUserId === currentUserId) {
+        res.status(400).json({ error: '不能移除自己' });
+        return;
+      }
+
+      // 检查是否是最后一个 owner
+      if (membership.role === 'owner') {
+        const ownerCount = db
+          .prepare("SELECT COUNT(*) as count FROM organization_members WHERE organization_id = ? AND role = 'owner'")
+          .get(orgId) as { count: number };
+
+        if (ownerCount.count <= 1) {
+          res.status(400).json({ error: '不能移除最后一个 owner' });
+          return;
+        }
+      }
+
+      const result = db.prepare('DELETE FROM organization_members WHERE organization_id = ? AND user_id = ?').run(orgId, targetUserId);
+
+      if (result.changes === 0) {
+        res.status(404).json({ error: '成员不存在' });
+        return;
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      logger.error('移除成员失败', error);
+      res.status(500).json({ error: '移除成员失败' });
+    }
+  });
+
   // GET /api/invitations - 获取用户收到的邀请
   router.get('/invitations', (req, res) => {
     const userId = (req as any).userId;
