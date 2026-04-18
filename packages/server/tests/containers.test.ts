@@ -4,6 +4,7 @@ import request from 'supertest';
 import { createApp } from '../src/index.ts';
 import { getDb } from '../src/db/connection.ts';
 import { initSchema } from '../src/db/schema.ts';
+import { setEncryptionKey, encrypt } from '../src/crypto/aes.ts';
 import type Database from 'better-sqlite3';
 
 // 存储容器状态
@@ -47,6 +48,9 @@ describe('容器路由', () => {
     // 清空容器状态
     containerStates.clear();
 
+    // 设置加密密钥（测试用）
+    setEncryptionKey('test-encryption-key-for-containers-test-32-chars');
+
     db = getDb(':memory:');
     initSchema(db);
     app = createApp(db);
@@ -57,6 +61,15 @@ describe('容器路由', () => {
       .send({ name: '测试用户', email: 'test@test.com', password: 'password123' });
     token = regRes.body.token;
     userId = regRes.body.user.id;
+
+    // 为用户添加 Claude 配置（加密存储）
+    const config = {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: 'test-token-for-containers',
+      },
+    };
+    const encryptedConfig = encrypt(JSON.stringify(config));
+    db.prepare('INSERT INTO user_claude_configs (user_id, config) VALUES (?, ?)').run(userId, encryptedConfig);
 
     // 创建测试项目
     const projectRes = await request(app)
@@ -99,6 +112,31 @@ describe('容器路由', () => {
         .post('/api/projects/99999/container/start')
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(404);
+    });
+
+    it('用户未配置 Claude Code 应返回 400', async () => {
+      // 创建一个新用户（没有 Claude 配置）
+      const noConfigRes = await request(app)
+        .post('/api/auth/register')
+        .send({ name: '无配置用户', email: 'noconfig@test.com', password: 'password123' });
+      const noConfigToken = noConfigRes.body.token;
+      const noConfigUserId = noConfigRes.body.user.id;
+
+      // 将该用户添加为项目成员
+      db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
+        projectId,
+        noConfigUserId,
+        'developer'
+      );
+
+      // 用户已登录但未配置 Claude Code
+      const res = await request(app)
+        .post(`/api/projects/${projectId}/container/start`)
+        .set('Authorization', `Bearer ${noConfigToken}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('CLAUDE_CONFIG_MISSING');
+      expect(res.body.error).toContain('请先在「设置');
     });
   });
 

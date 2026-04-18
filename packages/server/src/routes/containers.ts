@@ -59,6 +59,19 @@ export function createContainersRouter(db: Database.Database): Router {
     }
 
     try {
+      // 检查用户是否配置了 Claude Code
+      const configRow = db
+        .prepare('SELECT config FROM user_claude_configs WHERE user_id = ?')
+        .get(userId) as { config: string } | undefined;
+
+      if (!configRow) {
+        res.status(400).json({
+          error: '请先在「设置 → Claude Code 配置」中完成配置后再启动容器',
+          code: 'CLAUDE_CONFIG_MISSING'
+        });
+        return;
+      }
+
       let containerId = project.container_id;
 
       // 如果容器不存在，创建容器
