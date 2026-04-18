@@ -182,24 +182,19 @@ export class DraftRepository {
   }
 
   async upsertConfirmation(data: InsertMessageConfirmation): Promise<SelectMessageConfirmation> {
-    const sqliteDb = getSqliteDb();
-    sqliteDb.prepare(
-      `INSERT INTO message_confirmations (message_id, user_id, type, comment)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(message_id, user_id) DO UPDATE SET
-         type = excluded.type,
-         comment = excluded.comment,
-         created_at = datetime('now')`
-    ).run(data.messageId, data.userId, data.type, data.comment || null);
-
     const db = getDb();
-    return db.select()
-      .from(messageConfirmations)
-      .where(and(
-        eq(messageConfirmations.messageId, data.messageId),
-        eq(messageConfirmations.userId, data.userId)
-      ))
-      .get()!;
+    return db.insert(messageConfirmations)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [messageConfirmations.messageId, messageConfirmations.userId],
+        set: {
+          type: data.type,
+          comment: data.comment,
+          createdAt: sql`datetime('now')`,
+        },
+      })
+      .returning()
+      .get();
   }
 
   async findConfirmations(messageId: number): Promise<Array<SelectMessageConfirmation & { userName: string }>> {

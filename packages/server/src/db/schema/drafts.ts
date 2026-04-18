@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 import { projects } from './projects.js';
@@ -49,7 +49,9 @@ export const messageConfirmations = sqliteTable('message_confirmations', {
   type: text('type', { enum: ['agree', 'disagree', 'suggest'] }).notNull().default('agree'),
   comment: text('comment'),
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
-});
+}, (table) => ({
+  messageUserUnique: unique().on(table.messageId, table.userId),
+}));
 
 export type InsertDraft = typeof drafts.$inferInsert;
 export type SelectDraft = typeof drafts.$inferSelect;
