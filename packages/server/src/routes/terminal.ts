@@ -3,7 +3,10 @@ import type WebSocket from 'ws';
 import type Database from 'better-sqlite3';
 import { getTerminalManager } from '../terminal/terminal-manager.js';
 import { getContainerStatus } from '../docker/container-manager.js';
+import { createLogger } from '../logger/index.js';
 import type { Project } from '../types.js';
+
+const logger = createLogger('terminal');
 
 // 终端消息类型
 interface TerminalStartMessage {
@@ -228,7 +231,7 @@ export function handleTerminalConnection(
 
   // 监听错误事件
   ws.on('error', (error: Error) => {
-    console.error('Terminal WebSocket error:', error);
+    logger.error('Terminal WebSocket error', error);
     if (currentSessionId) {
       terminalManager.closeSession(currentSessionId);
       currentSessionId = null;
