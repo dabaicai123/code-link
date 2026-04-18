@@ -17,7 +17,6 @@ export function initSchema(db: Database.Database): void {
       template_type TEXT NOT NULL CHECK (template_type IN ('node', 'node+java', 'node+python')),
       container_id TEXT,
       status TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created', 'running', 'stopped')),
-      github_repo TEXT,
       created_by INTEGER NOT NULL REFERENCES users(id),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );

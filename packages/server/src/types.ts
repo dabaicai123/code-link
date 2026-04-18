@@ -24,7 +24,6 @@ export interface Project {
   template_type: 'node' | 'node+java' | 'node+python';
   container_id: string | null;
   status: 'created' | 'running' | 'stopped';
-  github_repo: string | null;
   created_by: number;
   created_at: string;
 }
