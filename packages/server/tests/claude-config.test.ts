@@ -1,13 +1,22 @@
 // packages/server/tests/claude-config.test.ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import Database from 'better-sqlite3';
 import express from 'express';
 import request from 'supertest';
 import { setEncryptionKey } from '../src/crypto/aes.js';
+import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
+import { getDb } from '../src/db/index.js';
+import { userClaudeConfigs } from '../src/db/schema/index.js';
+import { eq } from 'drizzle-orm';
 import { Router } from 'express';
-import { encrypt, decrypt, isEncryptionKeySet } from '../src/crypto/aes.js';
+import { encrypt, decrypt } from '../src/crypto/aes.js';
 import { createLogger } from '../src/logger/index.js';
+import {
+  createTestUser,
+  findClaudeConfigByUserId,
+  deleteTestClaudeConfig,
+} from './helpers/test-db.js';
+import type Database from 'better-sqlite3';
 
 const logger = createLogger('claude-config');
 
@@ -24,16 +33,15 @@ const DEFAULT_CONFIG = {
 };
 
 // 创建测试用的路由（不带 authMiddleware）
-function createTestClaudeConfigRouter(db: Database.Database): Router {
+function createTestClaudeConfigRouter(): Router {
   const router = Router();
+  const db = getDb();
 
   // 获取用户配置
   router.get('/', (req, res) => {
     const userId = (req as any).userId;
 
-    const row = db
-      .prepare('SELECT config FROM user_claude_configs WHERE user_id = ?')
-      .get(userId) as { config: string } | undefined;
+    const row = findClaudeConfigByUserId(userId);
 
     if (!row) {
       res.json({ config: DEFAULT_CONFIG, hasConfig: false });
@@ -71,13 +79,19 @@ function createTestClaudeConfigRouter(db: Database.Database): Router {
 
     try {
       const encryptedConfig = encrypt(JSON.stringify(config));
-      db.prepare(`
-        INSERT INTO user_claude_configs (user_id, config, updated_at)
-        VALUES (?, ?, datetime('now'))
-        ON CONFLICT(user_id) DO UPDATE SET
-          config = excluded.config,
-          updated_at = datetime('now')
-      `).run(userId, encryptedConfig);
+
+      // 使用 ORM 进行 upsert 操作
+      const existing = findClaudeConfigByUserId(userId);
+      if (existing) {
+        db.update(userClaudeConfigs)
+          .set({ config: encryptedConfig })
+          .where(eq(userClaudeConfigs.userId, userId))
+          .run();
+      } else {
+        db.insert(userClaudeConfigs)
+          .values({ userId, config: encryptedConfig })
+          .run();
+      }
 
       res.json({ success: true });
     } catch (error) {
@@ -89,7 +103,7 @@ function createTestClaudeConfigRouter(db: Database.Database): Router {
   // 删除用户配置
   router.delete('/', (req, res) => {
     const userId = (req as any).userId;
-    db.prepare('DELETE FROM user_claude_configs WHERE user_id = ?').run(userId);
+    deleteTestClaudeConfig(userId);
     res.json({ success: true });
   });
 
@@ -103,12 +117,12 @@ describe('Claude Config API', () => {
 
   beforeAll(() => {
     setEncryptionKey(testKey);
-    db = new Database(':memory:');
+    closeDb();
+    db = getSqliteDb(':memory:');
     initSchema(db);
 
     // 创建测试用户
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)')
-      .run('test', 'test@test.com', 'hash');
+    createTestUser({ name: 'test', email: 'test@test.com', passwordHash: 'hash' });
 
     app = express();
     app.use(express.json());
@@ -119,11 +133,13 @@ describe('Claude Config API', () => {
       next();
     });
 
-    app.use('/api/claude-config', createTestClaudeConfigRouter(db));
+    app.use('/api/claude-config', createTestClaudeConfigRouter());
   });
 
   afterAll(() => {
-    db.close();
+    // 清理测试数据
+    deleteTestClaudeConfig(1);
+    closeDb();
   });
 
   it('should return default config when not configured', async () => {
