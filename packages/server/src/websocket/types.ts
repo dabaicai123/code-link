@@ -131,7 +131,8 @@ export type DraftMessageType =
   | 'draft_member_joined'
   | 'draft_member_left'
   | 'draft_status_changed'
-  | 'draft_message_confirmed';
+  | 'draft_message_confirmed'
+  | 'draft_ai_response';
 
 export interface DraftBaseMessage {
   type: DraftMessageType;
@@ -180,12 +181,29 @@ export interface DraftMessageConfirmedEvent extends DraftBaseMessage {
   confirmationType: string;
 }
 
+export interface DraftAIResponseEvent extends DraftBaseMessage {
+  type: 'draft_ai_response';
+  message: {
+    id: number;
+    draft_id: number;
+    parent_id: number;
+    user_id: number;
+    user_name: string;
+    content: string;
+    message_type: string;
+    metadata: string | null;
+    created_at: string;
+  };
+  commandType: string;
+}
+
 export type DraftMessage =
   | DraftMessageEvent
   | DraftMemberJoinedEvent
   | DraftMemberLeftEvent
   | DraftStatusChangedEvent
-  | DraftMessageConfirmedEvent;
+  | DraftMessageConfirmedEvent
+  | DraftAIResponseEvent;
 
 export function createDraftMessageEvent(
   draftId: number,
