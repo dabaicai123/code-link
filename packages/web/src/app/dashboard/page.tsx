@@ -23,10 +23,27 @@ export default function DashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [projectRefreshKey, setProjectRefreshKey] = useState(0);
   const [isStarting, setIsStarting] = useState(false);
+  const [invitationCount, setInvitationCount] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
   }, [user, authLoading, router]);
+
+  // 获取邀请数量
+  useEffect(() => {
+    if (user) {
+      fetchInvitationCount();
+    }
+  }, [user]);
+
+  const fetchInvitationCount = async () => {
+    try {
+      const invitations = await api.getMyInvitations();
+      setInvitationCount(invitations.length);
+    } catch (err) {
+      console.error('Failed to fetch invitations:', err);
+    }
+  };
 
   // 选择项目时，自动启动容器
   const handleProjectSelect = useCallback(async (project: Project) => {
@@ -104,6 +121,7 @@ export default function DashboardPage() {
         onProjectSelect={handleProjectSelect}
         onCreateProject={() => setIsDialogOpen(true)}
         onLogout={handleLogout}
+        invitationCount={invitationCount}
       />
       <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         {isStarting ? (
