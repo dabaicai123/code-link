@@ -25,32 +25,36 @@ export class RepoManager {
 
   async cloneRepo(
     containerId: string,
+    projectId: number,
     repoUrl: string,
-    branch: string,
-    userId?: number
+    userId: number
   ): Promise<CloneResult> {
     try {
-      // 获取 token（如果提供了 userId）
-      let authUrl = repoUrl;
-      if (userId) {
-        const token = this.tokenManager.getToken(userId, this.detectProvider(repoUrl));
-        if (token) {
-          authUrl = this.injectTokenIntoUrl(repoUrl, token.access_token);
-        }
+      const provider = this.detectProvider(repoUrl);
+      const token = this.tokenManager.getToken(userId, provider);
+
+      if (!token) {
+        return {
+          success: false,
+          path: '',
+          error: `未找到 ${provider} 的授权，请先在设置中授权`
+        };
       }
 
-      // 在容器内执行 git clone
       const repoName = this.extractRepoName(repoUrl);
+      const clonePath = `/workspace/project-${projectId}/${repoName}`;
+      const authUrl = this.injectTokenIntoUrl(repoUrl, token.access_token);
+
       const { stdout, stderr, exitCode } = await execInContainer(containerId, [
         'bash', '-c',
-        `cd /workspace && git clone --branch ${branch} --depth 1 ${authUrl} ${repoName}`
+        `mkdir -p /workspace/project-${projectId} && cd /workspace/project-${projectId} && git clone --depth 1 ${authUrl} ${repoName}`
       ]);
 
       if (exitCode !== 0) {
         return { success: false, path: '', error: stderr };
       }
 
-      return { success: true, path: `/workspace/${repoName}` };
+      return { success: true, path: clonePath };
     } catch (error: any) {
       return { success: false, path: '', error: error.message };
     }
@@ -58,35 +62,42 @@ export class RepoManager {
 
   async pushRepo(
     containerId: string,
+    projectId: number,
     repoUrl: string,
     branch: string,
     commitMessage: string,
-    userId?: number
+    userId: number,
+    userName: string,
+    userEmail: string
   ): Promise<PushResult> {
     try {
-      const repoName = this.extractRepoName(repoUrl);
+      const provider = this.detectProvider(repoUrl);
+      const token = this.tokenManager.getToken(userId, provider);
 
-      // 获取 token
-      let authUrl = repoUrl;
-      if (userId) {
-        const token = this.tokenManager.getToken(userId, this.detectProvider(repoUrl));
-        if (token) {
-          authUrl = this.injectTokenIntoUrl(repoUrl, token.access_token);
-        }
+      if (!token) {
+        return {
+          success: false,
+          error: `未找到 ${provider} 的授权，请先在设置中授权`
+        };
       }
 
-      // 在容器内执行 git add, commit, push
+      const repoName = this.extractRepoName(repoUrl);
+      const repoPath = `/workspace/project-${projectId}/${repoName}`;
+      const authUrl = this.injectTokenIntoUrl(repoUrl, token.access_token);
+
+      // 使用用户真实身份配置 git
       const commands = [
-        `cd /workspace/${repoName}`,
-        `git config user.email "bot@code-link.app"`,
-        `git config user.name "CodeLink Bot"`,
+        `cd ${repoPath}`,
+        `git config user.name "${userName}"`,
+        `git config user.email "${userEmail}"`,
         `git add -A`,
         `git commit -m "${commitMessage}"`,
         `git push ${authUrl} HEAD:${branch}`,
       ];
 
       const { stdout, stderr, exitCode } = await execInContainer(containerId, [
-        'bash', '-c', commands.join('\n')
+        'bash', '-c',
+        commands.join('\n')
       ]);
 
       if (exitCode !== 0) {

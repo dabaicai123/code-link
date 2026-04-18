@@ -27,28 +27,7 @@ describe('RepoManager', () => {
   });
 
   describe('cloneRepo', () => {
-    it('should clone repo without authentication', async () => {
-      vi.mocked(execInContainer).mockResolvedValueOnce({
-        stdout: 'Cloning into test-repo...',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      const result = await manager.cloneRepo(
-        'container-123',
-        'https://github.com/user/test-repo.git',
-        'main'
-      );
-
-      expect(result.success).toBe(true);
-      expect(result.path).toBe('/workspace/test-repo');
-      expect(execInContainer).toHaveBeenCalledWith(
-        'container-123',
-        ['bash', '-c', 'cd /workspace && git clone --branch main --depth 1 https://github.com/user/test-repo.git test-repo']
-      );
-    });
-
-    it('should clone repo with authentication when userId is provided', async () => {
+    it('should clone repo with authentication', async () => {
       // 先保存 token
       const tokenManager = new TokenManager(db);
       tokenManager.saveToken(1, 'github', 'gh_token_xxx');
@@ -61,19 +40,35 @@ describe('RepoManager', () => {
 
       const result = await manager.cloneRepo(
         'container-123',
+        1,
         'https://github.com/user/test-repo.git',
-        'main',
         1
       );
 
       expect(result.success).toBe(true);
+      expect(result.path).toBe('/workspace/project-1/test-repo');
       expect(execInContainer).toHaveBeenCalledWith(
         'container-123',
-        ['bash', '-c', 'cd /workspace && git clone --branch main --depth 1 https://gh_token_xxx@github.com/user/test-repo.git test-repo']
+        ['bash', '-c', 'mkdir -p /workspace/project-1 && cd /workspace/project-1 && git clone --depth 1 https://gh_token_xxx@github.com/user/test-repo.git test-repo']
       );
     });
 
+    it('should return error when token not found', async () => {
+      const result = await manager.cloneRepo(
+        'container-123',
+        1,
+        'https://github.com/user/test-repo.git',
+        1
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('未找到 github 的授权');
+    });
+
     it('should return error when clone fails', async () => {
+      const tokenManager = new TokenManager(db);
+      tokenManager.saveToken(1, 'github', 'gh_token_xxx');
+
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: '',
         stderr: 'fatal: repository not found',
@@ -82,8 +77,9 @@ describe('RepoManager', () => {
 
       const result = await manager.cloneRepo(
         'container-123',
+        1,
         'https://github.com/user/nonexistent.git',
-        'main'
+        1
       );
 
       expect(result.success).toBe(false);
@@ -91,6 +87,9 @@ describe('RepoManager', () => {
     });
 
     it('should work with GitLab URLs', async () => {
+      const tokenManager = new TokenManager(db);
+      tokenManager.saveToken(1, 'gitlab', 'gl_token_xxx');
+
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: 'Cloning into my-project...',
         stderr: '',
@@ -99,46 +98,18 @@ describe('RepoManager', () => {
 
       const result = await manager.cloneRepo(
         'container-123',
+        1,
         'https://gitlab.com/user/my-project.git',
-        'develop'
+        1
       );
 
       expect(result.success).toBe(true);
-      expect(result.path).toBe('/workspace/my-project');
+      expect(result.path).toBe('/workspace/project-1/my-project');
     });
   });
 
   describe('pushRepo', () => {
-    it('should push repo with commit', async () => {
-      vi.mocked(execInContainer).mockResolvedValueOnce({
-        stdout: 'Changes pushed',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      const result = await manager.pushRepo(
-        'container-123',
-        'https://github.com/user/test-repo.git',
-        'main',
-        'Update files'
-      );
-
-      expect(result.success).toBe(true);
-      const expectedCommand = [
-        'cd /workspace/test-repo',
-        'git config user.email "bot@code-link.app"',
-        'git config user.name "CodeLink Bot"',
-        'git add -A',
-        'git commit -m "Update files"',
-        'git push https://github.com/user/test-repo.git HEAD:main',
-      ].join('\n');
-      expect(execInContainer).toHaveBeenCalledWith(
-        'container-123',
-        ['bash', '-c', expectedCommand]
-      );
-    });
-
-    it('should push with authentication when userId is provided', async () => {
+    it('should push repo with user identity', async () => {
       const tokenManager = new TokenManager(db);
       tokenManager.saveToken(1, 'github', 'gh_token_yyy');
 
@@ -150,18 +121,50 @@ describe('RepoManager', () => {
 
       const result = await manager.pushRepo(
         'container-123',
+        1,
         'https://github.com/user/test-repo.git',
         'main',
         'Update files',
-        1
+        1,
+        'Test User',
+        'test@test.com'
       );
 
       expect(result.success).toBe(true);
-      const callArgs = vi.mocked(execInContainer).mock.calls[0][1];
-      expect(callArgs[2]).toContain('https://gh_token_yyy@github.com');
+      const expectedCommand = [
+        'cd /workspace/project-1/test-repo',
+        'git config user.name "Test User"',
+        'git config user.email "test@test.com"',
+        'git add -A',
+        'git commit -m "Update files"',
+        'git push https://gh_token_yyy@github.com/user/test-repo.git HEAD:main',
+      ].join('\n');
+      expect(execInContainer).toHaveBeenCalledWith(
+        'container-123',
+        ['bash', '-c', expectedCommand]
+      );
+    });
+
+    it('should return error when token not found', async () => {
+      const result = await manager.pushRepo(
+        'container-123',
+        1,
+        'https://github.com/user/test-repo.git',
+        'main',
+        'Update files',
+        1,
+        'Test User',
+        'test@test.com'
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('未找到 github 的授权');
     });
 
     it('should return error when push fails', async () => {
+      const tokenManager = new TokenManager(db);
+      tokenManager.saveToken(1, 'github', 'gh_token_yyy');
+
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: '',
         stderr: 'fatal: Authentication failed',
@@ -170,9 +173,13 @@ describe('RepoManager', () => {
 
       const result = await manager.pushRepo(
         'container-123',
+        1,
         'https://github.com/user/test-repo.git',
         'main',
-        'Update files'
+        'Update files',
+        1,
+        'Test User',
+        'test@test.com'
       );
 
       expect(result.success).toBe(false);
