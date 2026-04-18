@@ -363,4 +363,85 @@ export class OrganizationRepository {
       .all();
     return result.length;
   }
+
+  /**
+   * 在事务中接受邀请（更新邀请状态 + 添加成员 + 获取组织和成员信息）
+   */
+  acceptInvitationInTransaction(
+    invId: number,
+    organizationId: number,
+    userId: number,
+    role: string,
+    invitedBy: number
+  ): { org: SelectOrganization; member: OrganizationMemberWithUser } {
+    const sqliteDb = getSqliteDb();
+    const db = getDb();
+
+    return sqliteDb.transaction(() => {
+      // 检查用户是否已是成员
+      const existingMember = db.select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, organizationId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (existingMember) {
+        throw new Error('用户已是该组织成员');
+      }
+
+      // 更新邀请状态
+      db.update(organizationInvitations)
+        .set({ status: 'accepted' })
+        .where(eq(organizationInvitations.id, invId))
+        .run();
+
+      // 添加成员
+      db.insert(organizationMembers)
+        .values({
+          organizationId,
+          userId,
+          role: role as 'owner' | 'developer' | 'member',
+          invitedBy,
+        })
+        .run();
+
+      // 获取组织信息
+      const org = db.select()
+        .from(organizations)
+        .where(eq(organizations.id, organizationId))
+        .get();
+
+      if (!org) {
+        throw new Error('组织不存在');
+      }
+
+      // 获取成员信息（带用户名）
+      const member = db.select({
+        id: organizationMembers.id,
+        organizationId: organizationMembers.organizationId,
+        userId: organizationMembers.userId,
+        role: organizationMembers.role,
+        invitedBy: organizationMembers.invitedBy,
+        joinedAt: organizationMembers.joinedAt,
+        name: users.name,
+        email: users.email,
+        avatar: users.avatar,
+      })
+        .from(organizationMembers)
+        .innerJoin(users, eq(organizationMembers.userId, users.id))
+        .where(and(
+          eq(organizationMembers.organizationId, organizationId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (!member) {
+        throw new Error('成员添加失败');
+      }
+
+      return { org, member: member as OrganizationMemberWithUser };
+    })();
+  }
 }

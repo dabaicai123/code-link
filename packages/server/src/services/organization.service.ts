@@ -352,27 +352,14 @@ export class OrganizationService {
       throw new Error('邀请不存在或已处理');
     }
 
-    // 使用事务
-    await this.orgRepo.updateInvitationStatus(invId, 'accepted');
-    await this.orgRepo.addMember({
-      organizationId: invitation.organizationId,
+    // 使用事务一次性完成：更新邀请状态 + 添加成员 + 获取组织和成员信息
+    return this.orgRepo.acceptInvitationInTransaction(
+      invId,
+      invitation.organizationId,
       userId,
-      role: invitation.role,
-      invitedBy: invitation.invitedBy,
-    });
-
-    const org = await this.orgRepo.findById(invitation.organizationId);
-    if (!org) {
-      throw new Error('组织不存在');
-    }
-
-    const members = await this.orgRepo.findMembers(invitation.organizationId);
-    const member = members.find(m => m.userId === userId);
-    if (!member) {
-      throw new Error('成员添加失败');
-    }
-
-    return { organization: org, member };
+      invitation.role,
+      invitation.invitedBy
+    );
   }
 
   /**

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 
@@ -18,7 +18,9 @@ export const organizationMembers = sqliteTable('organization_members', {
   role: text('role', { enum: ['owner', 'developer', 'member'] }).notNull(),
   invitedBy: integer('invited_by').notNull().references(() => users.id),
   joinedAt: text('joined_at').notNull().default(sql`datetime('now')`),
-});
+}, (table) => ({
+  orgUserUnique: unique().on(table.organizationId, table.userId),
+}));
 
 export const organizationInvitations = sqliteTable('organization_invitations', {
   id: integer('id').primaryKey({ autoIncrement: true }),
