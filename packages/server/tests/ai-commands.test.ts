@@ -1,7 +1,7 @@
 // packages/server/tests/ai-commands.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { parseAICommand, isAICommand, getSupportedCommands } from '../src/ai/commands.ts';
+import { parseAICommand, isAICommand } from '../src/ai/commands.ts';
 
 describe('AI Commands', () => {
   describe('parseAICommand', () => {
@@ -119,33 +119,4 @@ describe('AI Commands', () => {
     });
   });
 
-  describe('getSupportedCommands', () => {
-    it('should return all supported commands', () => {
-      const commands = getSupportedCommands();
-      expect(commands).toHaveLength(7);
-      expect(commands.map(c => c.type)).toContain('generate');
-      expect(commands.map(c => c.type)).toContain('analyze');
-      expect(commands.map(c => c.type)).toContain('suggest');
-      expect(commands.map(c => c.type)).toContain('explain');
-      expect(commands.map(c => c.type)).toContain('review');
-      expect(commands.map(c => c.type)).toContain('refactor');
-      expect(commands.map(c => c.type)).toContain('test');
-    });
-
-    it('should have description and example for each command', () => {
-      const commands = getSupportedCommands();
-      commands.forEach(cmd => {
-        expect(cmd.description).toBeTruthy();
-        expect(cmd.example).toBeTruthy();
-        expect(cmd.example.startsWith('@AI')).toBe(true);
-      });
-    });
-
-    it('should have unique command types', () => {
-      const commands = getSupportedCommands();
-      const types = commands.map(c => c.type);
-      const uniqueTypes = new Set(types);
-      expect(uniqueTypes.size).toBe(types.length);
-    });
-  });
 });

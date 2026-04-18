@@ -142,17 +142,3 @@ export function isAICommand(content: string): boolean {
   return content.trim().startsWith('@AI');
 }
 
-/**
- * Get list of supported command types
- */
-export function getSupportedCommands(): Array<{ type: AICommandType; description: string; example: string }> {
-  return [
-    { type: 'generate', description: '生成代码', example: '@AI generate a function to sort array' },
-    { type: 'analyze', description: '分析代码或问题', example: '@AI analyze the performance issues' },
-    { type: 'suggest', description: '提供建议', example: '@AI suggest improvements for this code' },
-    { type: 'explain', description: '解释代码或概念', example: '@AI explain how React hooks work' },
-    { type: 'review', description: '代码评审', example: '@AI review the changes in file.ts' },
-    { type: 'refactor', description: '重构建议', example: '@AI refactor this function' },
-    { type: 'test', description: '生成测试', example: '@AI test cases for this component' },
-  ];
-}
