@@ -44,10 +44,21 @@ export async function ensureTemplateImage(type: TemplateType): Promise<void> {
   const images = await docker.listImages({ filters: `{"dangling":["false"],"reference":["${config.imageName}"]}` });
   if (images.length > 0) return;
 
+  // 构建上下文使用 templates 父目录
+  const templatesDir = path.dirname(config.dockerfileDir);
+
   // 构建镜像
   const stream = await docker.buildImage(
-    { context: config.dockerfileDir, src: ['Dockerfile', 'entrypoint.sh'] },
-    { t: config.imageName }
+    {
+      context: templatesDir,
+      src: [
+        'claude.json',
+        'claude-settings.json',
+        `${type}/Dockerfile`,
+        `${type}/entrypoint.sh`
+      ]
+    },
+    { t: config.imageName, dockerfile: `${type}/Dockerfile` }
   );
 
   await new Promise((resolve, reject) => {
