@@ -14,16 +14,5 @@ export const projects = sqliteTable('projects', {
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
 });
 
-export const projectMembers = sqliteTable('project_members', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  projectId: integer('project_id').notNull()
-    .references(() => projects.id, { onDelete: 'cascade' }),
-  userId: integer('user_id').notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  role: text('role', { enum: ['owner', 'developer', 'product'] }).notNull(),
-});
-
 export type InsertProject = typeof projects.$inferInsert;
 export type SelectProject = typeof projects.$inferSelect;
-export type InsertProjectMember = typeof projectMembers.$inferInsert;
-export type SelectProjectMember = typeof projectMembers.$inferSelect;

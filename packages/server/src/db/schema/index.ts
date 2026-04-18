@@ -18,13 +18,8 @@ export type {
 } from './organizations.js';
 
 // Projects
-export { projects, projectMembers } from './projects.js';
-export type {
-  InsertProject,
-  SelectProject,
-  InsertProjectMember,
-  SelectProjectMember,
-} from './projects.js';
+export { projects } from './projects.js';
+export type { InsertProject, SelectProject } from './projects.js';
 
 // Drafts
 export {
