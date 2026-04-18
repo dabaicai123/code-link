@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { initSchema } from '../src/db/schema.js';
 import { TokenManager } from '../src/git/token-manager.js';
-import { getSqliteDb } from '../src/db/index.js';
+import { getSqliteDb, closeDb } from '../src/db/index.js';
+import { createTestUser } from './helpers/test-db.js';
 import type Database from 'better-sqlite3';
 
 describe('TokenManager', () => {
@@ -9,14 +10,15 @@ describe('TokenManager', () => {
   let manager: TokenManager;
 
   beforeEach(async () => {
+    closeDb();
     db = getSqliteDb(':memory:');
     initSchema(db);
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
+    createTestUser({ name: 'test', email: 'test@test.com', passwordHash: 'hash' });
     manager = new TokenManager();
   });
 
   afterEach(() => {
-    db.close();
+    closeDb();
   });
 
   it('should save token', async () => {
