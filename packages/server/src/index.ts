@@ -44,7 +44,7 @@ export function createApp(db: Database.Database): express.Express {
   app.use('/api/claude-config', createClaudeConfigRouter(db));
   app.use('/api/organizations', createOrganizationsRouter());
   app.use('/api/invitations', createInvitationsRouter());
-  app.use('/api/drafts', createDraftsRouter(db));
+  app.use('/api/drafts', createDraftsRouter());
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
