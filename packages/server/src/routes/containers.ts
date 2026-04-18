@@ -30,7 +30,7 @@ export function createContainersRouter(db: Database.Database): Router {
   // 辅助函数：获取项目信息
   function getProject(projectId: number): Project | undefined {
     return db
-      .prepare('SELECT id, name, template_type, container_id, status, github_repo, created_by, created_at FROM projects WHERE id = ?')
+      .prepare('SELECT id, name, template_type, container_id, status, created_by, created_at FROM projects WHERE id = ?')
       .get(projectId) as Project | undefined;
   }
 

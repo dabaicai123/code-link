@@ -58,7 +58,7 @@ export function createProjectsRouter(db: Database.Database): Router {
 
       // 返回创建的项目
       const project = db
-        .prepare('SELECT id, name, template_type, container_id, status, github_repo, created_by, created_at FROM projects WHERE id = ?')
+        .prepare('SELECT id, name, template_type, container_id, status, created_by, created_at FROM projects WHERE id = ?')
         .get(projectId) as Project;
 
       res.status(201).json(project);
@@ -74,7 +74,7 @@ export function createProjectsRouter(db: Database.Database): Router {
 
     const projects = db
       .prepare(
-        `SELECT DISTINCT p.id, p.name, p.template_type, p.container_id, p.status, p.github_repo, p.created_by, p.created_at
+        `SELECT DISTINCT p.id, p.name, p.template_type, p.container_id, p.status, p.created_by, p.created_at
          FROM projects p
          JOIN project_members pm ON p.id = pm.project_id
          WHERE pm.user_id = ?
@@ -108,7 +108,7 @@ export function createProjectsRouter(db: Database.Database): Router {
 
     // 获取项目信息
     const project = db
-      .prepare('SELECT id, name, template_type, container_id, status, github_repo, created_by, created_at FROM projects WHERE id = ?')
+      .prepare('SELECT id, name, template_type, container_id, status, created_by, created_at FROM projects WHERE id = ?')
       .get(projectId) as Project | undefined;
 
     if (!project) {

@@ -17,7 +17,6 @@ interface Project {
   template_type: TemplateType;
   container_id: string | null;
   status: 'created' | 'running' | 'stopped';
-  github_repo: string | null;
   created_by: number;
   created_at: string;
 }
@@ -31,7 +30,6 @@ interface CreateProjectDialogProps {
 export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjectDialogProps) {
   const [name, setName] = useState('');
   const [templateType, setTemplateType] = useState<TemplateType>('node');
-  const [githubRepo, setGithubRepo] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,7 +42,6 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
       const project = await api.post<Project>('/projects', {
         name: name.trim(),
         template_type: templateType,
-        ...(githubRepo && { github_repo: githubRepo.trim() }),
       });
       onSuccess(project);
       handleClose();
@@ -58,7 +55,6 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
   const handleClose = () => {
     setName('');
     setTemplateType('node');
-    setGithubRepo('');
     setError(null);
     onClose();
   };
@@ -129,19 +125,6 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
                 </label>
               ))}
             </div>
-          </div>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
-              GitHub 仓库 <span style={{ color: 'var(--text-disabled)' }}>(可选)</span>
-            </label>
-            <input
-              type="url"
-              value={githubRepo}
-              onChange={(e) => setGithubRepo(e.target.value)}
-              className="input"
-              placeholder="https://github.com/owner/repo"
-            />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
