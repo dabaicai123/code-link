@@ -76,5 +76,54 @@ export function initSchema(db: Database.Database): void {
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(user_id)
     );
+
+    CREATE TABLE IF NOT EXISTS drafts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'discussing' CHECK (status IN ('discussing', 'brainstorming', 'reviewing', 'developing', 'confirmed', 'archived')),
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS draft_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      draft_id INTEGER NOT NULL REFERENCES drafts(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL DEFAULT 'participant' CHECK (role IN ('owner', 'participant')),
+      joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(draft_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS draft_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      draft_id INTEGER NOT NULL REFERENCES drafts(id) ON DELETE CASCADE,
+      parent_id INTEGER REFERENCES draft_messages(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      content TEXT,
+      message_type TEXT NOT NULL DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'code', 'document_card', 'ai_command', 'system')),
+      metadata TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS message_confirmations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL REFERENCES draft_messages(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL DEFAULT 'agree' CHECK (type IN ('agree', 'disagree', 'suggest')),
+      comment TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(message_id, user_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_drafts_project_id ON drafts(project_id);
+    CREATE INDEX IF NOT EXISTS idx_drafts_status ON drafts(status);
+    CREATE INDEX IF NOT EXISTS idx_draft_members_draft_id ON draft_members(draft_id);
+    CREATE INDEX IF NOT EXISTS idx_draft_members_user_id ON draft_members(user_id);
+    CREATE INDEX IF NOT EXISTS idx_draft_messages_draft_id ON draft_messages(draft_id);
+    CREATE INDEX IF NOT EXISTS idx_draft_messages_parent_id ON draft_messages(parent_id);
+    CREATE INDEX IF NOT EXISTS idx_message_confirmations_message_id ON message_confirmations(message_id);
   `);
 }
