@@ -16,7 +16,7 @@ describe('Drafts API', () => {
   let projectId: number;
 
   beforeEach(async () => {
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
 
     app = express();

@@ -65,7 +65,7 @@ describe('Terminal WebSocket Route', () => {
     setEncryptionKey('test-encryption-key-for-terminal-route-test-32-chars');
 
     // 创建内存数据库
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
 
     // 创建测试用户

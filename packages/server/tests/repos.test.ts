@@ -1,9 +1,9 @@
 // packages/server/tests/repos.test.ts
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../src/index.ts';
-import { getDb } from '../src/db/connection.ts';
-import { initSchema } from '../src/db/schema.ts';
+import { createApp } from '../src/index.js';
+import { getSqliteDb } from '../src/db/index.js';
+import { initSchema } from '../src/db/schema.js';
 import type Database from 'better-sqlite3';
 
 describe('GitHub OAuth 路由', () => {
@@ -11,10 +11,14 @@ describe('GitHub OAuth 路由', () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
-    app = createApp(db);
+    app = createApp();
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    closeDb();
   });
 
   describe('GET /api/github/oauth', () => {
@@ -168,10 +172,14 @@ describe('GitLab OAuth 路由', () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
-    app = createApp(db);
+    app = createApp();
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    closeDb();
   });
 
   describe('GET /api/gitlab/oauth', () => {
@@ -269,11 +277,12 @@ describe('Repos 路由', () => {
   let token: string;
   let userId: number;
   let projectId: number;
+  let orgId: number;
 
   beforeEach(async () => {
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
-    app = createApp(db);
+    app = createApp();
     vi.restoreAllMocks();
 
     // 创建用户
@@ -283,12 +292,23 @@ describe('Repos 路由', () => {
     token = regRes.body.token;
     userId = regRes.body.user.id;
 
+    // 创建组织
+    const orgRes = await request(app)
+      .post('/api/organizations')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'test-org' });
+    orgId = orgRes.body.id;
+
     // 创建项目
     const projectRes = await request(app)
       .post('/api/projects')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'test-project', template_type: 'node' });
+      .send({ name: 'test-project', template_type: 'node', organization_id: orgId });
     projectId = projectRes.body.id;
+  });
+
+  afterEach(() => {
+    closeDb();
   });
 
   describe('GET /api/projects/:projectId/repos', () => {
@@ -303,7 +323,7 @@ describe('Repos 路由', () => {
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
-      expect(res.body[0].repo_name).toBe('repo');
+      expect(res.body[0].repoName).toBe('repo');
     });
 
     it('未登录应返回 401', async () => {
@@ -347,7 +367,7 @@ describe('Repos 路由', () => {
         .send({ url: 'https://github.com/owner/frontend' });
 
       expect(res.status).toBe(201);
-      expect(res.body.repo_name).toBe('owner/frontend');
+      expect(res.body.repoName).toBe('owner/frontend');
       expect(res.body.provider).toBe('github');
     });
 
@@ -358,7 +378,7 @@ describe('Repos 路由', () => {
         .send({ url: 'https://gitlab.com/owner/backend.git' });
 
       expect(res.status).toBe(201);
-      expect(res.body.repo_name).toBe('owner/backend');
+      expect(res.body.repoName).toBe('owner/backend');
       expect(res.body.provider).toBe('gitlab');
     });
 
@@ -428,7 +448,7 @@ describe('Repos 路由', () => {
       const result = db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
         projectId, 'github', 'https://github.com/user/repo.git', 'repo', 'main'
       );
-      repoId = result.lastInsertRowid;
+      repoId = Number(result.lastInsertRowid);
     });
 
     it('应成功删除仓库', async () => {

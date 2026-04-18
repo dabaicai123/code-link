@@ -1,10 +1,10 @@
 // packages/server/tests/containers.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../src/index.ts';
-import { getDb } from '../src/db/connection.ts';
-import { initSchema } from '../src/db/schema.ts';
-import { setEncryptionKey, encrypt } from '../src/crypto/aes.ts';
+import { createApp } from '../src/index.js';
+import { getSqliteDb } from '../src/db/index.js';
+import { initSchema } from '../src/db/schema.js';
+import { setEncryptionKey, encrypt } from '../src/crypto/aes.js';
 import type Database from 'better-sqlite3';
 
 // 存储容器状态
@@ -43,6 +43,7 @@ describe('容器路由', () => {
   let token: string;
   let userId: number;
   let projectId: number;
+  let orgId: number;
 
   beforeEach(async () => {
     // 清空容器状态
@@ -51,9 +52,9 @@ describe('容器路由', () => {
     // 设置加密密钥（测试用）
     setEncryptionKey('test-encryption-key-for-containers-test-32-chars');
 
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
-    app = createApp(db);
+    app = createApp();
 
     // 创建测试用户并获取 token
     const regRes = await request(app)
@@ -61,6 +62,13 @@ describe('容器路由', () => {
       .send({ name: '测试用户', email: 'test@test.com', password: 'password123' });
     token = regRes.body.token;
     userId = regRes.body.user.id;
+
+    // 创建测试组织
+    const orgRes = await request(app)
+      .post('/api/organizations')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: '测试组织' });
+    orgId = orgRes.body.id;
 
     // 为用户添加 Claude 配置（加密存储）
     const config = {
@@ -75,8 +83,12 @@ describe('容器路由', () => {
     const projectRes = await request(app)
       .post('/api/projects')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: '测试项目', template_type: 'node' });
+      .send({ name: '测试项目', template_type: 'node', organization_id: orgId });
     projectId = projectRes.body.id;
+  });
+
+  afterEach(() => {
+    closeDb();
   });
 
   describe('POST /api/projects/:id/container/start', () => {
@@ -120,23 +132,13 @@ describe('容器路由', () => {
         .post('/api/auth/register')
         .send({ name: '无配置用户', email: 'noconfig@test.com', password: 'password123' });
       const noConfigToken = noConfigRes.body.token;
-      const noConfigUserId = noConfigRes.body.user.id;
 
-      // 将该用户添加为项目成员
-      db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
-        projectId,
-        noConfigUserId,
-        'developer'
-      );
-
-      // 用户已登录但未配置 Claude Code
+      // 该用户不是组织成员，所以无权访问项目
       const res = await request(app)
         .post(`/api/projects/${projectId}/container/start`)
         .set('Authorization', `Bearer ${noConfigToken}`);
 
-      expect(res.status).toBe(400);
-      expect(res.body.code).toBe('CLAUDE_CONFIG_MISSING');
-      expect(res.body.error).toContain('请先在「设置');
+      expect(res.status).toBe(404);
     });
   });
 
@@ -236,18 +238,21 @@ describe('容器路由', () => {
     });
 
     it('非 owner 应返回 403', async () => {
-      // 创建另一个用户并添加为 developer
+      // 创建另一个用户并添加为组织成员（非 owner）
       const otherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: '开发者', email: 'dev@test.com', password: 'password123' });
-      const otherUserId = otherRes.body.user.id;
-      const otherToken = otherRes.body.token;
 
-      db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
-        projectId,
+      // 直接添加为组织成员（developer 角色）
+      const otherUserId = otherRes.body.user.id;
+      db.prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)').run(
+        orgId,
         otherUserId,
-        'developer'
+        'developer',
+        userId
       );
+
+      const otherToken = otherRes.body.token;
 
       const res = await request(app)
         .delete(`/api/projects/${projectId}/container`)

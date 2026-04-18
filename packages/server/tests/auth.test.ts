@@ -11,7 +11,7 @@ describe('认证路由', () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
     app = createApp(db);
   });

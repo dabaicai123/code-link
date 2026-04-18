@@ -2,11 +2,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { createApp } from '../src/index.ts';
-import { getDb, closeDb } from '../src/db/connection.ts';
-import { initSchema } from '../src/db/schema.ts';
-import { JWT_SECRET } from '../src/middleware/auth.ts';
-import { resetBuildManagerInstance } from '../src/build/build-manager.ts';
+import { createApp } from '../src/index.js';
+import { getSqliteDb } from '../src/db/index.js';
+import { initSchema } from '../src/db/schema.js';
+import { JWT_SECRET } from '../src/middleware/auth.js';
+import { resetBuildManagerInstance } from '../src/build/build-manager.js';
 import type Database from 'better-sqlite3';
 
 // Mock Docker 相关依赖，避免异步构建时的错误
@@ -40,10 +40,9 @@ vi.mock('../src/websocket/server.js', () => ({
 describe('Builds API', () => {
   let app: ReturnType<typeof createApp>;
   let db: Database.Database;
-  let authToken: string;
 
   beforeEach(() => {
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
 
     // 创建测试用户
@@ -53,46 +52,46 @@ describe('Builds API', () => {
       'hash'
     );
 
+    // 创建测试组织
+    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
+    db.prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)').run(1, 1, 'owner', 1);
+
     // 创建测试项目
-    db.prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)').run(
+    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run(
       'test-project',
       'node',
+      1,
       1
     );
 
-    // 添加用户到项目
-    db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
-      1,
-      1,
-      'owner'
-    );
-
-    app = createApp(db);
-
-    // 生成测试 token
-    authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+    app = createApp();
 
     // 重置 BuildManager 单例
     resetBuildManagerInstance();
   });
 
   afterEach(() => {
-    closeDb(db);
+    closeDb();
   });
 
   describe('POST /api/builds', () => {
     it('应成功创建构建', async () => {
+      // 生成测试 token
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .post('/api/builds')
         .set('Authorization', `Bearer ${authToken}`)
         .send({ projectId: 1 });
 
       expect(res.status).toBe(201);
-      expect(res.body.project_id).toBe(1);
+      expect(res.body.projectId).toBe(1);
       expect(res.body.status).toBe('pending');
     });
 
     it('缺少 projectId 应返回 400', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .post('/api/builds')
         .set('Authorization', `Bearer ${authToken}`)
@@ -130,6 +129,8 @@ describe('Builds API', () => {
 
   describe('GET /api/builds/project/:projectId', () => {
     it('应返回项目的构建列表', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       // 先创建构建
       await request(app)
         .post('/api/builds')
@@ -143,10 +144,12 @@ describe('Builds API', () => {
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body.length).toBe(1);
-      expect(res.body[0].project_id).toBe(1);
+      expect(res.body[0].projectId).toBe(1);
     });
 
     it('无效的项目 ID 应返回 400', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .get('/api/builds/project/invalid')
         .set('Authorization', `Bearer ${authToken}`);
@@ -172,6 +175,8 @@ describe('Builds API', () => {
 
   describe('GET /api/builds/:id', () => {
     it('应返回构建详情', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const createRes = await request(app)
         .post('/api/builds')
         .set('Authorization', `Bearer ${authToken}`)
@@ -183,10 +188,12 @@ describe('Builds API', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.id).toBe(createRes.body.id);
-      expect(res.body.project_id).toBe(1);
+      expect(res.body.projectId).toBe(1);
     });
 
     it('无效的构建 ID 应返回 400', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .get('/api/builds/invalid')
         .set('Authorization', `Bearer ${authToken}`);
@@ -195,6 +202,8 @@ describe('Builds API', () => {
     });
 
     it('构建不存在应返回 404', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .get('/api/builds/999')
         .set('Authorization', `Bearer ${authToken}`);
@@ -203,6 +212,8 @@ describe('Builds API', () => {
     });
 
     it('无权限应返回 403', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const createRes = await request(app)
         .post('/api/builds')
         .set('Authorization', `Bearer ${authToken}`)
@@ -225,6 +236,8 @@ describe('Builds API', () => {
 
   describe('GET /api/builds/preview/:projectId', () => {
     it('预览容器未运行应返回 404', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .get('/api/builds/preview/1')
         .set('Authorization', `Bearer ${authToken}`);
@@ -234,6 +247,8 @@ describe('Builds API', () => {
     });
 
     it('无效的项目 ID 应返回 400', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .get('/api/builds/preview/invalid')
         .set('Authorization', `Bearer ${authToken}`);
@@ -259,6 +274,8 @@ describe('Builds API', () => {
 
   describe('DELETE /api/builds/preview/:projectId', () => {
     it('应成功停止预览容器', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .delete('/api/builds/preview/1')
         .set('Authorization', `Bearer ${authToken}`);
@@ -267,6 +284,8 @@ describe('Builds API', () => {
     });
 
     it('无效的项目 ID 应返回 400', async () => {
+      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+
       const res = await request(app)
         .delete('/api/builds/preview/invalid')
         .set('Authorization', `Bearer ${authToken}`);

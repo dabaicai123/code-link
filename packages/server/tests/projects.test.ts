@@ -1,9 +1,9 @@
 // packages/server/tests/projects.test.ts
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../src/index.ts';
-import { getDb } from '../src/db/connection.ts';
-import { initSchema } from '../src/db/schema.ts';
+import { createApp } from '../src/index.js';
+import { getSqliteDb } from '../src/db/index.js';
+import { initSchema } from '../src/db/schema.js';
 import type Database from 'better-sqlite3';
 
 describe('项目路由', () => {
@@ -11,11 +11,12 @@ describe('项目路由', () => {
   let db: Database.Database;
   let token: string;
   let userId: number;
+  let orgId: number;
 
   beforeEach(async () => {
-    db = getDb(':memory:');
+    db = getSqliteDb(':memory:');
     initSchema(db);
-    app = createApp(db);
+    app = createApp();
 
     // 创建测试用户并获取 token
     const regRes = await request(app)
@@ -23,6 +24,17 @@ describe('项目路由', () => {
       .send({ name: '测试用户', email: 'test@test.com', password: 'password123' });
     token = regRes.body.token;
     userId = regRes.body.user.id;
+
+    // 创建测试组织
+    const orgRes = await request(app)
+      .post('/api/organizations')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: '测试组织' });
+    orgId = orgRes.body.id;
+  });
+
+  afterEach(() => {
+    closeDb();
   });
 
   describe('POST /api/projects', () => {
@@ -30,34 +42,19 @@ describe('项目路由', () => {
       const res = await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: '测试项目', template_type: 'node' });
+        .send({ name: '测试项目', template_type: 'node', organization_id: orgId });
       expect(res.status).toBe(201);
       expect(res.body.name).toBe('测试项目');
-      expect(res.body.template_type).toBe('node');
-      expect(res.body.created_by).toBe(userId);
+      expect(res.body.templateType).toBe('node');
+      expect(res.body.createdBy).toBe(userId);
       expect(res.body.id).toBeDefined();
-    });
-
-    it('创建项目时应自动添加创建者为 owner', async () => {
-      const res = await request(app)
-        .post('/api/projects')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ name: '新项目', template_type: 'node+java' });
-      expect(res.status).toBe(201);
-
-      // 检查成员表
-      const member = db
-        .prepare('SELECT * FROM project_members WHERE project_id = ? AND user_id = ?')
-        .get(res.body.id, userId) as { role: string } | undefined;
-      expect(member).toBeDefined();
-      expect(member?.role).toBe('owner');
     });
 
     it('无效模板类型应返回 400', async () => {
       const res = await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: '项目', template_type: 'invalid' });
+        .send({ name: '项目', template_type: 'invalid', organization_id: orgId });
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('无效的模板类型');
     });
@@ -66,14 +63,14 @@ describe('项目路由', () => {
       const res = await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: '项目' });
+        .send({ name: '项目', organization_id: orgId });
       expect(res.status).toBe(400);
     });
 
     it('未登录应返回 401', async () => {
       const res = await request(app)
         .post('/api/projects')
-        .send({ name: '项目', template_type: 'node' });
+        .send({ name: '项目', template_type: 'node', organization_id: orgId });
       expect(res.status).toBe(401);
     });
   });
@@ -84,11 +81,11 @@ describe('项目路由', () => {
       await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: '项目1', template_type: 'node' });
+        .send({ name: '项目1', template_type: 'node', organization_id: orgId });
       await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: '项目2', template_type: 'node+python' });
+        .send({ name: '项目2', template_type: 'node+python', organization_id: orgId });
 
       const res = await request(app)
         .get('/api/projects')
@@ -109,7 +106,7 @@ describe('项目路由', () => {
       await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: '我的项目', template_type: 'node' });
+        .send({ name: '我的项目', template_type: 'node', organization_id: orgId });
 
       // 创建另一个用户
       const otherRes = await request(app)
@@ -133,7 +130,7 @@ describe('项目路由', () => {
       const res = await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: '详情项目', template_type: 'node' });
+        .send({ name: '详情项目', template_type: 'node', organization_id: orgId });
       projectId = res.body.id;
     });
 
@@ -182,7 +179,7 @@ describe('项目路由', () => {
       const res = await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${token}`)
-        .send({ name: '待删除项目', template_type: 'node' });
+        .send({ name: '待删除项目', template_type: 'node', organization_id: orgId });
       projectId = res.body.id;
     });
 
@@ -198,18 +195,19 @@ describe('项目路由', () => {
     });
 
     it('非 owner 应返回 403', async () => {
-      // 创建另一个用户并将其添加为 developer
+      // 创建另一个用户并将其添加为组织 developer
       const otherRes = await request(app)
         .post('/api/auth/register')
         .send({ name: '开发者', email: 'dev@test.com', password: 'password123' });
       const otherUserId = otherRes.body.user.id;
       const otherToken = otherRes.body.token;
 
-      // 添加为 developer
-      db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
-        projectId,
+      // 添加为组织 developer
+      db.prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)').run(
+        orgId,
         otherUserId,
-        'developer'
+        'developer',
+        userId
       );
 
       const res = await request(app)

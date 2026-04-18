@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { initSchema } from '../src/db/schema.js';
 import { RepoManager } from '../src/git/repo-manager.js';
 import { TokenManager } from '../src/git/token-manager.js';
+import { getSqliteDb } from '../src/db/index.js';
 
 // Mock execInContainer
 vi.mock('../src/docker/container-manager.js', () => ({
@@ -15,22 +16,26 @@ describe('RepoManager', () => {
   let db: Database.Database;
   let manager: RepoManager;
 
-  beforeEach(() => {
-    db = new Database(':memory:');
+  beforeEach(async () => {
+    db = getSqliteDb(':memory:');
     initSchema(db);
     // 创建测试用户
     db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
     // 创建测试项目
     db.prepare('INSERT INTO projects (name, template_type, created_by) VALUES (?, ?, ?)').run('test-project', 'node', 1);
-    manager = new RepoManager(db);
+    manager = new RepoManager();
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    closeDb(db);
   });
 
   describe('cloneRepo', () => {
     it('should clone repo with authentication', async () => {
       // 先保存 token
-      const tokenManager = new TokenManager(db);
-      tokenManager.saveToken(1, 'github', 'gh_token_xxx');
+      const tokenManager = new TokenManager();
+      await tokenManager.saveToken(1, 'github', 'gh_token_xxx');
 
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: 'Cloning into test-repo...',
@@ -66,8 +71,8 @@ describe('RepoManager', () => {
     });
 
     it('should return error when clone fails', async () => {
-      const tokenManager = new TokenManager(db);
-      tokenManager.saveToken(1, 'github', 'gh_token_xxx');
+      const tokenManager = new TokenManager();
+      await tokenManager.saveToken(1, 'github', 'gh_token_xxx');
 
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: '',
@@ -87,8 +92,8 @@ describe('RepoManager', () => {
     });
 
     it('should work with GitLab URLs', async () => {
-      const tokenManager = new TokenManager(db);
-      tokenManager.saveToken(1, 'gitlab', 'gl_token_xxx');
+      const tokenManager = new TokenManager();
+      await tokenManager.saveToken(1, 'gitlab', 'gl_token_xxx');
 
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: 'Cloning into my-project...',
@@ -108,8 +113,8 @@ describe('RepoManager', () => {
     });
 
     it('should escape malicious characters in URL', async () => {
-      const tokenManager = new TokenManager(db);
-      tokenManager.saveToken(1, 'github', 'gh_token_xxx');
+      const tokenManager = new TokenManager();
+      await tokenManager.saveToken(1, 'github', 'gh_token_xxx');
 
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: '',
@@ -132,8 +137,8 @@ describe('RepoManager', () => {
 
   describe('pushRepo', () => {
     it('should push repo with user identity', async () => {
-      const tokenManager = new TokenManager(db);
-      tokenManager.saveToken(1, 'github', 'gh_token_yyy');
+      const tokenManager = new TokenManager();
+      await tokenManager.saveToken(1, 'github', 'gh_token_yyy');
 
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: 'Changes pushed',
@@ -184,8 +189,8 @@ describe('RepoManager', () => {
     });
 
     it('should return error when push fails', async () => {
-      const tokenManager = new TokenManager(db);
-      tokenManager.saveToken(1, 'github', 'gh_token_yyy');
+      const tokenManager = new TokenManager();
+      await tokenManager.saveToken(1, 'github', 'gh_token_yyy');
 
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: '',
@@ -209,8 +214,8 @@ describe('RepoManager', () => {
     });
 
     it('should escape malicious commit message', async () => {
-      const tokenManager = new TokenManager(db);
-      tokenManager.saveToken(1, 'github', 'gh_token_yyy');
+      const tokenManager = new TokenManager();
+      await tokenManager.saveToken(1, 'github', 'gh_token_yyy');
 
       vi.mocked(execInContainer).mockResolvedValueOnce({
         stdout: 'Changes pushed',
@@ -236,29 +241,29 @@ describe('RepoManager', () => {
   });
 
   describe('addRepoAssociation', () => {
-    it('should add repo association to project', () => {
-      manager.addRepoAssociation(1, 'github', 'https://github.com/user/test-repo.git', 'test-repo', 'main');
+    it('should add repo association to project', async () => {
+      await manager.addRepoAssociation(1, 'github', 'https://github.com/user/test-repo.git', 'test-repo', 'main');
 
-      const repos = manager.getProjectRepos(1);
+      const repos = await manager.getProjectRepos(1);
       expect(repos).toHaveLength(1);
-      expect(repos[0].repo_url).toBe('https://github.com/user/test-repo.git');
-      expect(repos[0].repo_name).toBe('test-repo');
+      expect(repos[0].repoUrl).toBe('https://github.com/user/test-repo.git');
+      expect(repos[0].repoName).toBe('test-repo');
       expect(repos[0].provider).toBe('github');
       expect(repos[0].branch).toBe('main');
     });
   });
 
   describe('getProjectRepos', () => {
-    it('should return empty array when no repos', () => {
-      const repos = manager.getProjectRepos(1);
+    it('should return empty array when no repos', async () => {
+      const repos = await manager.getProjectRepos(1);
       expect(repos).toEqual([]);
     });
 
-    it('should return all repos for a project', () => {
-      manager.addRepoAssociation(1, 'github', 'https://github.com/user/repo1.git', 'repo1', 'main');
-      manager.addRepoAssociation(1, 'gitlab', 'https://gitlab.com/user/repo2.git', 'repo2', 'develop');
+    it('should return all repos for a project', async () => {
+      await manager.addRepoAssociation(1, 'github', 'https://github.com/user/repo1.git', 'repo1', 'main');
+      await manager.addRepoAssociation(1, 'gitlab', 'https://gitlab.com/user/repo2.git', 'repo2', 'develop');
 
-      const repos = manager.getProjectRepos(1);
+      const repos = await manager.getProjectRepos(1);
       expect(repos).toHaveLength(2);
       expect(repos.map(r => r.provider)).toContain('github');
       expect(repos.map(r => r.provider)).toContain('gitlab');
@@ -266,17 +271,17 @@ describe('RepoManager', () => {
   });
 
   describe('removeRepoAssociation', () => {
-    it('should remove repo association', () => {
-      manager.addRepoAssociation(1, 'github', 'https://github.com/user/test-repo.git', 'test-repo', 'main');
+    it('should remove repo association', async () => {
+      await manager.addRepoAssociation(1, 'github', 'https://github.com/user/test-repo.git', 'test-repo', 'main');
 
-      manager.removeRepoAssociation(1, 'https://github.com/user/test-repo.git');
+      await manager.removeRepoAssociation(1, 'https://github.com/user/test-repo.git');
 
-      const repos = manager.getProjectRepos(1);
+      const repos = await manager.getProjectRepos(1);
       expect(repos).toHaveLength(0);
     });
 
-    it('should not throw when removing non-existent association', () => {
-      expect(() => manager.removeRepoAssociation(1, 'https://github.com/nonexistent.git')).not.toThrow();
+    it('should not throw when removing non-existent association', async () => {
+      await expect(manager.removeRepoAssociation(1, 'https://github.com/nonexistent.git')).resolves.not.toThrow();
     });
   });
 
