@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { SettingsTabs, SettingsTab } from '@/components/settings/settings-tabs';
+import { OrganizationTabContent } from '@/components/settings/organization-tab-content';
 import { api } from '@/lib/api';
 
 const DEFAULT_CONFIG = {
@@ -25,6 +27,7 @@ interface ClaudeConfigResponse {
 export default function SettingsPage() {
   const router = useRouter();
   const { user, loading: authLoading, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('organization');
   const [configText, setConfigText] = useState('');
   const [hasConfig, setHasConfig] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +65,6 @@ export default function SettingsPage() {
     setError(null);
     setSuccess(null);
 
-    // Validate JSON format
     let config: typeof DEFAULT_CONFIG;
     try {
       config = JSON.parse(configText);
@@ -71,7 +73,6 @@ export default function SettingsPage() {
       return;
     }
 
-    // Validate required fields
     if (!config.env || typeof config.env !== 'object') {
       setError('config.env 必须是对象');
       return;
@@ -87,9 +88,6 @@ export default function SettingsPage() {
       await api.post('/claude-config', { config });
       setHasConfig(true);
       setSuccess('配置保存成功');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
     } catch (err: any) {
       setError(err.message || '保存配置失败');
     } finally {
@@ -110,37 +108,41 @@ export default function SettingsPage() {
 
   if (authLoading || !user) {
     return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#111827',
-        color: '#9ca3af'
-      }}>
+      <div
+        style={{
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--bg-primary)',
+          color: 'var(--text-secondary)',
+        }}
+      >
         加载中...
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#111827' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '16px 24px',
-        borderBottom: '1px solid #374151',
-        backgroundColor: '#1f2937',
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 24px',
+          borderBottom: '1px solid var(--border-color)',
+          backgroundColor: 'var(--bg-secondary)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button
             onClick={() => router.push('/dashboard')}
             style={{
               background: 'none',
               border: 'none',
-              color: '#9ca3af',
+              color: 'var(--text-secondary)',
               cursor: 'pointer',
               fontSize: '14px',
               display: 'flex',
@@ -150,14 +152,14 @@ export default function SettingsPage() {
           >
             ← 返回
           </button>
-          <h1 style={{ color: '#f9fafb', fontSize: '18px', margin: 0 }}>Claude Code 配置</h1>
+          <h1 style={{ color: 'var(--text-primary)', fontSize: '18px', margin: 0 }}>设置</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div
             style={{
               width: '28px',
               height: '28px',
-              backgroundColor: '#3b82f6',
+              backgroundColor: 'var(--accent-color)',
               borderRadius: '6px',
               display: 'flex',
               alignItems: 'center',
@@ -169,13 +171,13 @@ export default function SettingsPage() {
           >
             {user.name.charAt(0).toUpperCase()}
           </div>
-          <span style={{ color: '#e5e7eb', fontSize: '14px' }}>{user.name}</span>
+          <span style={{ color: 'var(--text-primary)', fontSize: '14px' }}>{user.name}</span>
           <button
             onClick={handleLogout}
             style={{
               background: 'none',
               border: 'none',
-              color: '#9ca3af',
+              color: 'var(--text-secondary)',
               cursor: 'pointer',
               fontSize: '13px',
               marginLeft: '8px',
@@ -186,125 +188,121 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{
-          backgroundColor: '#1f2937',
-          borderRadius: '8px',
-          border: '1px solid #374151',
-          padding: '24px',
-        }}>
-          <div style={{ marginBottom: '16px' }}>
-            <h2 style={{ color: '#f9fafb', fontSize: '16px', margin: '0 0 8px 0' }}>
-              配置信息
-            </h2>
-            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>
-              此配置将用于所有项目的 Claude Code 环境。
-              {hasConfig ? ' 您已保存自定义配置。' : ' 您尚未配置，使用默认模板。'}
-            </p>
-          </div>
+      {/* Main Content */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-          {error && (
-            <div style={{
-              backgroundColor: '#7f1d1d',
-              color: '#fecaca',
-              padding: '12px 16px',
-              borderRadius: '6px',
-              marginBottom: '16px',
-              fontSize: '14px',
-            }}>
-              {error}
-            </div>
-          )}
+        {activeTab === 'organization' && <OrganizationTabContent currentUserId={user.id} />}
 
-          {success && (
-            <div style={{
-              backgroundColor: '#14532d',
-              color: '#bbf7d0',
-              padding: '12px 16px',
-              borderRadius: '6px',
-              marginBottom: '16px',
-              fontSize: '14px',
-            }}>
-              {success}
-            </div>
-          )}
-
-          {isLoading ? (
-            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px' }}>
-              加载中...
-            </div>
-          ) : (
-            <>
+        {activeTab === 'claude-code' && (
+          <div style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
+            <div
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)',
+                padding: '24px',
+                maxWidth: '800px',
+              }}
+            >
               <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  color: '#e5e7eb',
-                  fontSize: '14px',
-                  marginBottom: '8px',
-                }}>
-                  JSON 配置
-                </label>
-                <textarea
-                  value={configText}
-                  onChange={(e) => {
-                    setConfigText(e.target.value);
-                    setError(null);
-                    setSuccess(null);
-                  }}
-                  style={{
-                    width: '100%',
-                    height: '400px',
-                    backgroundColor: '#111827',
-                    border: '1px solid #374151',
-                    borderRadius: '6px',
-                    padding: '12px',
-                    color: '#e5e7eb',
-                    fontSize: '13px',
-                    fontFamily: 'monospace',
-                    resize: 'vertical',
-                    outline: 'none',
-                  }}
-                  spellCheck={false}
-                />
+                <h2 style={{ color: 'var(--text-primary)', fontSize: '16px', margin: '0 0 8px 0' }}>
+                  配置信息
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>
+                  此配置将用于所有项目的 Claude Code 环境。
+                  {hasConfig ? ' 您已保存自定义配置。' : ' 您尚未配置，使用默认模板。'}
+                </p>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
+              {error && (
+                <div
                   style={{
-                    backgroundColor: isSaving ? '#4b5563' : '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
+                    backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                    color: 'var(--status-error)',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: '16px',
                     fontSize: '14px',
-                    cursor: isSaving ? 'not-allowed' : 'pointer',
-                    fontWeight: 500,
                   }}
                 >
-                  {isSaving ? '保存中...' : '保存配置'}
-                </button>
-                <button
-                  onClick={handleReset}
-                  disabled={isSaving}
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div
                   style={{
-                    backgroundColor: 'transparent',
-                    color: '#9ca3af',
-                    border: '1px solid #374151',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    color: 'var(--status-success)',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: '16px',
                     fontSize: '14px',
-                    cursor: isSaving ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  重置为默认
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+                  {success}
+                </div>
+              )}
+
+              {isLoading ? (
+                <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '40px' }}>
+                  加载中...
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        color: 'var(--text-primary)',
+                        fontSize: '14px',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      JSON 配置
+                    </label>
+                    <textarea
+                      value={configText}
+                      onChange={(e) => {
+                        setConfigText(e.target.value);
+                        setError(null);
+                        setSuccess(null);
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '400px',
+                        backgroundColor: 'var(--bg-primary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '12px',
+                        color: 'var(--text-primary)',
+                        fontSize: '13px',
+                        fontFamily: 'monospace',
+                        resize: 'vertical',
+                        outline: 'none',
+                      }}
+                      spellCheck={false}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="btn btn-primary"
+                    >
+                      {isSaving ? '保存中...' : '保存配置'}
+                    </button>
+                    <button onClick={handleReset} disabled={isSaving} className="btn btn-secondary">
+                      重置为默认
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
