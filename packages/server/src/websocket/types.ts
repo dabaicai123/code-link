@@ -123,3 +123,140 @@ export function isChatMessage(msg: Message): msg is ChatMessage {
 export function isBuildNotification(msg: Message): msg is BuildNotification {
   return msg.type === 'build_status';
 }
+
+// ==================== Draft 相关消息类型 ====================
+
+export type DraftMessageType =
+  | 'draft_message'
+  | 'draft_member_joined'
+  | 'draft_member_left'
+  | 'draft_status_changed'
+  | 'draft_message_confirmed';
+
+export interface DraftBaseMessage {
+  type: DraftMessageType;
+  draftId: number;
+  timestamp: string;
+}
+
+export interface DraftMessageEvent extends DraftBaseMessage {
+  type: 'draft_message';
+  message: {
+    id: number;
+    draft_id: number;
+    parent_id: number | null;
+    user_id: number;
+    user_name: string;
+    content: string;
+    message_type: string;
+    created_at: string;
+  };
+}
+
+export interface DraftMemberJoinedEvent extends DraftBaseMessage {
+  type: 'draft_member_joined';
+  userId: number;
+  userName: string;
+  memberCount: number;
+}
+
+export interface DraftMemberLeftEvent extends DraftBaseMessage {
+  type: 'draft_member_left';
+  userId: number;
+  userName: string;
+  memberCount: number;
+}
+
+export interface DraftStatusChangedEvent extends DraftBaseMessage {
+  type: 'draft_status_changed';
+  status: string;
+}
+
+export interface DraftMessageConfirmedEvent extends DraftBaseMessage {
+  type: 'draft_message_confirmed';
+  messageId: number;
+  userId: number;
+  userName: string;
+  confirmationType: string;
+}
+
+export type DraftMessage =
+  | DraftMessageEvent
+  | DraftMemberJoinedEvent
+  | DraftMemberLeftEvent
+  | DraftStatusChangedEvent
+  | DraftMessageConfirmedEvent;
+
+export function createDraftMessageEvent(
+  draftId: number,
+  message: DraftMessageEvent['message']
+): DraftMessageEvent {
+  return {
+    type: 'draft_message',
+    draftId,
+    message,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function createDraftMemberJoinedEvent(
+  draftId: number,
+  userId: number,
+  userName: string,
+  memberCount: number
+): DraftMemberJoinedEvent {
+  return {
+    type: 'draft_member_joined',
+    draftId,
+    userId,
+    userName,
+    memberCount,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function createDraftMemberLeftEvent(
+  draftId: number,
+  userId: number,
+  userName: string,
+  memberCount: number
+): DraftMemberLeftEvent {
+  return {
+    type: 'draft_member_left',
+    draftId,
+    userId,
+    userName,
+    memberCount,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function createDraftStatusChangedEvent(
+  draftId: number,
+  status: string
+): DraftStatusChangedEvent {
+  return {
+    type: 'draft_status_changed',
+    draftId,
+    status,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function createDraftMessageConfirmedEvent(
+  draftId: number,
+  messageId: number,
+  userId: number,
+  userName: string,
+  confirmationType: string
+): DraftMessageConfirmedEvent {
+  return {
+    type: 'draft_message_confirmed',
+    draftId,
+    messageId,
+    userId,
+    userName,
+    confirmationType,
+    timestamp: new Date().toISOString(),
+  };
+}

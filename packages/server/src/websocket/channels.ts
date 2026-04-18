@@ -7,12 +7,24 @@ interface ClientInfo {
   projectId: number;
 }
 
+interface DraftClientInfo {
+  userId: number;
+  userName: string;
+  draftId: number;
+}
+
 export class ChannelManager {
   // projectId -> Set<WebSocket>
   private channels: Map<number, Set<WebSocket>> = new Map();
 
   // WebSocket -> ClientInfo
   private clientInfo: Map<WebSocket, ClientInfo> = new Map();
+
+  // draftId -> Set<WebSocket>
+  private draftChannels: Map<number, Set<WebSocket>> = new Map();
+
+  // WebSocket -> DraftClientInfo
+  private draftClientInfo: Map<WebSocket, DraftClientInfo> = new Map();
 
   subscribe(ws: WebSocket, projectId: number, userId: number, userName: string): void {
     // 添加到频道
@@ -57,5 +69,79 @@ export class ChannelManager {
 
   getChannelUserCount(projectId: number): number {
     return this.channels.get(projectId)?.size || 0;
+  }
+
+  // ==================== Draft 频道方法 ====================
+
+  subscribeToDraft(ws: WebSocket, draftId: number, userId: number, userName: string): void {
+    if (!this.draftChannels.has(draftId)) {
+      this.draftChannels.set(draftId, new Set());
+    }
+    this.draftChannels.get(draftId)!.add(ws);
+    this.draftClientInfo.set(ws, { userId, userName, draftId });
+  }
+
+  unsubscribeFromDraft(ws: WebSocket, draftId: number): void {
+    const channel = this.draftChannels.get(draftId);
+    if (channel) {
+      channel.delete(ws);
+      if (channel.size === 0) {
+        this.draftChannels.delete(draftId);
+      }
+    }
+    this.draftClientInfo.delete(ws);
+  }
+
+  getDraftChannelClients(draftId: number): Set<WebSocket> {
+    return this.draftChannels.get(draftId) || new Set();
+  }
+
+  getDraftClientInfo(ws: WebSocket): DraftClientInfo | undefined {
+    return this.draftClientInfo.get(ws);
+  }
+
+  broadcastToDraft(draftId: number, message: string, excludeSender?: WebSocket): void {
+    const clients = this.draftChannels.get(draftId);
+    if (!clients) return;
+
+    for (const client of clients) {
+      if (client.readyState === WebSocket.OPEN && client !== excludeSender) {
+        client.send(message);
+      }
+    }
+  }
+
+  getDraftChannelUserCount(draftId: number): number {
+    return this.draftChannels.get(draftId)?.size || 0;
+  }
+
+  getDraftChannelUsers(draftId: number): Array<{ userId: number; userName: string }> {
+    const clients = this.draftChannels.get(draftId);
+    if (!clients) return [];
+
+    const users: Array<{ userId: number; userName: string }> = [];
+    const seenUsers = new Set<number>();
+
+    for (const client of clients) {
+      const info = this.draftClientInfo.get(client);
+      if (info && !seenUsers.has(info.userId)) {
+        seenUsers.add(info.userId);
+        users.push({ userId: info.userId, userName: info.userName });
+      }
+    }
+
+    return users;
+  }
+
+  cleanupDisconnectedClient(ws: WebSocket): void {
+    const projectInfo = this.clientInfo.get(ws);
+    if (projectInfo) {
+      this.unsubscribe(ws, projectInfo.projectId);
+    }
+
+    const draftInfo = this.draftClientInfo.get(ws);
+    if (draftInfo) {
+      this.unsubscribeFromDraft(ws, draftInfo.draftId);
+    }
   }
 }
