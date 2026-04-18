@@ -154,7 +154,7 @@ describe('RepoManager', () => {
 
       expect(result.success).toBe(true);
       const expectedCommand = [
-        'cd /workspace/project-1/test-repo',
+        'cd /workspace/project-1/\'test-repo\'',
         'git config user.name \'Test User\'',
         'git config user.email \'test@test.com\'',
         'git add -A',

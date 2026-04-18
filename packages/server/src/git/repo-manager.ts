@@ -88,12 +88,11 @@ export class RepoManager {
       }
 
       const repoName = this.extractRepoName(repoUrl);
-      const repoPath = `/workspace/project-${projectId}/${repoName}`;
       const authUrl = this.injectTokenIntoUrl(repoUrl, token.access_token);
 
       // 使用用户真实身份配置 git（参数已转义防止命令注入）
       const commands = [
-        `cd ${repoPath}`,
+        `cd /workspace/project-${projectId}/${this.escapeShellArg(repoName)}`,
         `git config user.name ${this.escapeShellArg(userName)}`,
         `git config user.email ${this.escapeShellArg(userEmail)}`,
         `git add -A`,
