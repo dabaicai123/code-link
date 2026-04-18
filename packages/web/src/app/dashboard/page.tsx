@@ -38,8 +38,13 @@ export default function DashboardPage() {
         // 容器启动成功后再设置 activeProject
         setActiveProject({ ...project, status: 'running' });
         setProjectRefreshKey(k => k + 1);
-      } catch (err) {
-        console.error('启动容器失败:', err);
+      } catch (err: any) {
+        if (err?.response?.data?.code === 'CLAUDE_CONFIG_MISSING') {
+          alert(err.response.data.error);
+          router.push('/settings');
+        } else {
+          console.error('启动容器失败:', err);
+        }
       } finally {
         setIsStarting(false);
       }
@@ -47,7 +52,7 @@ export default function DashboardPage() {
       // 容器已运行，直接设置
       setActiveProject(project);
     }
-  }, []);
+  }, [router]);
 
   // 重启容器
   const handleRestart = useCallback(async () => {
@@ -70,14 +75,19 @@ export default function DashboardPage() {
       await api.post(`/projects/${activeProject.id}/container/start`);
       setActiveProject({ ...activeProject, status: 'running' });
       setProjectRefreshKey(k => k + 1);
-    } catch (err) {
-      console.error('重启容器失败:', err);
-      // 恢复原状态
-      setActiveProject(activeProject);
+    } catch (err: any) {
+      if (err?.response?.data?.code === 'CLAUDE_CONFIG_MISSING') {
+        alert(err.response.data.error);
+        router.push('/settings');
+      } else {
+        console.error('重启容器失败:', err);
+        // 恢复原状态
+        setActiveProject(activeProject);
+      }
     } finally {
       setIsStarting(false);
     }
-  }, [activeProject]);
+  }, [activeProject, router]);
 
   const handleLogout = () => { logout(); router.push('/login'); };
 
