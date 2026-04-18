@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { api, ApiError } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { api, ApiError, Organization, OrgRole } from '@/lib/api';
 
 type TemplateType = 'node' | 'node+java' | 'node+python';
 
@@ -15,6 +15,7 @@ interface Project {
   id: number;
   name: string;
   template_type: TemplateType;
+  organization_id: number;
   container_id: string | null;
   status: 'created' | 'running' | 'stopped';
   created_by: number;
@@ -30,18 +31,53 @@ interface CreateProjectDialogProps {
 export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjectDialogProps) {
   const [name, setName] = useState('');
   const [templateType, setTemplateType] = useState<TemplateType>('node');
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchOrganizations();
+    }
+  }, [isOpen]);
+
+  const fetchOrganizations = async () => {
+    setLoadingOrgs(true);
+    try {
+      const data = await api.getOrganizations();
+      // 只显示有权限创建项目的组织 (owner 或 developer)
+      const creatableOrgs = data.filter(
+        (org) => org.role === 'owner' || org.role === 'developer'
+      );
+      setOrganizations(creatableOrgs);
+      if (creatableOrgs.length > 0) {
+        setSelectedOrgId(creatableOrgs[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch organizations:', err);
+    } finally {
+      setLoadingOrgs(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
 
+    if (!selectedOrgId) {
+      setError('请选择一个组织');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const project = await api.post<Project>('/projects', {
         name: name.trim(),
         template_type: templateType,
+        organization_id: selectedOrgId,
       });
       onSuccess(project);
       handleClose();
@@ -55,11 +91,37 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
   const handleClose = () => {
     setName('');
     setTemplateType('node');
+    setSelectedOrgId(null);
     setError(null);
     onClose();
   };
 
   if (!isOpen) return null;
+
+  // 如果没有可创建项目的组织，显示提示
+  if (!loadingOrgs && organizations.length === 0) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.7)' }} onClick={handleClose} />
+
+        <div style={{ position: 'relative', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', width: '400px', maxWidth: '90vw', padding: '24px', zIndex: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ color: 'var(--text-primary)', fontSize: '18px', fontWeight: 600 }}>创建新项目</h2>
+            <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '20px' }}>✕</button>
+          </div>
+
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <div style={{ marginBottom: '12px' }}>您没有权限创建项目</div>
+            <div style={{ fontSize: '12px' }}>请联系组织管理员邀请您加入组织，或创建一个新组织</div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+            <button type="button" onClick={handleClose} className="btn btn-secondary">关闭</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -78,6 +140,30 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
             </div>
           )}
 
+          {/* 组织选择 */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
+              所属组织 <span style={{ color: 'var(--status-error)' }}>*</span>
+            </label>
+            {loadingOrgs ? (
+              <div style={{ color: 'var(--text-secondary)', padding: '8px' }}>加载中...</div>
+            ) : (
+              <select
+                value={selectedOrgId || ''}
+                onChange={(e) => setSelectedOrgId(parseInt(e.target.value, 10))}
+                className="input"
+                required
+              >
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name} ({org.role === 'owner' ? 'Owner' : 'Developer'})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* 项目名称 */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
               项目名称 <span style={{ color: 'var(--status-error)' }}>*</span>
@@ -92,6 +178,7 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
             />
           </div>
 
+          {/* 模板类型 */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
               模板类型 <span style={{ color: 'var(--status-error)' }}>*</span>
