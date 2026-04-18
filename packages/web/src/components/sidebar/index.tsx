@@ -31,6 +31,7 @@ interface SidebarProps {
 export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout }: SidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedProjectIds, setExpandedProjectIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchProjects();
@@ -45,6 +46,18 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleExpand = (projectId: number) => {
+    setExpandedProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        next.add(projectId);
+      }
+      return next;
+    });
   };
 
   const runningProjects = projects.filter((p) => p.status === 'running');
@@ -81,7 +94,10 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                     key={project.id}
                     project={project}
                     isActive={activeProjectId === project.id}
+                    isExpanded={expandedProjectIds.has(project.id)}
+                    onToggleExpand={() => toggleExpand(project.id)}
                     onClick={() => onProjectSelect(project)}
+                    onRefresh={fetchProjects}
                   />
                 ))}
               </div>
@@ -97,7 +113,10 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                     key={project.id}
                     project={project}
                     isActive={activeProjectId === project.id}
+                    isExpanded={expandedProjectIds.has(project.id)}
+                    onToggleExpand={() => toggleExpand(project.id)}
                     onClick={() => onProjectSelect(project)}
+                    onRefresh={fetchProjects}
                   />
                 ))}
               </div>
