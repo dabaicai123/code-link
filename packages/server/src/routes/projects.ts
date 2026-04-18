@@ -132,7 +132,19 @@ export function createProjectsRouter(db: Database.Database): Router {
       role: 'owner' | 'developer' | 'product';
     }>;
 
-    res.json({ ...project, members });
+    // 获取项目关联的仓库列表
+    const repos = db
+      .prepare('SELECT id, provider, repo_url, repo_name, branch, created_at FROM project_repos WHERE project_id = ?')
+      .all(projectId) as Array<{
+        id: number;
+        provider: 'github' | 'gitlab';
+        repo_url: string;
+        repo_name: string;
+        branch: string;
+        created_at: string;
+      }>;
+
+    res.json({ ...project, members, repos });
   });
 
   // DELETE /api/projects/:id - 删除项目（仅 owner 可删除）
