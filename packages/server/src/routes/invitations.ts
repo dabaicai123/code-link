@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { OrganizationService } from '../services/organization.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
+import { success, Errors } from '../utils/response.js';
 
 const logger = createLogger('invitations');
 
@@ -17,13 +18,13 @@ export function createInvitationsRouter(): Router {
     const userId = (req as any).userId;
     try {
       const invitations = await orgService.findUserInvitations(userId);
-      res.json(invitations);
+      res.json(success(invitations));
     } catch (error: any) {
       if (error.message.includes('不存在')) {
-        res.status(404).json({ error: error.message });
+        res.status(404).json(Errors.notFound('邀请'));
       } else {
         logger.error('获取邀请列表失败', error);
-        res.status(500).json({ error: '获取邀请列表失败' });
+        res.status(500).json(Errors.internal('获取邀请列表失败'));
       }
     }
   });
@@ -34,19 +35,19 @@ export function createInvitationsRouter(): Router {
     const invId = parseInt(Array.isArray(req.params.invId) ? req.params.invId[0] : req.params.invId, 10);
 
     if (isNaN(invId)) {
-      res.status(400).json({ error: '无效的邀请 ID' });
+      res.status(400).json(Errors.paramInvalid('邀请 ID'));
       return;
     }
 
     try {
       const result = await orgService.acceptInvitation(userId, invId);
-      res.json(result);
+      res.json(success(result));
     } catch (error: any) {
       if (error.message.includes('不存在') || error.message.includes('已处理')) {
-        res.status(404).json({ error: error.message });
+        res.status(404).json(Errors.notFound('邀请'));
       } else {
         logger.error('接受邀请失败', error);
-        res.status(500).json({ error: '接受邀请失败' });
+        res.status(500).json(Errors.internal('接受邀请失败'));
       }
     }
   });
@@ -57,7 +58,7 @@ export function createInvitationsRouter(): Router {
     const invId = parseInt(Array.isArray(req.params.invId) ? req.params.invId[0] : req.params.invId, 10);
 
     if (isNaN(invId)) {
-      res.status(400).json({ error: '无效的邀请 ID' });
+      res.status(400).json(Errors.paramInvalid('邀请 ID'));
       return;
     }
 
@@ -66,10 +67,10 @@ export function createInvitationsRouter(): Router {
       res.status(204).send();
     } catch (error: any) {
       if (error.message.includes('不存在') || error.message.includes('已处理')) {
-        res.status(404).json({ error: error.message });
+        res.status(404).json(Errors.notFound('邀请'));
       } else {
         logger.error('拒绝邀请失败', error);
-        res.status(500).json({ error: '拒绝邀请失败' });
+        res.status(500).json(Errors.internal('拒绝邀请失败'));
       }
     }
   });
