@@ -5,6 +5,7 @@ interface Repo {
   provider: 'github' | 'gitlab';
   repo_name: string;
   repo_url: string;
+  cloned: boolean;
 }
 
 interface RepoItemProps {
@@ -53,49 +54,43 @@ export function RepoItem({ repo, onClone, onDelete, isCloning }: RepoItemProps) 
       >
         {config.icon}
       </span>
-      <span style={{ color: 'var(--text-primary)', fontSize: '12px', flex: 1 }}>
+      <span style={{ color: 'var(--text-primary)', fontSize: '12px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {repo.repo_name}
       </span>
-      <span
-        style={{
-          fontSize: '10px',
-          padding: '2px 6px',
-          borderRadius: '4px',
-          backgroundColor: 'var(--bg-card)',
-          color: config.color,
-        }}
-      >
-        {config.label}
-      </span>
-      {onClone && (
+      {repo.cloned ? (
+        onDelete && (
+          <button
+            onClick={onDelete}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--status-error)',
+              fontSize: '11px',
+              cursor: 'pointer',
+              opacity: 0.6,
+              flexShrink: 0,
+            }}
+          >
+            删除
+          </button>
+        )
+      ) : onClone && (
         <button
           onClick={onClone}
           disabled={isCloning}
           style={{
-            background: 'none',
+            background: 'var(--accent-color)',
             border: 'none',
-            color: 'var(--accent-color)',
-            fontSize: '11px',
+            color: 'white',
+            fontSize: '10px',
             cursor: isCloning ? 'wait' : 'pointer',
             opacity: isCloning ? 0.5 : 1,
+            padding: '3px 8px',
+            borderRadius: '4px',
+            flexShrink: 0,
           }}
         >
           {isCloning ? 'clone中...' : 'clone'}
-        </button>
-      )}
-      {onDelete && (
-        <button
-          onClick={onDelete}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--status-error)',
-            fontSize: '11px',
-            cursor: 'pointer',
-            opacity: 0.7,
-          }}
-        >
-          删除
         </button>
       )}
     </div>

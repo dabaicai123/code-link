@@ -71,7 +71,7 @@ export function createReposRouter(db: Database.Database): Router {
     }
 
     const repos = db
-      .prepare('SELECT id, provider, repo_url, repo_name, branch, created_at FROM project_repos WHERE project_id = ?')
+      .prepare('SELECT id, provider, repo_url, repo_name, branch, cloned, created_at FROM project_repos WHERE project_id = ?')
       .all(projectId);
 
     res.json(repos);
@@ -123,6 +123,78 @@ export function createReposRouter(db: Database.Database): Router {
       }
       logger.error('添加仓库失败', error);
       res.status(500).json({ error: '添加仓库失败' });
+    }
+  });
+
+  // POST /import - 导入仓库并克隆到容器
+  router.post('/import', authMiddleware, async (req, res) => {
+    const userId = (req as any).userId;
+    const projectId = parseInt(req.params.projectId, 10);
+    const { repoUrl, branch, containerId } = req.body;
+
+    if (isNaN(projectId)) {
+      res.status(400).json({ error: '无效的项目 ID' });
+      return;
+    }
+
+    if (!repoUrl || typeof repoUrl !== 'string') {
+      res.status(400).json({ error: '缺少仓库 URL' });
+      return;
+    }
+
+    if (!containerId || typeof containerId !== 'string') {
+      res.status(400).json({ error: '缺少容器 ID' });
+      return;
+    }
+
+    // 检查项目成员
+    if (!isProjectMember(projectId, userId)) {
+      res.status(404).json({ error: '项目不存在' });
+      return;
+    }
+
+    // 解析 URL
+    const parsed = parseRepoUrl(repoUrl);
+    if (!parsed) {
+      res.status(400).json({ error: '无效的仓库 URL，仅支持 GitHub 和 GitLab' });
+      return;
+    }
+
+    try {
+      // 1. 添加仓库记录（标记为已克隆）
+      const result = db
+        .prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch, cloned) VALUES (?, ?, ?, ?, ?, 1)')
+        .run(projectId, parsed.provider, repoUrl, parsed.repoName, branch || 'main');
+
+      const repoId = result.lastInsertRowid;
+
+      // 2. 克隆到容器
+      const cloneResult = await repoManager.cloneRepo(
+        containerId,
+        projectId,
+        repoUrl,
+        userId
+      );
+
+      if (!cloneResult.success) {
+        // 克隆失败，删除数据库记录
+        db.prepare('DELETE FROM project_repos WHERE id = ?').run(repoId);
+        res.status(500).json({ error: cloneResult.error || '克隆仓库失败' });
+        return;
+      }
+
+      const repo = db
+        .prepare('SELECT id, provider, repo_url, repo_name, branch, cloned, created_at FROM project_repos WHERE id = ?')
+        .get(repoId);
+
+      res.status(201).json({ ...repo, path: cloneResult.path });
+    } catch (error: any) {
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'SQLITE_CONSTRAINT') {
+        res.status(409).json({ error: '该仓库已添加到项目中' });
+        return;
+      }
+      logger.error('导入仓库失败', error);
+      res.status(500).json({ error: '导入仓库失败' });
     }
   });
 
@@ -207,6 +279,9 @@ export function createReposRouter(db: Database.Database): Router {
         res.status(500).json({ error: result.error });
         return;
       }
+
+      // 更新 cloned 状态
+      db.prepare('UPDATE project_repos SET cloned = 1 WHERE id = ?').run(repoId);
 
       res.json({ path: result.path });
     } catch (error) {

@@ -105,6 +105,7 @@ export interface Repo {
   repo_url: string;
   repo_name: string;
   branch: string;
+  cloned: boolean;
   created_at: string;
 }
 
