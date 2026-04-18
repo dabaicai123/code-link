@@ -291,7 +291,7 @@ describe('Repos 路由', () => {
     projectId = projectRes.body.id;
   });
 
-  describe('GET /api/repos/:projectId', () => {
+  describe('GET /api/projects/:projectId/repos', () => {
     it('应返回项目关联的仓库', async () => {
       // 添加仓库关联
       db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
@@ -299,7 +299,7 @@ describe('Repos 路由', () => {
       );
 
       const res = await request(app)
-        .get(`/api/repos/${projectId}`)
+        .get(`/api/projects/${projectId}/repos`)
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
@@ -307,11 +307,11 @@ describe('Repos 路由', () => {
     });
 
     it('未登录应返回 401', async () => {
-      const res = await request(app).get(`/api/repos/${projectId}`);
+      const res = await request(app).get(`/api/projects/${projectId}/repos`);
       expect(res.status).toBe(401);
     });
 
-    it('非项目成员应返回 403', async () => {
+    it('非项目成员应返回 404', async () => {
       // 创建另一个用户
       const otherRes = await request(app)
         .post('/api/auth/register')
@@ -319,136 +319,158 @@ describe('Repos 路由', () => {
       const otherToken = otherRes.body.token;
 
       const res = await request(app)
-        .get(`/api/repos/${projectId}`)
+        .get(`/api/projects/${projectId}/repos`)
         .set('Authorization', `Bearer ${otherToken}`);
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(404);
     });
 
     it('无效项目 ID 应返回 400', async () => {
       const res = await request(app)
-        .get('/api/repos/invalid')
+        .get('/api/projects/invalid/repos')
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(400);
     });
 
     it('不存在项目应返回 404', async () => {
       const res = await request(app)
-        .get('/api/repos/99999')
+        .get('/api/projects/99999/repos')
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(404);
     });
   });
 
-  describe('POST /api/repos/:projectId/import', () => {
-    it('缺少必填字段应返回 400', async () => {
+  describe('POST /api/projects/:projectId/repos', () => {
+    it('应成功添加 GitHub 仓库', async () => {
       const res = await request(app)
-        .post(`/api/repos/${projectId}/import`)
+        .post(`/api/projects/${projectId}/repos`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ repoUrl: 'https://github.com/user/repo.git' });
+        .send({ url: 'https://github.com/owner/frontend' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.repo_name).toBe('owner/frontend');
+      expect(res.body.provider).toBe('github');
+    });
+
+    it('应成功添加 GitLab 仓库', async () => {
+      const res = await request(app)
+        .post(`/api/projects/${projectId}/repos`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ url: 'https://gitlab.com/owner/backend.git' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.repo_name).toBe('owner/backend');
+      expect(res.body.provider).toBe('gitlab');
+    });
+
+    it('应拒绝无效的 URL', async () => {
+      const res = await request(app)
+        .post(`/api/projects/${projectId}/repos`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ url: 'https://bitbucket.org/owner/repo' });
+
       expect(res.status).toBe(400);
+      expect(res.body.error).toContain('仅支持 GitHub 和 GitLab');
+    });
+
+    it('缺少 URL 应返回 400', async () => {
+      const res = await request(app)
+        .post(`/api/projects/${projectId}/repos`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('缺少仓库 URL');
     });
 
     it('未登录应返回 401', async () => {
       const res = await request(app)
-        .post(`/api/repos/${projectId}/import`)
-        .send({ repoUrl: 'https://github.com/user/repo.git', branch: 'main', containerId: 'container123' });
+        .post(`/api/projects/${projectId}/repos`)
+        .send({ url: 'https://github.com/owner/repo' });
+
       expect(res.status).toBe(401);
     });
 
-    it('未授权 GitHub 应返回 401', async () => {
-      const res = await request(app)
-        .post(`/api/repos/${projectId}/import`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ repoUrl: 'https://github.com/user/repo.git', branch: 'main', containerId: 'container123' });
-      expect(res.status).toBe(401);
-      expect(res.body.error).toContain('请先授权');
-    });
-
-    it('非 developer 应返回 403', async () => {
-      // 创建 product 用户
+    it('非项目成员应返回 404', async () => {
       const otherRes = await request(app)
         .post('/api/auth/register')
-        .send({ name: 'product', email: 'product@test.com', password: 'password123' });
-      const otherUserId = otherRes.body.user.id;
+        .send({ name: 'other', email: 'other@test.com', password: 'password123' });
       const otherToken = otherRes.body.token;
 
-      // 添加为 product
-      db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
-        projectId, otherUserId, 'product'
-      );
-
       const res = await request(app)
-        .post(`/api/repos/${projectId}/import`)
+        .post(`/api/projects/${projectId}/repos`)
         .set('Authorization', `Bearer ${otherToken}`)
-        .send({ repoUrl: 'https://github.com/user/repo.git', branch: 'main', containerId: 'container123' });
-      expect(res.status).toBe(403);
-    });
-  });
+        .send({ url: 'https://github.com/owner/repo' });
 
-  describe('POST /api/repos/:projectId/push', () => {
-    it('缺少必填字段应返回 400', async () => {
-      const res = await request(app)
-        .post(`/api/repos/${projectId}/push`)
+      expect(res.status).toBe(404);
+    });
+
+    it('重复仓库应返回 409', async () => {
+      await request(app)
+        .post(`/api/projects/${projectId}/repos`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ repoUrl: 'https://github.com/user/repo.git', branch: 'main' });
-      expect(res.status).toBe(400);
-    });
+        .send({ url: 'https://github.com/owner/frontend' });
 
-    it('未登录应返回 401', async () => {
       const res = await request(app)
-        .post(`/api/repos/${projectId}/push`)
-        .send({ repoUrl: 'https://github.com/user/repo.git', branch: 'main', containerId: 'container123', commitMessage: 'test' });
-      expect(res.status).toBe(401);
+        .post(`/api/projects/${projectId}/repos`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ url: 'https://github.com/owner/frontend' });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error).toContain('已添加');
     });
   });
 
-  describe('DELETE /api/repos/:projectId', () => {
+  describe('DELETE /api/projects/:projectId/repos/:repoId', () => {
+    let repoId: number;
+
     beforeEach(() => {
       // 添加仓库关联
-      db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
+      const result = db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
         projectId, 'github', 'https://github.com/user/repo.git', 'repo', 'main'
       );
+      repoId = result.lastInsertRowid;
     });
 
-    it('owner 应成功删除仓库关联', async () => {
+    it('应成功删除仓库', async () => {
       const res = await request(app)
-        .delete(`/api/repos/${projectId}?repoUrl=https://github.com/user/repo.git`)
+        .delete(`/api/projects/${projectId}/repos/${repoId}`)
         .set('Authorization', `Bearer ${token}`);
       expect(res.status).toBe(204);
 
-      const repo = db.prepare('SELECT * FROM project_repos WHERE project_id = ?').get(projectId);
+      const repo = db.prepare('SELECT * FROM project_repos WHERE id = ?').get(repoId);
       expect(repo).toBeUndefined();
-    });
-
-    it('缺少 repoUrl 应返回 400', async () => {
-      const res = await request(app)
-        .delete(`/api/repos/${projectId}`)
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBe(400);
     });
 
     it('未登录应返回 401', async () => {
       const res = await request(app)
-        .delete(`/api/repos/${projectId}?repoUrl=https://github.com/user/repo.git`);
+        .delete(`/api/projects/${projectId}/repos/${repoId}`);
       expect(res.status).toBe(401);
     });
 
-    it('非 owner 应返回 403', async () => {
-      // 创建 developer
-      const devRes = await request(app)
+    it('非项目成员应返回 404', async () => {
+      const otherRes = await request(app)
         .post('/api/auth/register')
-        .send({ name: 'dev', email: 'dev@test.com', password: 'password123' });
-      const devUserId = devRes.body.user.id;
-      const devToken = devRes.body.token;
-
-      db.prepare('INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)').run(
-        projectId, devUserId, 'developer'
-      );
+        .send({ name: 'other', email: 'other@test.com', password: 'password123' });
+      const otherToken = otherRes.body.token;
 
       const res = await request(app)
-        .delete(`/api/repos/${projectId}?repoUrl=https://github.com/user/repo.git`)
-        .set('Authorization', `Bearer ${devToken}`);
-      expect(res.status).toBe(403);
+        .delete(`/api/projects/${projectId}/repos/${repoId}`)
+        .set('Authorization', `Bearer ${otherToken}`);
+      expect(res.status).toBe(404);
+    });
+
+    it('无效 repoId 应返回 400', async () => {
+      const res = await request(app)
+        .delete(`/api/projects/${projectId}/repos/invalid`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(400);
+    });
+
+    it('不存在的仓库应返回 404', async () => {
+      const res = await request(app)
+        .delete(`/api/projects/${projectId}/repos/99999`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(404);
     });
   });
 });
