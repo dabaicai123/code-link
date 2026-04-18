@@ -96,6 +96,18 @@ export async function apiClient<T = unknown>(
   return {} as T;
 }
 
+/**
+ * 仓库信息
+ */
+export interface Repo {
+  id: number;
+  provider: 'github' | 'gitlab';
+  repo_url: string;
+  repo_name: string;
+  branch: string;
+  created_at: string;
+}
+
 // 便捷方法
 export const api = {
   get: <T = unknown>(endpoint: string, options?: RequestOptions) =>
@@ -117,4 +129,20 @@ export const api = {
 
   delete: <T = unknown>(endpoint: string, options?: RequestOptions) =>
     apiClient<T>(endpoint, { ...options, method: 'DELETE' }),
+
+  // 仓库相关 API
+  addRepo: (projectId: number, url: string): Promise<Repo> =>
+    apiClient<Repo>(`/projects/${projectId}/repos`, { method: 'POST', body: JSON.stringify({ url }) }),
+
+  getRepos: (projectId: number): Promise<Repo[]> =>
+    apiClient<Repo[]>(`/projects/${projectId}/repos`, { method: 'GET' }),
+
+  deleteRepo: (projectId: number, repoId: number): Promise<void> =>
+    apiClient<void>(`/projects/${projectId}/repos/${repoId}`, { method: 'DELETE' }),
+
+  cloneRepo: (projectId: number, repoId: number): Promise<{ path: string }> =>
+    apiClient<{ path: string }>(`/projects/${projectId}/repos/${repoId}/clone`, { method: 'POST', body: JSON.stringify({}) }),
+
+  pushRepo: (projectId: number, repoId: number, message: string): Promise<void> =>
+    apiClient<void>(`/projects/${projectId}/repos/${repoId}/push`, { method: 'POST', body: JSON.stringify({ message }) }),
 };
