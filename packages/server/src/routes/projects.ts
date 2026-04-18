@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
+import { createLogger } from '../logger/index.js';
 import type { Project, ProjectMember, User } from '../types.js';
+
+const logger = createLogger('projects');
 
 const VALID_TEMPLATE_TYPES = ['node', 'node+java', 'node+python'] as const;
 type TemplateType = (typeof VALID_TEMPLATE_TYPES)[number];
@@ -60,7 +63,7 @@ export function createProjectsRouter(db: Database.Database): Router {
 
       res.status(201).json(project);
     } catch (error) {
-      console.error('创建项目失败:', error);
+      logger.error('创建项目失败', error);
       res.status(500).json({ error: '创建项目失败' });
     }
   });
