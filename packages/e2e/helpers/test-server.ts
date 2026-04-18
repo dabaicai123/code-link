@@ -129,11 +129,12 @@ export function createTestApp(db: Database.Database): express.Express {
   app.get('/api/projects', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;
     try {
+      // 通过组织成员关系获取项目
       const projects = db.prepare(`
-        SELECT p.*, pm.role as member_role
+        SELECT p.*, om.role as member_role
         FROM projects p
-        JOIN project_members pm ON p.id = pm.project_id
-        WHERE pm.user_id = ?
+        JOIN organization_members om ON p.organization_id = om.organization_id
+        WHERE om.user_id = ?
         ORDER BY p.created_at DESC
       `).all(userId);
       res.json({ data: projects });
@@ -151,19 +152,28 @@ export function createTestApp(db: Database.Database): express.Express {
       return;
     }
 
+    if (!organizationId) {
+      res.status(400).json({ error: '缺少组织 ID' });
+      return;
+    }
+
     try {
+      // 检查用户是否是组织成员
+      const membership = db.prepare(`
+        SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?
+      `).get(organizationId, userId);
+
+      if (!membership) {
+        res.status(403).json({ error: '无权限在此组织创建项目' });
+        return;
+      }
+
       const result = db.prepare(`
         INSERT INTO projects (name, template_type, organization_id, created_by, status)
         VALUES (?, ?, ?, ?, 'created')
-      `).run(name, templateType || 'node', organizationId ?? null, userId);
+      `).run(name, templateType || 'node', organizationId, userId);
 
       const projectId = result.lastInsertRowid as number;
-
-      db.prepare(`
-        INSERT INTO project_members (project_id, user_id, role)
-        VALUES (?, ?, 'owner')
-      `).run(projectId, userId);
-
       const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
       res.status(201).json({ data: project });
     } catch (error) {
@@ -182,10 +192,18 @@ export function createTestApp(db: Database.Database): express.Express {
     }
 
     try {
-      // 检查用户是否是项目成员
+      // 获取项目所属组织
+      const project = db.prepare('SELECT organization_id FROM projects WHERE id = ?').get(projectId) as { organization_id: number } | undefined;
+
+      if (!project) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+
+      // 检查用户是否是组织成员
       const membership = db.prepare(`
-        SELECT role FROM project_members WHERE project_id = ? AND user_id = ?
-      `).get(projectId, userId);
+        SELECT role FROM organization_members WHERE organization_id = ? AND user_id = ?
+      `).get(project.organization_id, userId);
 
       if (!membership) {
         res.status(403).json({ error: '无权限删除此项目' });

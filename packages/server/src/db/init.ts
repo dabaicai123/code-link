@@ -63,19 +63,11 @@ export function initSchema(db: Database.Database): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       template_type TEXT NOT NULL CHECK (template_type IN ('node', 'node+java', 'node+python')),
-      organization_id INTEGER REFERENCES organizations(id),
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
       container_id TEXT,
       status TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created', 'running', 'stopped')),
       created_by INTEGER NOT NULL REFERENCES users(id),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS project_members (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      role TEXT NOT NULL CHECK (role IN ('owner', 'developer', 'product')),
-      UNIQUE(project_id, user_id)
     );
 
     CREATE TABLE IF NOT EXISTS builds (
