@@ -12,12 +12,16 @@ import { createGitLabRouter } from './routes/gitlab.js';
 import { createReposRouter } from './routes/repos.js';
 import { createBuildsRouter } from './routes/builds.js';
 import { createWebSocketServer } from './websocket/server.js';
+import { requestLoggingMiddleware, createLogger } from './logger/index.js';
+
+const logger = createLogger('server');
 
 export function createApp(db: Database.Database): express.Express {
   const app = express();
 
   app.use(cors());
   app.use(express.json());
+  app.use(requestLoggingMiddleware);
 
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok' });
@@ -46,8 +50,8 @@ export function startServer(db: Database.Database, port: number = 3001): void {
   createWebSocketServer(server, db);
 
   server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
-    console.log(`WebSocket server ready on ws://localhost:${port}`);
+    logger.info(`Server running on http://localhost:${port}`);
+    logger.info(`WebSocket server ready on ws://localhost:${port}`);
   });
 }
 
