@@ -1,5 +1,4 @@
-# docker/templates/node/Dockerfile
-FROM node:22-slim
+FROM node:20-slim
 
 # 安装基础工具
 RUN apt-get update && apt-get install -y \
@@ -7,14 +6,30 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# 创建非 root 用户
+RUN useradd -m -u 1000 -s /bin/bash codelink
+
 # 安装 Claude Code CLI
 RUN npm install -g @anthropic-ai/claude-code
 
-# 创建工作目录
+# 预置 Claude Code 配置目录
+RUN mkdir -p /home/codelink/.claude && \
+    chown -R codelink:codelink /home/codelink/.claude
+
+# 内置 settings.json（bypass 权限白名单）
+COPY claude-settings.json /home/codelink/.claude/settings.json
+RUN chown codelink:codelink /home/codelink/.claude/settings.json
+
+# 内置 ~/.claude.json（跳过 onboarding）
+COPY claude.json /home/codelink/.claude.json
+RUN chown codelink:codelink /home/codelink/.claude.json
+
+# 创建工作目录并授权
 WORKDIR /workspace
+RUN chown -R codelink:codelink /workspace
 
-# 复制启动脚本并创建 agent 目录
+# 切换到非 root 用户
+USER codelink
+
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && mkdir -p /agent
-
 ENTRYPOINT ["/entrypoint.sh"]
