@@ -20,3 +20,9 @@ dist/
 .DS_Store
 Thumbs.db
 .superpowers
+packages/server/volumes
+
+# Database
+data/*.db
+data/*.db-shm
+data/*.db-wal
