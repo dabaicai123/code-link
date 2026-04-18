@@ -4,6 +4,7 @@ import { createLogger } from '../logger/index.js';
 import { createProjectContainer, startContainer, stopContainer, removeContainer, getContainerStatus, getProjectContainer } from '../docker/container-manager.js';
 import { createProjectVolume, removeProjectVolume } from '../docker/volume-manager.js';
 import { ProjectRepository, ClaudeConfigRepository, OrganizationRepository } from '../repositories/index.js';
+import { success, Errors } from '../utils/response.js';
 
 const logger = createLogger('containers');
 
@@ -20,21 +21,21 @@ export function createContainersRouter(): Router {
     const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     // 获取项目信息
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(404).json({ error: '项目不存在' });
+      res.status(404).json(Errors.notFound('项目'));
       return;
     }
 
     // 检查用户是否是项目所属组织的成员
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
-      res.status(404).json({ error: '项目不存在' });
+      res.status(404).json(Errors.notFound('项目'));
       return;
     }
 
@@ -43,10 +44,7 @@ export function createContainersRouter(): Router {
       const configRow = await claudeConfigRepo.findByUserId(userId);
 
       if (!configRow) {
-        res.status(400).json({
-          error: '请先在「设置 → Claude Code 配置」中完成配置后再启动容器',
-          code: 'CLAUDE_CONFIG_MISSING'
-        });
+        res.status(400).json(Errors.claudeConfigMissing());
         return;
       }
 
@@ -73,10 +71,10 @@ export function createContainersRouter(): Router {
       // 更新项目状态
       await projectRepo.updateStatus(projectId, 'running');
 
-      res.json({ container_id: containerId, status });
+      res.json(success({ containerId, status }));
     } catch (error) {
       logger.error('启动容器失败', error);
-      res.status(500).json({ error: '启动容器失败' });
+      res.status(500).json(Errors.internal('启动容器失败'));
     }
   });
 
@@ -87,26 +85,26 @@ export function createContainersRouter(): Router {
     const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     // 获取项目信息
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(404).json({ error: '项目不存在' });
+      res.status(404).json(Errors.notFound('项目'));
       return;
     }
 
     // 检查用户是否是项目所属组织的成员
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
-      res.status(404).json({ error: '项目不存在' });
+      res.status(404).json(Errors.notFound('项目'));
       return;
     }
 
     if (!project.containerId) {
-      res.status(400).json({ error: '项目没有关联的容器' });
+      res.status(400).json(Errors.paramInvalid('项目没有关联的容器'));
       return;
     }
 
@@ -123,10 +121,10 @@ export function createContainersRouter(): Router {
       // 更新项目状态
       await projectRepo.updateStatus(projectId, 'stopped');
 
-      res.json({ container_id: project.containerId, status });
+      res.json(success({ containerId: project.containerId, status }));
     } catch (error) {
       logger.error('停止容器失败', error);
-      res.status(500).json({ error: '停止容器失败' });
+      res.status(500).json(Errors.internal('停止容器失败'));
     }
   });
 
@@ -137,36 +135,36 @@ export function createContainersRouter(): Router {
     const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     // 获取项目信息
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(404).json({ error: '项目不存在' });
+      res.status(404).json(Errors.notFound('项目'));
       return;
     }
 
     // 检查用户是否是项目所属组织的成员
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) {
-      res.status(404).json({ error: '项目不存在' });
+      res.status(404).json(Errors.notFound('项目'));
       return;
     }
 
     if (!project.containerId) {
-      res.status(404).json({ error: '容器不存在' });
+      res.status(404).json(Errors.notFound('容器'));
       return;
     }
 
     try {
       // 获取容器状态
       const status = await getContainerStatus(project.containerId);
-      res.json({ container_id: project.containerId, status });
+      res.json(success({ containerId: project.containerId, status }));
     } catch (error) {
       logger.error('获取容器状态失败', error);
-      res.status(500).json({ error: '获取容器状态失败' });
+      res.status(500).json(Errors.internal('获取容器状态失败'));
     }
   });
 
@@ -177,21 +175,21 @@ export function createContainersRouter(): Router {
     const projectId = parseInt(Array.isArray(idParam) ? idParam[0] : idParam, 10);
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     // 获取项目信息
     const project = await projectRepo.findById(projectId);
     if (!project) {
-      res.status(404).json({ error: '项目不存在' });
+      res.status(404).json(Errors.notFound('项目'));
       return;
     }
 
     // 检查用户是否是项目所属组织的 owner
     const membership = await orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership || membership.role !== 'owner') {
-      res.status(403).json({ error: '只有项目 owner 可以删除容器' });
+      res.status(403).json(Errors.forbidden());
       return;
     }
 
@@ -211,7 +209,7 @@ export function createContainersRouter(): Router {
       res.status(204).send();
     } catch (error) {
       logger.error('删除容器失败', error);
-      res.status(500).json({ error: '删除容器失败' });
+      res.status(500).json(Errors.internal('删除容器失败'));
     }
   });
 
