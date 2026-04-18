@@ -9,6 +9,9 @@ import {
   type Message,
 } from './types.js';
 import { handleTerminalConnection } from '../routes/terminal.js';
+import { createLogger, runWithLogContext, generateShortId } from '../logger/index.js';
+
+const logger = createLogger('websocket');
 
 interface SubscribeMessage {
   type: 'subscribe';
@@ -95,16 +98,30 @@ export class WebSocketServer {
           return;
         }
 
-        console.log(`Terminal WebSocket connected: projectId=${projectId}, userId=${userId}`);
-        handleTerminalConnection(ws, projectId, userId, this.db);
+        const reqId = generateShortId();
+        runWithLogContext(reqId, () => {
+          logger.info(`Terminal WebSocket connected: projectId=${projectId}, userId=${userId}`);
+          handleTerminalConnection(ws, projectId, userId, this.db);
+        });
         return;
       }
 
       // 实时同步 WebSocket 连接（原有逻辑）
-      console.log('WebSocket client connected');
+      const reqId = generateShortId();
+      (ws as any)._logContext = { reqId };
+      runWithLogContext(reqId, () => {
+        logger.info('WebSocket client connected');
+      });
 
       ws.on('message', (data) => {
-        this.handleMessage(ws, data.toString());
+        const context = (ws as any)._logContext;
+        if (context) {
+          runWithLogContext(context.reqId, () => {
+            this.handleMessage(ws, data.toString());
+          });
+        } else {
+          this.handleMessage(ws, data.toString());
+        }
       });
 
       ws.on('close', () => {
@@ -112,7 +129,14 @@ export class WebSocketServer {
       });
 
       ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
+        const context = (ws as any)._logContext;
+        if (context) {
+          runWithLogContext(context.reqId, () => {
+            logger.error('WebSocket error', error);
+          });
+        } else {
+          logger.error('WebSocket error', error);
+        }
       });
     });
   }
