@@ -3,11 +3,13 @@
  */
 export class ApiError extends Error {
   status: number;
+  code: number;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, code: number, message: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -76,24 +78,38 @@ export async function apiClient<T = unknown>(
   });
 
   // 处理响应
+  const contentType = response.headers.get('content-type');
+  const isJson = contentType && contentType.includes('application/json');
+
   if (!response.ok) {
-    let errorMessage = 'An error occurred';
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorMessage;
-    } catch {
-      errorMessage = response.statusText;
+    let errorMessage = '请求失败';
+    let errorCode = 10001;
+    if (isJson) {
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+        errorCode = errorData.code || errorCode;
+      } catch {
+        // ignore
+      }
     }
-    throw new ApiError(response.status, errorMessage);
+    throw new ApiError(response.status, errorCode, errorMessage);
   }
 
   // 处理空响应
-  const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    return response.json();
+  if (!isJson) {
+    return {} as T;
   }
 
-  return {} as T;
+  const result = await response.json();
+
+  // 适配新格式：直接返回 data 字段
+  // 兼容旧格式：如果 code 不存在，直接返回结果
+  if (result.code === 0 && 'data' in result) {
+    return result.data as T;
+  }
+
+  return result as T;
 }
 
 /**
@@ -102,11 +118,11 @@ export async function apiClient<T = unknown>(
 export interface Repo {
   id: number;
   provider: 'github' | 'gitlab';
-  repo_url: string;
-  repo_name: string;
+  repoUrl: string;
+  repoName: string;
   branch: string;
   cloned: boolean;
-  created_at: string;
+  createdAt: string;
 }
 
 /**
@@ -115,8 +131,8 @@ export interface Repo {
 export interface Organization {
   id: number;
   name: string;
-  created_by: number;
-  created_at: string;
+  createdBy: number;
+  createdAt: string;
   role?: OrgRole;
 }
 
@@ -134,7 +150,7 @@ export interface OrganizationMember {
   email: string;
   avatar: string | null;
   role: OrgRole;
-  joined_at: string;
+  joinedAt: string;
 }
 
 /**
@@ -142,14 +158,14 @@ export interface OrganizationMember {
  */
 export interface OrganizationInvitation {
   id: number;
-  organization_id: number;
-  organization_name?: string;
+  organizationId: number;
+  organizationName?: string;
   email: string;
   role: OrgRole;
-  invited_by: number;
-  invited_by_name?: string;
+  invitedBy: number;
+  invitedByName?: string;
   status: 'pending' | 'accepted' | 'declined';
-  created_at: string;
+  createdAt: string;
 }
 
 /**

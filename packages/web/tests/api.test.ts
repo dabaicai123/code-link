@@ -33,9 +33,10 @@ describe('API Layer', () => {
   });
 
   describe('ApiError', () => {
-    it('should create an ApiError with status and message', () => {
-      const error = new ApiError(404, 'Not Found');
+    it('should create an ApiError with status, code and message', () => {
+      const error = new ApiError(404, 40001, 'Not Found');
       expect(error.status).toBe(404);
+      expect(error.code).toBe(40001);
       expect(error.message).toBe('Not Found');
       expect(error.name).toBe('ApiError');
     });
@@ -104,7 +105,7 @@ describe('API Layer', () => {
         status: 401,
         statusText: 'Unauthorized',
         headers: new Headers({ 'content-type': 'application/json' }),
-        json: () => Promise.resolve({ message: 'Invalid credentials' }),
+        json: () => Promise.resolve({ code: 40001, error: 'Invalid credentials' }),
       });
 
       try {
@@ -113,6 +114,7 @@ describe('API Layer', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(ApiError);
         expect((error as ApiError).status).toBe(401);
+        expect((error as ApiError).code).toBe(40001);
         expect((error as ApiError).message).toBe('Invalid credentials');
       }
     });
@@ -132,6 +134,30 @@ describe('API Layer', () => {
       const callArgs = mockFetch.mock.calls[0];
       expect(callArgs[1].method).toBe('POST');
       expect(callArgs[1].body).toBe(JSON.stringify({ name: 'John' }));
+    });
+
+    it('should extract data field from new response format', async () => {
+      const mockData = { id: 1, name: 'Test' };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve({ code: 0, data: mockData }),
+      });
+
+      const result = await apiClient('/test');
+      expect(result).toEqual(mockData);
+    });
+
+    it('should handle old response format without code field', async () => {
+      const mockData = { id: 1, name: 'Test' };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: () => Promise.resolve(mockData),
+      });
+
+      const result = await apiClient('/test');
+      expect(result).toEqual(mockData);
     });
   });
 });
