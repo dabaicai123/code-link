@@ -2,7 +2,7 @@
 
 export type SettingsTab = 'organization' | 'claude-code';
 
-interface SettingsTabsProps {
+export interface SettingsTabsProps {
   activeTab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
 }

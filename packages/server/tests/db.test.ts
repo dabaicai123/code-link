@@ -9,7 +9,7 @@ import {
   deleteTestUser,
   findUserByEmail,
 } from './helpers/test-db.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { users, projects, projectMembers, organizations } from '../src/db/schema/index.js';
 
 describe('数据库 Schema', () => {
@@ -108,8 +108,10 @@ describe('数据库 Schema', () => {
       .select()
       .from(projectMembers)
       .where(
-        eq(projectMembers.projectId, project.id) &&
-        eq(projectMembers.userId, user.id)
+        and(
+          eq(projectMembers.projectId, project.id),
+          eq(projectMembers.userId, user.id)
+        )
       )
       .get();
 
