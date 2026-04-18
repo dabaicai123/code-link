@@ -5,7 +5,7 @@ import { createServer } from 'http';
 import type Database from 'better-sqlite3';
 import { getDb } from './db/connection.js';
 import { initSchema } from './db/schema.js';
-import { runOrganizationMigration } from './db/migration.js';
+import { runOrganizationMigration, runRepoClonedMigration, runProjectOrganizationMigration } from './db/migration.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createProjectsRouter } from './routes/projects.js';
 import { createContainersRouter } from './routes/containers.js';
@@ -70,6 +70,12 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
 
   // 运行组织迁移
   runOrganizationMigration(db);
+
+  // 运行项目组织关联迁移
+  runProjectOrganizationMigration(db);
+
+  // 运行仓库克隆状态迁移
+  runRepoClonedMigration(db);
 
   // 设置加密密钥
   const encryptionKey = process.env.CLAUDE_CONFIG_ENCRYPTION_KEY || '';

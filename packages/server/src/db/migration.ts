@@ -74,3 +74,49 @@ export function runOrganizationMigration(db: Database.Database): void {
 
   logger.info('Organization migration completed');
 }
+
+/**
+ * 运行项目组织关联迁移
+ * 为 projects 表添加 organization_id 字段
+ */
+export function runProjectOrganizationMigration(db: Database.Database): void {
+  logger.info('Running project organization migration...');
+
+  // 检查 organization_id 列是否已存在
+  const columns = db.prepare("PRAGMA table_info(projects)").all() as Array<{ name: string }>;
+  const hasOrgId = columns.some(col => col.name === 'organization_id');
+
+  if (hasOrgId) {
+    logger.info('projects.organization_id already exists, skipping migration');
+    return;
+  }
+
+  // 添加 organization_id 列
+  db.exec('ALTER TABLE projects ADD COLUMN organization_id INTEGER REFERENCES organizations(id)');
+  logger.info('Added organization_id column to projects table');
+
+  logger.info('Project organization migration completed');
+}
+
+/**
+ * 运行仓库克隆状态迁移
+ * 在 project_repos 表添加 cloned 字段
+ */
+export function runRepoClonedMigration(db: Database.Database): void {
+  logger.info('Running repo cloned migration...');
+
+  // 检查 cloned 列是否已存在
+  const columns = db.prepare("PRAGMA table_info(project_repos)").all() as { name: string }[];
+  const hasClonedColumn = columns.some(col => col.name === 'cloned');
+
+  if (hasClonedColumn) {
+    logger.info('cloned column already exists, skipping migration');
+    return;
+  }
+
+  // 添加 cloned 列
+  db.exec(`ALTER TABLE project_repos ADD COLUMN cloned INTEGER NOT NULL DEFAULT 0`);
+  logger.info('Added cloned column to project_repos table');
+
+  logger.info('Repo cloned migration completed');
+}

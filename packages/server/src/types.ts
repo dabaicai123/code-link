@@ -22,6 +22,7 @@ export interface Project {
   id: number;
   name: string;
   template_type: 'node' | 'node+java' | 'node+python';
+  organization_id: number;
   container_id: string | null;
   status: 'created' | 'running' | 'stopped';
   created_by: number;
