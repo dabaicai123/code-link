@@ -6,12 +6,13 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import type Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { eq, and, desc, asc } from 'drizzle-orm';
+import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { AddressInfo } from 'net';
 import {
   users,
   organizations,
   organizationMembers,
+  organizationInvitations,
   projects,
   drafts,
   draftMembers,
@@ -30,6 +31,7 @@ export interface TestServer {
   port: number;
   baseUrl: string;
   db: Database.Database;
+  orm: DrizzleDb;
 }
 
 /**
@@ -133,7 +135,17 @@ export function createTestApp(sqlite: Database.Database): express.Express {
   // Projects routes
   app.get('/api/projects', authMiddleware(db), async (req, res) => {
     const userId = (req as any).userId;
+    const searchQuery = req.query.search as string | undefined;
+
     try {
+      let whereConditions = [eq(organizationMembers.userId, userId)];
+
+      // 如果有搜索参数，添加搜索条件
+      if (searchQuery && searchQuery.trim()) {
+        const searchTerm = `%${searchQuery.trim()}%`;
+        whereConditions.push(sql`${projects.name} LIKE ${searchTerm}`);
+      }
+
       const result = await db
         .select({
           id: projects.id,
@@ -148,12 +160,136 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         })
         .from(projects)
         .innerJoin(organizationMembers, eq(projects.organizationId, organizationMembers.organizationId))
-        .where(eq(organizationMembers.userId, userId))
+        .where(and(...whereConditions))
         .orderBy(desc(projects.createdAt));
 
       res.json({ data: result });
     } catch (error) {
+      console.error('Get projects error:', error);
       res.status(500).json({ error: '获取项目列表失败' });
+    }
+  });
+
+  // 项目详情
+  app.get('/api/projects/:id', authMiddleware(db), async (req, res) => {
+    const userId = (req as any).userId;
+    const projectId = parseInt(req.params.id as string, 10);
+
+    if (isNaN(projectId)) {
+      res.status(400).json({ error: '无效的项目 ID' });
+      return;
+    }
+
+    try {
+      const project = await db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          templateType: projects.templateType,
+          organizationId: projects.organizationId,
+          containerId: projects.containerId,
+          status: projects.status,
+          createdBy: projects.createdBy,
+          createdAt: projects.createdAt,
+        })
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .get();
+
+      if (!project) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+
+      // 检查权限
+      const membership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, project.organizationId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (!membership) {
+        res.status(403).json({ error: '无权限访问此项目' });
+        return;
+      }
+
+      // 获取项目成员信息
+      const members = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: organizationMembers.role,
+        })
+        .from(organizationMembers)
+        .innerJoin(users, eq(organizationMembers.userId, users.id))
+        .where(eq(organizationMembers.organizationId, project.organizationId));
+
+      res.json({ data: { ...project, members } });
+    } catch (error) {
+      console.error('Get project detail error:', error);
+      res.status(500).json({ error: '获取项目详情失败' });
+    }
+  });
+
+  // 项目更新
+  app.put('/api/projects/:id', authMiddleware(db), async (req, res) => {
+    const userId = (req as any).userId;
+    const projectId = parseInt(req.params.id as string, 10);
+    const { name, status } = req.body;
+
+    if (isNaN(projectId)) {
+      res.status(400).json({ error: '无效的项目 ID' });
+      return;
+    }
+
+    if (!name && !status) {
+      res.status(400).json({ error: '缺少更新内容' });
+      return;
+    }
+
+    try {
+      const project = await db.select().from(projects).where(eq(projects.id, projectId)).get();
+
+      if (!project) {
+        res.status(404).json({ error: '项目不存在' });
+        return;
+      }
+
+      // 检查权限
+      const membership = await db
+        .select()
+        .from(organizationMembers)
+        .where(and(
+          eq(organizationMembers.organizationId, project.organizationId),
+          eq(organizationMembers.userId, userId)
+        ))
+        .get();
+
+      if (!membership) {
+        res.status(403).json({ error: '无权限更新此项目' });
+        return;
+      }
+
+      // 构建更新数据
+      const updateData: Record<string, unknown> = {};
+      if (name) updateData.name = name;
+      if (status) updateData.status = status;
+
+      const updated = await db
+        .update(projects)
+        .set(updateData)
+        .where(eq(projects.id, projectId))
+        .returning()
+        .get();
+
+      res.json({ data: updated });
+    } catch (error) {
+      console.error('Update project error:', error);
+      res.status(500).json({ error: '更新项目失败' });
     }
   });
 
@@ -476,9 +612,10 @@ function authMiddleware(db: DrizzleDb) {
 /**
  * 启动测试服务器
  */
-export async function startTestServer(db: Database.Database): Promise<TestServer> {
-  const app = createTestApp(db);
+export async function startTestServer(sqlite: Database.Database): Promise<TestServer> {
+  const app = createTestApp(sqlite);
   const server = createServer(app);
+  const orm = drizzle(sqlite);
 
   return new Promise((resolve, reject) => {
     server.listen(0, () => {
@@ -488,7 +625,8 @@ export async function startTestServer(db: Database.Database): Promise<TestServer
         server,
         port,
         baseUrl: `http://localhost:${port}`,
-        db,
+        db: sqlite,
+        orm,
       });
     });
 
@@ -516,4 +654,12 @@ export async function stopTestServer(testServer: TestServer): Promise<void> {
  */
 export function generateTestToken(userId: number): string {
   return jwt.sign({ userId }, TEST_JWT_SECRET, { expiresIn: '7d' });
+}
+
+/**
+ * 生成已过期的测试 JWT token
+ */
+export function generateExpiredToken(userId: number): string {
+  // 创建一个已经过期的 token（过期时间设为 1 秒前）
+  return jwt.sign({ userId, exp: Math.floor(Date.now() / 1000) - 1 }, TEST_JWT_SECRET);
 }
