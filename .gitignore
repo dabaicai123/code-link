@@ -7,19 +7,43 @@ node_modules/
 # Build outputs
 dist/
 .next/
+build/
+out/
+*.tsbuildinfo
 
 # IDE
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # Environment
 .env
 .env.local
+.env.*.local
 
 # OS
 .DS_Store
 Thumbs.db
-.superpowers
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Superpowers
+.superpowers/
+
+# Project specific
 packages/server/volumes
 
 # Database
@@ -29,3 +53,9 @@ data/*.db-wal
 
 # Superpowers docs (local only)
 docs/superpowers/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
