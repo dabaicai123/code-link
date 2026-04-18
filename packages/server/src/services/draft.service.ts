@@ -3,6 +3,8 @@ import { ProjectRepository } from '../repositories/project.repository.js';
 import { OrganizationRepository } from '../repositories/organization.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
+import { isAICommand, parseAICommand, executeAICommand } from '../ai/commands.js';
+import { isAIEnabled } from '../ai/client.js';
 import type { SelectDraft } from '../db/schema/index.js';
 import type { DraftMemberWithUser, DraftMessageWithUser } from '../repositories/draft.repository.js';
 
@@ -244,5 +246,56 @@ export class DraftService {
   async getProjectId(draftId: number): Promise<number | null> {
     const draft = await this.draftRepo.findById(draftId);
     return draft?.projectId || null;
+  }
+
+  async handleAICommand(
+    draftId: number,
+    userId: number,
+    content: string,
+    parentMessageId?: number
+  ): Promise<{ success: boolean; message?: DraftMessageWithUser; error?: string }> {
+    if (!isAIEnabled()) {
+      return {
+        success: false,
+        error: 'AI 功能未启用。请配置 ANTHROPIC_API_KEY。',
+      };
+    }
+
+    const command = parseAICommand(content);
+    if (!command) {
+      return {
+        success: false,
+        error: '无法解析 AI 命令',
+      };
+    }
+
+    try {
+      const aiResult = await executeAICommand(draftId, command, userId);
+
+      const aiResponseContent = aiResult.success
+        ? aiResult.response
+        : `AI 命令执行失败: ${aiResult.error}`;
+
+      const aiMessage = await this.createMessage(draftId, 0, {
+        content: aiResponseContent || '',
+        messageType: aiResult.success ? 'ai_response' : 'ai_error',
+        parentId: parentMessageId,
+        metadata: JSON.stringify({ commandType: command.type }),
+      });
+
+      return {
+        success: aiResult.success,
+        message: aiMessage,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'AI 命令执行失败',
+      };
+    }
+  }
+
+  checkIsAICommand(content: string): boolean {
+    return isAICommand(content);
   }
 }

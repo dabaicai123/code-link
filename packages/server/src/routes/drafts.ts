@@ -9,12 +9,6 @@ import {
   createDraftAIResponseEvent,
 } from '../websocket/types.js';
 import { createLogger } from '../logger/index.js';
-import {
-  isAICommand,
-  parseAICommand,
-  executeAICommand,
-} from '../ai/commands.js';
-import { isAIEnabled } from '../ai/client.js';
 
 const logger = createLogger('drafts');
 
@@ -83,7 +77,7 @@ export function createDraftsRouter(): Router {
     }
 
     try {
-      const isAI = isAICommand(content);
+      const isAI = draftService.checkIsAICommand(content);
       const actualMessageType = isAI ? 'ai_command' : (messageType || 'text');
 
       const message = await draftService.createMessage(draftId, userId, {
@@ -108,41 +102,27 @@ export function createDraftsRouter(): Router {
         wsServer.broadcastDraftMessage(draftId, wsMessage, userId);
       }
 
-      if (isAI && isAIEnabled()) {
-        const command = parseAICommand(content);
-        if (command) {
-          executeAICommand(draftId, command, userId)
-            .then(async (aiResult) => {
-              const aiResponseContent = aiResult.success
-                ? aiResult.response
-                : `AI 命令执行失败: ${aiResult.error}`;
-
-              const aiMessage = await draftService.createMessage(draftId, 0, {
-                content: aiResponseContent || '',
-                messageType: aiResult.success ? 'ai_response' : 'ai_error',
-                parentId: message.id,
-                metadata: JSON.stringify({ commandType: command.type }),
-              });
-
-              if (wsServer) {
-                const aiWsMessage = createDraftAIResponseEvent(draftId, {
-                  id: aiMessage.id,
-                  draft_id: aiMessage.draftId,
-                  parent_id: aiMessage.parentId,
-                  user_id: aiMessage.userId,
-                  user_name: 'AI Assistant',
-                  content: aiMessage.content || '',
-                  message_type: aiMessage.messageType,
-                  metadata: aiMessage.metadata || null,
-                  created_at: aiMessage.createdAt,
-                }, command.type);
-                wsServer.broadcastDraftMessage(draftId, aiWsMessage);
-              }
-            })
-            .catch((error) => {
-              logger.error('Failed to execute AI command', { draftId, error });
-            });
-        }
+      if (isAI) {
+        draftService.handleAICommand(draftId, userId, content, message.id)
+          .then((result) => {
+            if (result.message && wsServer) {
+              const aiWsMessage = createDraftAIResponseEvent(draftId, {
+                id: result.message.id,
+                draft_id: result.message.draftId,
+                parent_id: result.message.parentId,
+                user_id: result.message.userId,
+                user_name: 'AI Assistant',
+                content: result.message.content || '',
+                message_type: result.message.messageType,
+                metadata: result.message.metadata || null,
+                created_at: result.message.createdAt,
+              }, result.success ? 'success' : 'error');
+              wsServer.broadcastDraftMessage(draftId, aiWsMessage);
+            }
+          })
+          .catch((error) => {
+            logger.error('Failed to execute AI command', { draftId, error });
+          });
       }
 
       res.status(201).json({ message });
