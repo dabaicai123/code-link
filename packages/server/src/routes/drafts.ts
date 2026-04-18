@@ -2,12 +2,28 @@
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
+import { createLogger } from '../logger/index.js';
 import type {
   Draft,
   DraftMember,
   DraftStatus,
   CreateDraftInput
 } from '../types/draft.js';
+
+const logger = createLogger('drafts');
+
+const VALID_DRAFT_STATUSES: DraftStatus[] = [
+  'discussing',
+  'brainstorming',
+  'reviewing',
+  'developing',
+  'confirmed',
+  'archived'
+];
+
+function isValidDraftStatus(status: string): status is DraftStatus {
+  return VALID_DRAFT_STATUSES.includes(status as DraftStatus);
+}
 
 export function createDraftsRouter(db: Database.Database): Router {
   const router = Router();
@@ -34,43 +50,49 @@ export function createDraftsRouter(db: Database.Database): Router {
     }
 
     try {
-      // Create Draft
-      const result = db.prepare(`
-        INSERT INTO drafts (project_id, title, created_by)
-        VALUES (?, ?, ?)
-      `).run(projectId, title, userId);
+      // 使用事务确保原子性
+      const createDraftTx = db.transaction(() => {
+        // Create Draft
+        const result = db.prepare(`
+          INSERT INTO drafts (project_id, title, created_by)
+          VALUES (?, ?, ?)
+        `).run(projectId, title, userId);
 
-      const draftId = result.lastInsertRowid as number;
+        const draftId = result.lastInsertRowid as number;
 
-      // Add creator as owner
-      db.prepare(`
-        INSERT INTO draft_members (draft_id, user_id, role)
-        VALUES (?, ?, 'owner')
-      `).run(draftId, userId);
+        // Add creator as owner
+        db.prepare(`
+          INSERT INTO draft_members (draft_id, user_id, role)
+          VALUES (?, ?, 'owner')
+        `).run(draftId, userId);
 
-      // Add other members
-      if (memberIds && memberIds.length > 0) {
-        const addMember = db.prepare(`
-          INSERT OR IGNORE INTO draft_members (draft_id, user_id, role)
-          VALUES (?, ?, 'participant')
-        `);
+        // Add other members
+        if (memberIds && memberIds.length > 0) {
+          const addMember = db.prepare(`
+            INSERT OR IGNORE INTO draft_members (draft_id, user_id, role)
+            VALUES (?, ?, 'participant')
+          `);
 
-        for (const memberId of memberIds) {
-          // Check if is project member
-          const isProjectMember = db
-            .prepare('SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?')
-            .get(projectId, memberId);
+          for (const memberId of memberIds) {
+            // Check if is project member
+            const isProjectMember = db
+              .prepare('SELECT 1 FROM project_members WHERE project_id = ? AND user_id = ?')
+              .get(projectId, memberId);
 
-          if (isProjectMember) {
-            addMember.run(draftId, memberId);
+            if (isProjectMember) {
+              addMember.run(draftId, memberId);
+            }
           }
         }
-      }
 
+        return draftId;
+      });
+
+      const draftId = createDraftTx();
       const draft = db.prepare('SELECT * FROM drafts WHERE id = ?').get(draftId) as Draft;
       res.status(201).json({ draft });
     } catch (error) {
-      console.error('Failed to create draft:', error);
+      logger.error('Failed to create draft:', error);
       res.status(500).json({ error: 'Failed to create draft' });
     }
   });
@@ -98,7 +120,7 @@ export function createDraftsRouter(db: Database.Database): Router {
       const drafts = db.prepare(query).all(...params) as Draft[];
       res.json({ drafts });
     } catch (error) {
-      console.error('Failed to get drafts:', error);
+      logger.error('Failed to get drafts:', error);
       res.status(500).json({ error: 'Failed to get drafts' });
     }
   });
@@ -141,7 +163,7 @@ export function createDraftsRouter(db: Database.Database): Router {
 
       res.json({ draft, members });
     } catch (error) {
-      console.error('Failed to get draft:', error);
+      logger.error('Failed to get draft:', error);
       res.status(500).json({ error: 'Failed to get draft' });
     }
   });
@@ -154,6 +176,12 @@ export function createDraftsRouter(db: Database.Database): Router {
 
     if (isNaN(draftId) || !status) {
       res.status(400).json({ error: 'Invalid parameters' });
+      return;
+    }
+
+    // Validate status value
+    if (!isValidDraftStatus(status)) {
+      res.status(400).json({ error: 'Invalid status value' });
       return;
     }
 
@@ -175,7 +203,7 @@ export function createDraftsRouter(db: Database.Database): Router {
       const draft = db.prepare('SELECT * FROM drafts WHERE id = ?').get(draftId) as Draft;
       res.json({ draft });
     } catch (error) {
-      console.error('Failed to update draft status:', error);
+      logger.error('Failed to update draft status:', error);
       res.status(500).json({ error: 'Failed to update draft status' });
     }
   });
@@ -228,7 +256,7 @@ export function createDraftsRouter(db: Database.Database): Router {
 
       res.json({ success: true });
     } catch (error) {
-      console.error('Failed to add member:', error);
+      logger.error('Failed to add member:', error);
       res.status(500).json({ error: 'Failed to add member' });
     }
   });
@@ -269,7 +297,7 @@ export function createDraftsRouter(db: Database.Database): Router {
 
       res.json({ success: true });
     } catch (error) {
-      console.error('Failed to remove member:', error);
+      logger.error('Failed to remove member:', error);
       res.status(500).json({ error: 'Failed to remove member' });
     }
   });
@@ -299,7 +327,7 @@ export function createDraftsRouter(db: Database.Database): Router {
 
       res.json({ success: true });
     } catch (error) {
-      console.error('Failed to delete draft:', error);
+      logger.error('Failed to delete draft:', error);
       res.status(500).json({ error: 'Failed to delete draft' });
     }
   });

@@ -200,5 +200,77 @@ describe('Drafts API', () => {
       expect(res.status).toBe(200);
       expect(res.body.draft.status).toBe('brainstorming');
     });
+
+    it('should return 400 for invalid status value', async () => {
+      const res = await request(app)
+        .put(`/api/drafts/${draftId}/status`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ status: 'invalid_status' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Invalid status value');
+    });
+  });
+
+  describe('DELETE /api/drafts/:draftId', () => {
+    let draftId: number;
+    let anotherUserId: number;
+    let anotherAuthToken: string;
+
+    beforeEach(async () => {
+      const res = await request(app)
+        .post('/api/drafts')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ projectId, title: 'Test Draft' });
+      draftId = res.body.draft.id;
+
+      // Create another user
+      const anotherRes = await request(app)
+        .post('/api/auth/register')
+        .send({ name: 'Another User', email: 'another@test.com', password: 'password123' });
+      anotherUserId = anotherRes.body.user.id;
+      anotherAuthToken = anotherRes.body.token;
+
+      // Add as project member
+      db.prepare(
+        'INSERT INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)'
+      ).run(projectId, anotherUserId, 'developer');
+    });
+
+    it('should delete draft when owner requests', async () => {
+      const res = await request(app)
+        .delete(`/api/drafts/${draftId}`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      // Verify draft is deleted
+      const draft = db.prepare('SELECT * FROM drafts WHERE id = ?').get(draftId);
+      expect(draft).toBeUndefined();
+    });
+
+    it('should return 403 when non-owner tries to delete', async () => {
+      // Add another user as draft member (not owner)
+      db.prepare(
+        'INSERT INTO draft_members (draft_id, user_id, role) VALUES (?, ?, ?)'
+      ).run(draftId, anotherUserId, 'participant');
+
+      const res = await request(app)
+        .delete(`/api/drafts/${draftId}`)
+        .set('Authorization', `Bearer ${anotherAuthToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe('Only owner can delete draft');
+    });
+
+    it('should return 400 for invalid draftId', async () => {
+      const res = await request(app)
+        .delete('/api/drafts/invalid')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Invalid draftId');
+    });
   });
 });
