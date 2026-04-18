@@ -5,23 +5,28 @@ import { draftsApi } from '../../lib/drafts-api';
 import { DraftList } from './draft-list';
 import { MessagePanel } from './message-panel';
 import { DraftHeader } from './draft-header';
+import { DisplayPanel, SelectedElement } from './display-panel';
 import { useDraftWebSocket } from '../../lib/draft-websocket';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
 import type { OnlineUser } from '../../lib/draft-websocket';
 
 interface CollaborationPanelProps {
-  projectId: number;
+  projectId?: number;
   currentUserId?: number;
   currentUserName?: string;
+  onAddElement?: (element: SelectedElement) => void;
 }
 
+type PanelType = 'display' | 'drafts';
 type ViewMode = 'list' | 'draft';
 
 export function CollaborationPanel({
   projectId,
   currentUserId,
   currentUserName,
+  onAddElement,
 }: CollaborationPanelProps) {
+  const [activePanel, setActivePanel] = useState<PanelType>('display');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null);
   const [members, setMembers] = useState<DraftMember[]>([]);
@@ -104,29 +109,65 @@ export function CollaborationPanel({
           gap: '8px',
         }}
       >
-        {viewMode === 'draft' && (
-          <button
-            onClick={handleBackToList}
-            style={{
-              padding: '4px 8px',
-              fontSize: '11px',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: 'var(--bg-hover)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-            }}
-          >
-            ← 返回
-          </button>
+        {viewMode === 'draft' ? (
+          <>
+            <button
+              onClick={handleBackToList}
+              style={{
+                padding: '4px 8px',
+                fontSize: '11px',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--bg-hover)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              ← 返回
+            </button>
+            <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
+              {selectedDraft?.title}
+            </span>
+          </>
+        ) : (
+          <>
+            <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
+              协作面板
+            </span>
+            <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
+              <button
+                onClick={() => setActivePanel('display')}
+                className="btn"
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  backgroundColor: activePanel === 'display' ? 'var(--accent-color)' : 'var(--bg-hover)',
+                  color: activePanel === 'display' ? 'white' : 'var(--text-secondary)',
+                }}
+              >
+                展示
+              </button>
+              <button
+                onClick={() => setActivePanel('drafts')}
+                className="btn"
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  backgroundColor: activePanel === 'drafts' ? 'var(--accent-color)' : 'var(--bg-hover)',
+                  color: activePanel === 'drafts' ? 'white' : 'var(--text-secondary)',
+                }}
+              >
+                Draft
+              </button>
+            </div>
+          </>
         )}
-        <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
-          {viewMode === 'list' ? '协作面板' : selectedDraft?.title}
-        </span>
       </div>
 
       {/* 内容区域 */}
-      {viewMode === 'list' ? (
+      {activePanel === 'display' && viewMode === 'list' ? (
+        <DisplayPanel onAddElement={onAddElement || (() => {})} />
+      ) : viewMode === 'list' ? (
         <DraftList
           projectId={projectId}
           onSelectDraft={handleSelectDraft}

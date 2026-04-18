@@ -24,11 +24,12 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
   };
 
   // WebSocket 回调
-  const handleMessageReceived = useCallback((message: DraftMessage) => {
+  const handleMessageReceived = useCallback((message: unknown) => {
+    const draftMessage = message as DraftMessage;
     setMessages(prev => {
       // 避免重复添加
-      if (prev.some(m => m.id === message.id)) return prev;
-      return [...prev, message];
+      if (prev.some(m => m.id === draftMessage.id)) return prev;
+      return [...prev, draftMessage];
     });
     setTimeout(scrollToBottom, 50);
   }, []);
