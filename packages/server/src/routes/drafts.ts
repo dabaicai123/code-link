@@ -13,10 +13,17 @@ import type {
   Draft,
   DraftMember,
   DraftStatus,
+  ConfirmationType,
   CreateDraftInput,
 } from '../types/draft.js';
 
 const logger = createLogger('drafts');
+
+const VALID_CONFIRMATION_TYPES: ConfirmationType[] = ['agree', 'disagree', 'suggest'];
+
+function isValidConfirmationType(type: string): type is ConfirmationType {
+  return VALID_CONFIRMATION_TYPES.includes(type as ConfirmationType);
+}
 
 export function createDraftsRouter(db: Database.Database): Router {
   const router = Router();
@@ -200,31 +207,56 @@ export function createDraftsRouter(db: Database.Database): Router {
   router.get('/:draftId/messages', authMiddleware, (req, res) => {
     const userId = (req as any).userId;
     const draftId = parseInt(req.params.draftId, 10);
+    const parentId = req.query.parentId ? parseInt(req.query.parentId as string) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+    const before = req.query.before as string | undefined;
 
     if (isNaN(draftId)) {
       res.status(400).json({ error: '无效的 Draft ID' });
       return;
     }
 
-    const membership = db
-      .prepare('SELECT * FROM draft_members WHERE draft_id = ? AND user_id = ?')
-      .get(draftId, userId);
+    try {
+      const membership = db
+        .prepare('SELECT * FROM draft_members WHERE draft_id = ? AND user_id = ?')
+        .get(draftId, userId);
 
-    if (!membership) {
-      res.status(403).json({ error: '您不是该 Draft 的成员' });
-      return;
+      if (!membership) {
+        res.status(403).json({ error: '您不是该 Draft 的成员' });
+        return;
+      }
+
+      let query = `
+        SELECT m.*, u.name as user_name FROM draft_messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.draft_id = ?
+      `;
+      const params: (number | string | null)[] = [draftId];
+
+      if (parentId !== undefined) {
+        if (parentId === null || parentId === 0 || req.query.parentId === 'null') {
+          query += ' AND m.parent_id IS NULL';
+        } else {
+          query += ' AND m.parent_id = ?';
+          params.push(parentId);
+        }
+      }
+
+      if (before) {
+        query += ' AND m.created_at < ?';
+        params.push(before);
+      }
+
+      query += ' ORDER BY m.created_at ASC LIMIT ?';
+      params.push(limit);
+
+      const messages = db.prepare(query).all(...params);
+
+      res.json(messages);
+    } catch (error) {
+      logger.error('获取消息列表失败', error);
+      res.status(500).json({ error: '获取消息列表失败' });
     }
-
-    const messages = db
-      .prepare(
-        `SELECT m.*, u.name as user_name FROM draft_messages m
-         JOIN users u ON m.user_id = u.id
-         WHERE m.draft_id = ?
-         ORDER BY m.created_at ASC`
-      )
-      .all(draftId);
-
-    res.json(messages);
   });
 
   // PUT /api/drafts/:draftId/status - 更新 Draft 状态
@@ -274,6 +306,11 @@ export function createDraftsRouter(db: Database.Database): Router {
 
     if (isNaN(draftId) || isNaN(messageId) || !type) {
       res.status(400).json({ error: '参数无效' });
+      return;
+    }
+
+    if (!isValidConfirmationType(type)) {
+      res.status(400).json({ error: 'type 必须是 agree, disagree 或 suggest' });
       return;
     }
 
