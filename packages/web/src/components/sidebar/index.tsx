@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ProjectCard } from './project-card';
 import { UserSection } from './user-section';
 import { api, ApiError } from '@/lib/api';
@@ -26,9 +27,11 @@ interface SidebarProps {
   onProjectSelect: (project: Project) => void;
   onCreateProject: () => void;
   onLogout: () => void;
+  invitationCount?: number;
 }
 
-export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout }: SidebarProps) {
+export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout, invitationCount }: SidebarProps) {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<number>>(new Set());
@@ -80,6 +83,60 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
       </div>
 
       <div style={{ flex: 1, overflow: projects.length > 10 ? 'auto' : 'visible', padding: '12px' }}>
+        {/* 导航入口 */}
+        <div style={{ marginBottom: '12px' }}>
+          <button
+            onClick={() => router.push('/organizations')}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              background: 'transparent',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-primary)',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>我的组织</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>→</span>
+          </button>
+
+          {invitationCount && invitationCount > 0 && (
+            <button
+              onClick={() => router.push('/invitations')}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: 'rgba(124, 58, 237, 0.1)',
+                border: '1px solid var(--accent-color)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--accent-color)',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: '6px',
+              }}
+            >
+              <span>待处理邀请</span>
+              <span style={{
+                backgroundColor: 'var(--accent-color)',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '11px',
+              }}>
+                {invitationCount}
+              </span>
+            </button>
+          )}
+        </div>
+
         <button
           onClick={onCreateProject}
           style={{
