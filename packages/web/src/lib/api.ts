@@ -109,6 +109,56 @@ export interface Repo {
   created_at: string;
 }
 
+/**
+ * 组织信息
+ */
+export interface Organization {
+  id: number;
+  name: string;
+  created_by: number;
+  created_at: string;
+  role?: OrgRole;
+}
+
+/**
+ * 组织角色
+ */
+export type OrgRole = 'owner' | 'developer' | 'member';
+
+/**
+ * 组织成员
+ */
+export interface OrganizationMember {
+  id: number;
+  name: string;
+  email: string;
+  avatar: string | null;
+  role: OrgRole;
+  joined_at: string;
+}
+
+/**
+ * 组织邀请
+ */
+export interface OrganizationInvitation {
+  id: number;
+  organization_id: number;
+  organization_name?: string;
+  email: string;
+  role: OrgRole;
+  invited_by: number;
+  invited_by_name?: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+}
+
+/**
+ * 组织详情（包含成员列表）
+ */
+export interface OrganizationDetail extends Organization {
+  members: OrganizationMember[];
+}
+
 // 便捷方法
 export const api = {
   get: <T = unknown>(endpoint: string, options?: RequestOptions) =>
@@ -146,4 +196,55 @@ export const api = {
 
   pushRepo: (projectId: number, repoId: number, message: string): Promise<void> =>
     apiClient<void>(`/projects/${projectId}/repos/${repoId}/push`, { method: 'POST', body: JSON.stringify({ message }) }),
+
+  // 组织相关 API
+  getOrganizations: (): Promise<Organization[]> =>
+    apiClient<Organization[]>('/organizations', { method: 'GET' }),
+
+  getOrganization: (orgId: number): Promise<OrganizationDetail> =>
+    apiClient<OrganizationDetail>(`/organizations/${orgId}`, { method: 'GET' }),
+
+  createOrganization: (name: string): Promise<Organization> =>
+    apiClient<Organization>('/organizations', { method: 'POST', body: JSON.stringify({ name }) }),
+
+  updateOrganization: (orgId: number, name: string): Promise<Organization> =>
+    apiClient<Organization>(`/organizations/${orgId}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+
+  deleteOrganization: (orgId: number): Promise<void> =>
+    apiClient<void>(`/organizations/${orgId}`, { method: 'DELETE' }),
+
+  // 组织成员相关 API
+  updateMemberRole: (orgId: number, userId: number, role: OrgRole): Promise<OrganizationMember> =>
+    apiClient<OrganizationMember>(`/organizations/${orgId}/members/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    }),
+
+  removeMember: (orgId: number, userId: number): Promise<void> =>
+    apiClient<void>(`/organizations/${orgId}/members/${userId}`, { method: 'DELETE' }),
+
+  // 组织邀请相关 API
+  inviteMember: (orgId: number, email: string, role: OrgRole): Promise<OrganizationInvitation> =>
+    apiClient<OrganizationInvitation>(`/organizations/${orgId}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify({ email, role }),
+    }),
+
+  getOrganizationInvitations: (orgId: number): Promise<OrganizationInvitation[]> =>
+    apiClient<OrganizationInvitation[]>(`/organizations/${orgId}/invitations`, { method: 'GET' }),
+
+  cancelInvitation: (orgId: number, invId: number): Promise<void> =>
+    apiClient<void>(`/organizations/${orgId}/invitations/${invId}`, { method: 'DELETE' }),
+
+  // 用户邀请相关 API
+  getMyInvitations: (): Promise<OrganizationInvitation[]> =>
+    apiClient<OrganizationInvitation[]>('/invitations', { method: 'GET' }),
+
+  acceptInvitation: (invId: number): Promise<{ organization: Organization; member: OrganizationMember }> =>
+    apiClient<{ organization: Organization; member: OrganizationMember }>(`/invitations/${invId}`, {
+      method: 'POST',
+    }),
+
+  declineInvitation: (invId: number): Promise<void> =>
+    apiClient<void>(`/invitations/${invId}`, { method: 'DELETE' }),
 };
