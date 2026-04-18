@@ -206,3 +206,48 @@ export async function execSimple(
     });
   });
 }
+
+/**
+ * 带用户环境变量的 exec 创建
+ * @param containerId 容器 ID
+ * @param cmd 命令
+ * @param interactive 是否交互模式
+ * @param userEnv 用户环境变量对象
+ * @returns exec session
+ */
+export async function execWithUserEnv(
+  containerId: string,
+  cmd: string[],
+  interactive: boolean = false,
+  userEnv: Record<string, string> = {}
+): Promise<ExecSession> {
+  const docker = getDockerClient();
+  const container = docker.getContainer(containerId);
+
+  // 合并基础环境变量和用户环境变量
+  const env = [
+    'TERM=xterm-256color',
+    ...Object.entries(userEnv)
+      .filter(([_, value]) => value)
+      .map(([key, value]) => `${key}=${value}`),
+  ];
+
+  const exec = await container.exec({
+    Cmd: cmd,
+    AttachStdin: interactive,
+    AttachStdout: true,
+    AttachStderr: true,
+    Tty: interactive,
+    Env: env,
+    User: 'codelink',
+  });
+
+  const stream = await exec.start({
+    Detach: false,
+    Tty: interactive,
+    stdin: interactive,
+    hijack: interactive,
+  });
+
+  return { exec, execId: exec.id, stream };
+}
