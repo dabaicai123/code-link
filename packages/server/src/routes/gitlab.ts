@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { getGitLabOAuthUrl, exchangeGitLabCode, getOAuthConfig } from '../git/oauth.js';
 import { TokenManager } from '../git/token-manager.js';
 import { GitLabClient } from '../git/gitlab-client.js';
+import { success, Errors } from '../utils/response.js';
 
 export function createGitLabRouter(): Router {
   const router = Router();
@@ -12,7 +13,7 @@ export function createGitLabRouter(): Router {
   router.get('/oauth', (_req, res) => {
     const config = getOAuthConfig();
     const url = getGitLabOAuthUrl(config);
-    res.json({ url });
+    res.json(success({ url }));
   });
 
   // POST /api/gitlab/oauth/callback - 处理 OAuth 回调
@@ -20,7 +21,7 @@ export function createGitLabRouter(): Router {
     const { code, userId } = req.body;
 
     if (!code || !userId) {
-      res.status(400).json({ error: '缺少 code 或 userId' });
+      res.status(400).json(Errors.paramMissing('code 或 userId'));
       return;
     }
 
@@ -40,9 +41,9 @@ export function createGitLabRouter(): Router {
         expiresAt
       );
 
-      res.json({ success: true });
+      res.json(success({ success: true }));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -51,13 +52,13 @@ export function createGitLabRouter(): Router {
     const userId = req.query.userId;
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
     const token = await tokenManager.getToken(Number(userId), 'gitlab');
     if (!token) {
-      res.status(401).json({ error: '未授权 GitLab' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
@@ -65,9 +66,9 @@ export function createGitLabRouter(): Router {
       const config = getOAuthConfig();
       const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
       const projects = await client.getUserProjects();
-      res.json(projects);
+      res.json(success(projects));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -77,18 +78,18 @@ export function createGitLabRouter(): Router {
     const projectId = parseInt(req.params.id, 10);
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     const token = await tokenManager.getToken(Number(userId), 'gitlab');
     if (!token) {
-      res.status(401).json({ error: '未授权 GitLab' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
@@ -96,9 +97,9 @@ export function createGitLabRouter(): Router {
       const config = getOAuthConfig();
       const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
       const project = await client.getProject(projectId);
-      res.json(project);
+      res.json(success(project));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -108,18 +109,18 @@ export function createGitLabRouter(): Router {
     const projectId = parseInt(req.params.id, 10);
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
     if (isNaN(projectId)) {
-      res.status(400).json({ error: '无效的项目 ID' });
+      res.status(400).json(Errors.paramInvalid('项目 ID'));
       return;
     }
 
     const token = await tokenManager.getToken(Number(userId), 'gitlab');
     if (!token) {
-      res.status(401).json({ error: '未授权 GitLab' });
+      res.status(401).json(Errors.unauthorized());
       return;
     }
 
@@ -127,9 +128,9 @@ export function createGitLabRouter(): Router {
       const config = getOAuthConfig();
       const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
       const branches = await client.getProjectBranches(projectId);
-      res.json(branches);
+      res.json(success(branches));
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json(Errors.internal(error.message));
     }
   });
 
@@ -138,7 +139,7 @@ export function createGitLabRouter(): Router {
     const userId = req.query.userId;
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
@@ -151,12 +152,12 @@ export function createGitLabRouter(): Router {
     const userId = req.query.userId;
 
     if (!userId) {
-      res.status(400).json({ error: '缺少 userId' });
+      res.status(400).json(Errors.paramMissing('userId'));
       return;
     }
 
     const hasToken = await tokenManager.hasToken(Number(userId), 'gitlab');
-    res.json({ authorized: hasToken });
+    res.json(success({ authorized: hasToken }));
   });
 
   return router;
