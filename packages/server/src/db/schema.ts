@@ -11,6 +11,40 @@ export function initSchema(db: Database.Database): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS organizations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS organization_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('owner', 'developer', 'member')),
+      invited_by INTEGER NOT NULL REFERENCES users(id),
+      joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(organization_id, user_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_org_members_org_id ON organization_members(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_org_members_user_id ON organization_members(user_id);
+
+    CREATE TABLE IF NOT EXISTS organization_invitations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      email TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('owner', 'developer', 'member')),
+      invited_by INTEGER NOT NULL REFERENCES users(id),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(organization_id, email)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_org_invitations_email ON organization_invitations(email);
+    CREATE INDEX IF NOT EXISTS idx_org_invitations_status ON organization_invitations(status);
+
     CREATE TABLE IF NOT EXISTS projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
