@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
+import { createLogger } from '../logger/index.js';
 import { createProjectContainer, startContainer, stopContainer, removeContainer, getContainerStatus, getProjectContainer } from '../docker/container-manager.js';
 import { createProjectVolume, removeProjectVolume } from '../docker/volume-manager.js';
 import type { Project } from '../types.js';
+
+const logger = createLogger('containers');
 
 export function createContainersRouter(db: Database.Database): Router {
   const router = Router();
@@ -81,7 +84,7 @@ export function createContainersRouter(db: Database.Database): Router {
 
       res.json({ container_id: containerId, status });
     } catch (error) {
-      console.error('启动容器失败:', error);
+      logger.error('启动容器失败', error);
       res.status(500).json({ error: '启动容器失败' });
     }
   });
@@ -116,8 +119,11 @@ export function createContainersRouter(db: Database.Database): Router {
     }
 
     try {
-      // 停止容器
-      await stopContainer(project.container_id);
+      // 先检查容器状态，如果已经停止则跳过
+      const currentStatus = await getContainerStatus(project.container_id);
+      if (currentStatus === 'running') {
+        await stopContainer(project.container_id);
+      }
 
       // 获取容器状态
       const status = await getContainerStatus(project.container_id);
@@ -127,7 +133,7 @@ export function createContainersRouter(db: Database.Database): Router {
 
       res.json({ container_id: project.container_id, status });
     } catch (error) {
-      console.error('停止容器失败:', error);
+      logger.error('停止容器失败', error);
       res.status(500).json({ error: '停止容器失败' });
     }
   });
@@ -166,7 +172,7 @@ export function createContainersRouter(db: Database.Database): Router {
       const status = await getContainerStatus(project.container_id);
       res.json({ container_id: project.container_id, status });
     } catch (error) {
-      console.error('获取容器状态失败:', error);
+      logger.error('获取容器状态失败', error);
       res.status(500).json({ error: '获取容器状态失败' });
     }
   });
@@ -209,7 +215,7 @@ export function createContainersRouter(db: Database.Database): Router {
 
       res.status(204).send();
     } catch (error) {
-      console.error('删除容器失败:', error);
+      logger.error('删除容器失败', error);
       res.status(500).json({ error: '删除容器失败' });
     }
   });
