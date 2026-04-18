@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api, ApiError, OrganizationDetail, OrganizationInvitation, OrgRole, OrganizationMember } from '@/lib/api';
 import { OrganizationMemberList } from '@/components/organization-member-list';
 import { InviteMemberDialog } from '@/components/invite-member-dialog';
@@ -27,14 +27,14 @@ export function OrganizationDetailPanel({
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 
   // 当 organization 变化时，重置状态并加载邀请
-  useState(() => {
+  useEffect(() => {
     if (organization) {
       setOrgName(organization.name);
       setIsEditingName(false);
       setError(null);
       loadInvitations();
     }
-  });
+  }, [organization?.id]);
 
   const loadInvitations = async () => {
     if (!organization || organization.role !== 'owner') return;
