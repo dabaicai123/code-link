@@ -1,5 +1,5 @@
 // packages/e2e/playwright.config.ts
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
@@ -8,10 +8,16 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1, // 单进程，避免数据库冲突
   reporter: [['list'], ['html', { outputFolder: 'playwright-report' }]],
+  globalSetup: './global-setup.ts',
+  globalTeardown: './global-teardown.ts',
   use: {
-    baseURL: process.env.E2E_BASE_URL || '',
+    baseURL: process.env.WEB_BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    headless: true,
+    launchOptions: {
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+    },
   },
 
   projects: [
@@ -24,7 +30,9 @@ export default defineConfig({
     {
       name: 'chromium',
       use: {
+        ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/user.json',
+        channel: undefined,
       },
       dependencies: ['setup'],
       testMatch: ['projects.spec.ts', 'collaboration.spec.ts', 'organizations.spec.ts'],
@@ -32,10 +40,11 @@ export default defineConfig({
     // 认证测试 project - 不复用认证状态，每个测试独立登录
     {
       name: 'auth-tests',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: undefined,
+      },
       testMatch: 'auth.spec.ts',
     },
   ],
-
-  // 不使用 globalSetup，而是在测试中动态创建服务器
-  // 因为 Playwright fixtures 更灵活
 });

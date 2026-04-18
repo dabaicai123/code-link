@@ -372,7 +372,7 @@ export function createTestApp(db: Database.Database): express.Express {
  * 认证中间件
  */
 function authMiddleware(db: Database.Database) {
-  return (req: express.Request, res: express.Response, next: express.NextFunction): void {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
       res.status(401).json({ error: '未提供认证令牌' });

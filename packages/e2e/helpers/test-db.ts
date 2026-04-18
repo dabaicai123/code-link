@@ -2,9 +2,59 @@
 import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as schema from '@code-link/server/db/schema';
-import { users, organizations, organizationMembers, projects, projectMembers } from '@code-link/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { sqliteTable, integer, text, index } from 'drizzle-orm/sqlite-core';
+import { relations } from 'drizzle-orm';
+
+// 定义 schema（与 server 包保持一致）
+export const users = sqliteTable('users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  avatar: text('avatar'),
+  createdAt: text('created_at').notNull().default("datetime('now')"),
+});
+
+export const organizations = sqliteTable('organizations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  createdBy: integer('created_by').notNull().references(() => users.id),
+  createdAt: text('created_at').notNull().default("datetime('now')"),
+});
+
+export const organizationMembers = sqliteTable('organization_members', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  organizationId: integer('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role', { enum: ['owner', 'developer', 'member'] }).notNull(),
+  invitedBy: integer('invited_by').notNull().references(() => users.id),
+  joinedAt: text('joined_at').notNull().default("datetime('now')"),
+}, (table) => ({
+  orgUserUnique: index().on(table.organizationId, table.userId),
+}));
+
+export const projects = sqliteTable('projects', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  templateType: text('template_type', { enum: ['node', 'node+java', 'node+python'] }).notNull(),
+  organizationId: integer('organization_id').references(() => organizations.id),
+  containerId: text('container_id'),
+  status: text('status', { enum: ['created', 'running', 'stopped'] }).notNull().default('created'),
+  createdBy: integer('created_by').notNull().references(() => users.id),
+  createdAt: text('created_at').notNull().default("datetime('now')"),
+});
+
+export const projectMembers = sqliteTable('project_members', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  projectId: integer('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role', { enum: ['owner', 'developer', 'product'] }).notNull(),
+}, (table) => ({
+  projectUserUnique: index().on(table.projectId, table.userId),
+}));
+
+// Schema 对象
+const schema = { users, organizations, organizationMembers, projects, projectMembers };
 
 export interface TestUser {
   id: number;
