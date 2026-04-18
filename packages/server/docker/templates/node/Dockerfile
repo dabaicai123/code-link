@@ -6,8 +6,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 创建非 root 用户
-RUN useradd -m -u 1000 -s /bin/bash codelink
+# 创建非 root 用户（UID 10000，避免与 node 用户冲突）
+RUN useradd -m -u 10000 -s /bin/bash codelink
 
 # 安装 Claude Code CLI
 RUN npm install -g @anthropic-ai/claude-code
