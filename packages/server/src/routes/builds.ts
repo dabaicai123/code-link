@@ -2,8 +2,11 @@
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { authMiddleware } from '../middleware/auth.js';
+import { createLogger } from '../logger/index.js';
 import { getBuildManager } from '../build/build-manager.js';
 import { getPreviewContainerManager } from '../build/preview-container.js';
+
+const logger = createLogger('builds');
 
 export function createBuildsRouter(db: Database.Database): Router {
   const router = Router();
@@ -34,7 +37,7 @@ export function createBuildsRouter(db: Database.Database): Router {
 
       // 异步启动构建（不等待）
       buildManager.startBuild(projectId, build.id).catch((error) => {
-        console.error('Build failed:', error);
+        logger.error('Build failed', error);
       });
 
       res.status(201).json(build);
