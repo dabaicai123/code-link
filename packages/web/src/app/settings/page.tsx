@@ -87,6 +87,9 @@ export default function SettingsPage() {
       await api.post('/claude-config', { config });
       setHasConfig(true);
       setSuccess('配置保存成功');
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000);
     } catch (err: any) {
       setError(err.message || '保存配置失败');
     } finally {

@@ -20,6 +20,7 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<TerminalWebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const isConnectedRef = useRef(false);
   const [showConfigPrompt, setShowConfigPrompt] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const mountedRef = useRef(true);
@@ -46,6 +47,8 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
         selectionBackground: '#264f78',
       },
       allowProposedApi: true,
+      cols: 120,
+      rows: 40,
     });
 
     const fitAddon = new FitAddon();
@@ -58,7 +61,12 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
 
-    setTimeout(() => fitAddon.fit(), 0);
+    // 延迟 fit 以确保容器已渲染完成
+    setTimeout(() => {
+      if (fitAddonRef.current && containerRef.current) {
+        fitAddonRef.current.fit();
+      }
+    }, 100);
 
     return () => {
       xterm.dispose();
@@ -82,6 +90,7 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     ws.setOnConnected(() => {
       if (!mountedRef.current) return;
       setIsConnected(true);
+      isConnectedRef.current = true;
       // 清空终端，避免显示旧内容
       xtermRef.current?.clear();
       if (fitAddonRef.current) {
@@ -99,6 +108,7 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     ws.setOnExit(() => {
       if (mountedRef.current) {
         setIsConnected(false);
+        isConnectedRef.current = false;
         xtermRef.current?.write('\r\n\x1b[33m[Session ended]\x1b[0m\r\n');
       }
     });
@@ -123,7 +133,7 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     ws.connect(terminalUrl, projectId, userId);
 
     const disposable = xtermRef.current.onData((data) => {
-      if (isConnected && mountedRef.current) {
+      if (isConnectedRef.current && mountedRef.current) {
         ws.sendInput(data);
       }
     });

@@ -85,9 +85,9 @@ export class TerminalWebSocket {
 
       case 'output':
         if (message.data) {
-          // 解码 base64 输出
+          // 解码 base64 输出（正确处理 UTF-8）
           try {
-            const decoded = atob(message.data);
+            const decoded = this.decodeBase64(message.data);
             this.onOutputHandler?.(decoded);
           } catch {
             // 如果解码失败，直接传递原始数据
@@ -162,8 +162,8 @@ export class TerminalWebSocket {
       return;
     }
 
-    // 将输入编码为 base64
-    const encoded = btoa(data);
+    // 将输入编码为 base64（正确处理 UTF-8）
+    const encoded = this.encodeBase64(data);
     this.send({
       type: 'input',
       sessionId: this.sessionId,
@@ -262,6 +262,33 @@ export class TerminalWebSocket {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     }
+  }
+
+  /**
+   * 解码 base64 字符串为 UTF-8 字符串
+   * 使用 TextDecoder 正确处理多字节字符
+   */
+  private decodeBase64(base64: string): string {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(bytes);
+  }
+
+  /**
+   * 编码字符串为 base64（正确处理 UTF-8）
+   */
+  private encodeBase64(str: string): string {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(str);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   /**
