@@ -5,6 +5,12 @@ import { createApp } from '../src/index.js';
 import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
 import { setEncryptionKey, encrypt } from '../src/crypto/aes.js';
+import {
+  createTestOrganization,
+  createTestOrganizationMember,
+  createTestClaudeConfig,
+  findProjectById,
+} from './helpers/test-db.js';
 import type Database from 'better-sqlite3';
 
 // 存储容器状态
@@ -65,15 +71,11 @@ describe('容器路由', () => {
     userId = regRes.body.user.id;
 
     // 直接在数据库中创建组织（绕过权限检查）
-    const orgResult = db
-      .prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)')
-      .run('测试组织', userId);
-    orgId = orgResult.lastInsertRowid as number;
+    const org = createTestOrganization(userId, { name: '测试组织' });
+    orgId = org.id;
 
     // 添加用户为组织成员
-    db
-      .prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)')
-      .run(orgId, userId, 'owner', userId);
+    createTestOrganizationMember(orgId, userId, 'owner', userId);
 
     // 为用户添加 Claude 配置（加密存储）
     const config = {
@@ -82,7 +84,7 @@ describe('容器路由', () => {
       },
     };
     const encryptedConfig = encrypt(JSON.stringify(config));
-    db.prepare('INSERT INTO user_claude_configs (user_id, config) VALUES (?, ?)').run(userId, encryptedConfig);
+    createTestClaudeConfig(userId, encryptedConfig);
 
     // 创建测试项目
     const projectRes = await request(app)
@@ -234,12 +236,9 @@ describe('容器路由', () => {
       expect(res.status).toBe(204);
 
       // 验证项目状态已更新
-      const project = db.prepare('SELECT container_id, status FROM projects WHERE id = ?').get(projectId) as {
-        container_id: string | null;
-        status: string;
-      };
-      expect(project.container_id).toBeNull();
-      expect(project.status).toBe('created');
+      const project = findProjectById(projectId);
+      expect(project?.containerId).toBeNull();
+      expect(project?.status).toBe('created');
     });
 
     it('非 owner 应返回 403', async () => {
@@ -250,12 +249,7 @@ describe('容器路由', () => {
 
       // 直接添加为组织成员（developer 角色）
       const otherUserId = otherRes.body.user.id;
-      db.prepare('INSERT INTO organization_members (organization_id, user_id, role, invited_by) VALUES (?, ?, ?, ?)').run(
-        orgId,
-        otherUserId,
-        'developer',
-        userId
-      );
+      createTestOrganizationMember(orgId, otherUserId, 'developer', userId);
 
       const otherToken = otherRes.body.token;
 
