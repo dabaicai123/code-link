@@ -26,3 +26,6 @@ packages/server/volumes
 data/*.db
 data/*.db-shm
 data/*.db-wal
+
+# Superpowers docs (local only)
+docs/superpowers/
