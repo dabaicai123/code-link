@@ -3,6 +3,11 @@
 import { useState } from 'react';
 import type { DraftMessage, MessageConfirmation } from '../../types/draft';
 import { draftsApi } from '../../lib/drafts-api';
+import {
+  parseAIResponseMetadata,
+  AI_COMMAND_TYPE_LABELS,
+  type AICommandType,
+} from '../../lib/ai-commands';
 
 interface MessageItemProps {
   message: DraftMessage;
@@ -55,14 +60,140 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
 
   const isCode = message.message_type === 'code';
   const isAICommand = message.message_type === 'ai_command';
-  const isSystem = message.message_type === 'system';
+  const isAIResponse =
+    message.message_type === 'ai_response' ||
+    (message.message_type === 'system' && message.user_name === 'AI 助手');
+  const isSystem = message.message_type === 'system' && message.user_name !== 'AI 助手';
+
+  // 解析 AI 响应元数据
+  const aiMetadata = isAIResponse ? parseAIResponseMetadata(message.metadata) : null;
+
+  // 获取 AI 命令类型标签
+  const getAICommandTypeLabel = (commandType?: AICommandType): string => {
+    if (!commandType) return 'AI 响应';
+    return AI_COMMAND_TYPE_LABELS[commandType] || 'AI 响应';
+  };
 
   if (isSystem) {
     return (
       <div style={{ padding: '8px 12px', textAlign: 'center' }}>
-        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: 'var(--radius-md)' }}>
+        <span
+          style={{
+            fontSize: '11px',
+            color: 'var(--text-secondary)',
+            backgroundColor: 'var(--bg-secondary)',
+            padding: '4px 12px',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
           {message.content}
         </span>
+      </div>
+    );
+  }
+
+  // AI 响应特殊样式
+  if (isAIResponse) {
+    return (
+      <div style={{ padding: '12px', backgroundColor: 'rgba(124, 58, 237, 0.05)', borderRadius: 'var(--radius-md)', margin: '4px 8px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* AI 头像 - 使用渐变色 */}
+          <div
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'white',
+              flexShrink: 0,
+              boxShadow: '0 2px 4px rgba(124, 58, 237, 0.3)',
+            }}
+          >
+            AI
+          </div>
+
+          {/* AI 响应内容 */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-color)' }}>
+                AI 助手
+              </span>
+              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                {formatTime(message.created_at)}
+              </span>
+              {/* AI 命令类型标签 */}
+              {aiMetadata?.commandType && (
+                <span
+                  style={{
+                    fontSize: '9px',
+                    padding: '2px 6px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(124, 58, 237, 0.15)',
+                    color: 'var(--accent-light)',
+                    border: '1px solid var(--accent-color)',
+                  }}
+                >
+                  {getAICommandTypeLabel(aiMetadata.commandType)}
+                </span>
+              )}
+            </div>
+
+            {/* AI 响应内容 */}
+            <div
+              style={{
+                fontSize: '13px',
+                color: 'var(--text-primary)',
+                lineHeight: 1.6,
+                wordBreak: 'break-word',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {message.content}
+            </div>
+
+            {/* AI 元数据信息 */}
+            {aiMetadata && (aiMetadata.model || aiMetadata.inputTokens || aiMetadata.outputTokens) && (
+              <div style={{ marginTop: '8px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {aiMetadata.model && (
+                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                    模型: {aiMetadata.model}
+                  </span>
+                )}
+                {aiMetadata.inputTokens && (
+                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                    输入: {aiMetadata.inputTokens} tokens
+                  </span>
+                )}
+                {aiMetadata.outputTokens && (
+                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                    输出: {aiMetadata.outputTokens} tokens
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* 错误信息 */}
+            {aiMetadata?.error && (
+              <div
+                style={{
+                  marginTop: '8px',
+                  padding: '6px 8px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '11px',
+                  color: 'var(--status-error)',
+                }}
+              >
+                错误: {aiMetadata.error}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -157,7 +288,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
               }}
               title="赞同"
             >
-              ✓ 赞同
+              + 赞同
             </button>
             <button
               onClick={() => handleConfirm('disagree')}
@@ -172,7 +303,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
               }}
               title="反对"
             >
-              ✗ 反对
+              - 反对
             </button>
             <button
               onClick={() => handleConfirm('suggest')}
@@ -187,7 +318,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
               }}
               title="建议"
             >
-              💡 建议
+              * 建议
             </button>
 
             {/* 回复按钮 */}
