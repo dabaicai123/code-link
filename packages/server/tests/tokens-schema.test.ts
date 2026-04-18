@@ -1,6 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
+import { eq } from 'drizzle-orm';
 import { initSchema } from '../src/db/schema.js';
+import { getDb } from '../src/db/index.js';
+import { projectTokens, projectRepos, projects } from '../src/db/schema/index.js';
+import {
+  createTestUser,
+  createTestOrganization,
+  createTestProject,
+  createTestToken,
+  createTestRepo,
+  findTokenByUserIdAndProvider,
+  findReposByProjectId,
+  deleteTestUser,
+  deleteTestProject,
+} from './helpers/test-db.js';
 
 describe('Project Tokens Schema', () => {
   let db: Database.Database;
@@ -25,116 +39,152 @@ describe('Project Tokens Schema', () => {
   });
 
   it('should insert and retrieve token', () => {
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
+    const user = createTestUser();
+    createTestToken(user.id, 'github', {
+      accessToken: 'gh_token',
+      refreshToken: 'gh_refresh',
+      expiresAt: '2025-01-01T00:00:00Z',
+    });
 
-    db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
-      1, 'github', 'gh_token', 'gh_refresh', '2025-01-01T00:00:00Z'
-    );
-
-    const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = ? AND provider = ?').get(1, 'github') as any;
-    expect(token.access_token).toBe('gh_token');
-    expect(token.provider).toBe('github');
+    const token = findTokenByUserIdAndProvider(user.id, 'github');
+    expect(token).toBeDefined();
+    expect(token!.accessToken).toBe('gh_token');
+    expect(token!.provider).toBe('github');
   });
 
   it('should enforce unique constraint on user_id and provider', () => {
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-
-    db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
-      1, 'github', 'gh_token', 'gh_refresh', '2025-01-01T00:00:00Z'
-    );
+    const user = createTestUser();
+    createTestToken(user.id, 'github', {
+      accessToken: 'gh_token',
+      refreshToken: 'gh_refresh',
+      expiresAt: '2025-01-01T00:00:00Z',
+    });
 
     // Should fail due to unique constraint
     expect(() => {
-      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
-        1, 'github', 'gh_token2', 'gh_refresh2', '2025-02-01T00:00:00Z'
-      );
+      createTestToken(user.id, 'github', {
+        accessToken: 'gh_token2',
+        refreshToken: 'gh_refresh2',
+        expiresAt: '2025-02-01T00:00:00Z',
+      });
     }).toThrow();
   });
 
   it('should cascade delete tokens when user is deleted', () => {
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
-      1, 'github', 'gh_token', 'gh_refresh', '2025-01-01T00:00:00Z'
-    );
+    const user = createTestUser();
+    createTestToken(user.id, 'github', {
+      accessToken: 'gh_token',
+      refreshToken: 'gh_refresh',
+      expiresAt: '2025-01-01T00:00:00Z',
+    });
 
     // Delete user
-    db.prepare('DELETE FROM users WHERE id = ?').run(1);
+    deleteTestUser(user.id);
 
     // Token should be deleted
-    const token = db.prepare('SELECT * FROM project_tokens WHERE user_id = ?').get(1);
+    const drizzleDb = getDb();
+    const token = drizzleDb
+      .select()
+      .from(projectTokens)
+      .where(eq(projectTokens.userId, user.id))
+      .get();
     expect(token).toBeUndefined();
   });
 
   it('should insert and retrieve project_repo', () => {
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
-    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
+    const user = createTestUser();
+    const org = createTestOrganization(user.id);
+    const project = createTestProject(user.id, org.id);
 
-    db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
-      1, 'github', 'https://github.com/user/repo', 'user/repo', 'main'
-    );
+    createTestRepo(project.id, {
+      provider: 'github',
+      repoUrl: 'https://github.com/user/repo',
+      repoName: 'user/repo',
+      branch: 'main',
+    });
 
-    const repo = db.prepare('SELECT * FROM project_repos WHERE project_id = ?').get(1) as any;
-    expect(repo.repo_url).toBe('https://github.com/user/repo');
-    expect(repo.repo_name).toBe('user/repo');
-    expect(repo.provider).toBe('github');
-    expect(repo.branch).toBe('main');
+    const repos = findReposByProjectId(project.id);
+    expect(repos).toHaveLength(1);
+    expect(repos[0].repoUrl).toBe('https://github.com/user/repo');
+    expect(repos[0].repoName).toBe('user/repo');
+    expect(repos[0].provider).toBe('github');
+    expect(repos[0].branch).toBe('main');
   });
 
   it('should enforce unique constraint on project_id and repo_url', () => {
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
-    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
+    const user = createTestUser();
+    const org = createTestOrganization(user.id);
+    const project = createTestProject(user.id, org.id);
 
-    db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
-      1, 'github', 'https://github.com/user/repo', 'user/repo', 'main'
-    );
+    createTestRepo(project.id, {
+      provider: 'github',
+      repoUrl: 'https://github.com/user/repo',
+      repoName: 'user/repo',
+      branch: 'main',
+    });
 
-    // Should fail due to unique constraint
+    // Should fail due to unique constraint (same project_id and repo_url)
     expect(() => {
-      db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
-        1, 'gitlab', 'https://github.com/user/repo', 'user/repo', 'develop'
-      );
+      createTestRepo(project.id, {
+        provider: 'gitlab',
+        repoUrl: 'https://github.com/user/repo',
+        repoName: 'user/repo',
+        branch: 'develop',
+      });
     }).toThrow();
   });
 
   it('should cascade delete project_repos when project is deleted', () => {
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
-    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
-    db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
-      1, 'github', 'https://github.com/user/repo', 'user/repo', 'main'
-    );
+    const user = createTestUser();
+    const org = createTestOrganization(user.id);
+    const project = createTestProject(user.id, org.id);
+
+    createTestRepo(project.id, {
+      provider: 'github',
+      repoUrl: 'https://github.com/user/repo',
+      repoName: 'user/repo',
+      branch: 'main',
+    });
 
     // Delete project
-    db.prepare('DELETE FROM projects WHERE id = ?').run(1);
+    deleteTestProject(project.id);
 
-    // project_repo should be deleted
-    const repo = db.prepare('SELECT * FROM project_repos WHERE project_id = ?').get(1);
-    expect(repo).toBeUndefined();
+    // project_repo should be deleted via CASCADE
+    const repos = findReposByProjectId(project.id);
+    expect(repos).toHaveLength(0);
   });
 
   it('should only accept valid provider values for project_tokens', () => {
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
+    const user = createTestUser();
 
-    // Invalid provider should fail
+    // Invalid provider should fail - using direct ORM with type assertion to bypass TypeScript
     expect(() => {
-      db.prepare('INSERT INTO project_tokens (user_id, provider, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(
-        1, 'invalid_provider', 'token', 'refresh', '2025-01-01T00:00:00Z'
-      );
+      const drizzleDb = getDb();
+      drizzleDb.insert(projectTokens).values({
+        userId: user.id,
+        provider: 'invalid_provider' as 'github' | 'gitlab',
+        accessToken: 'token',
+        refreshToken: 'refresh',
+        expiresAt: '2025-01-01T00:00:00Z',
+      }).run();
     }).toThrow();
   });
 
   it('should only accept valid provider values for project_repos', () => {
-    db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run('test', 'test@test.com', 'hash');
-    db.prepare('INSERT INTO organizations (name, created_by) VALUES (?, ?)').run('test-org', 1);
-    db.prepare('INSERT INTO projects (name, template_type, created_by, organization_id) VALUES (?, ?, ?, ?)').run('test-project', 'node', 1, 1);
+    const user = createTestUser();
+    const org = createTestOrganization(user.id);
+    const project = createTestProject(user.id, org.id);
 
-    // Invalid provider should fail
+    // Invalid provider should fail - using direct ORM with type assertion to bypass TypeScript
     expect(() => {
-      db.prepare('INSERT INTO project_repos (project_id, provider, repo_url, repo_name, branch) VALUES (?, ?, ?, ?, ?)').run(
-        1, 'invalid_provider', 'https://example.com/repo', 'repo', 'main'
-      );
+      const drizzleDb = getDb();
+      drizzleDb.insert(projectRepos).values({
+        projectId: project.id,
+        provider: 'invalid_provider' as 'github' | 'gitlab',
+        repoUrl: 'https://example.com/repo',
+        repoName: 'repo',
+        branch: 'main',
+      }).run();
     }).toThrow();
   });
 });
