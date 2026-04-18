@@ -9,3 +9,11 @@ export type {
   UpdateMemberRoleInput,
   OrganizationDetail,
 } from './organization.service.js';
+
+export { ProjectService } from './project.service.js';
+export type {
+  CreateProjectInput,
+  AddRepoInput,
+} from './project.service.js';
+
+export { DraftService } from './draft.service.js';
