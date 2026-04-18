@@ -3,8 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import type Database from 'better-sqlite3';
-import { getDb } from './db/connection.js';
-import { initSchema } from './db/schema.js';
+import { getSqliteDb, initSchema } from './db/index.js';
 import { runOrganizationMigration, runRepoClonedMigration, runProjectOrganizationMigration } from './db/migration.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createProjectsRouter } from './routes/projects.js';
@@ -35,7 +34,7 @@ export function createApp(db: Database.Database): express.Express {
     res.json({ status: 'ok' });
   });
 
-  app.use('/api/auth', createAuthRouter(db));
+  app.use('/api/auth', createAuthRouter());
   app.use('/api/projects', createProjectsRouter(db));
   app.use('/api/projects', createContainersRouter(db));
   app.use('/api/github', createGitHubRouter(db));
@@ -69,7 +68,7 @@ export function startServer(db: Database.Database, port: number = 3001): void {
 
 // 启动入口
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
-  const db = getDb();
+  const db = getSqliteDb();
   initSchema(db);
 
   // 运行组织迁移
