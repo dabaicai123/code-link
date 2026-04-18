@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const { user, loading: authLoading, logout } = useAuth();
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [projectRefreshKey, setProjectRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
@@ -36,17 +37,18 @@ export default function DashboardPage() {
       <Sidebar
         user={user}
         activeProjectId={activeProject?.id ?? null}
+        refreshKey={projectRefreshKey}
         onProjectSelect={setActiveProject}
         onCreateProject={() => setIsDialogOpen(true)}
         onLogout={handleLogout}
       />
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <Workspace project={activeProject} userId={user.id} />
+        <Workspace project={activeProject} userId={user.id} wsUrl={process.env.NEXT_PUBLIC_WS_URL} />
       </div>
       <CreateProjectDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
-        onSuccess={(project) => { setActiveProject(project); setIsDialogOpen(false); }}
+        onSuccess={(project) => { setActiveProject(project); setProjectRefreshKey(k => k + 1); setIsDialogOpen(false); }}
       />
     </div>
   );

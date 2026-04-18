@@ -22,18 +22,19 @@ interface User {
 interface SidebarProps {
   user: User;
   activeProjectId: number | null;
+  refreshKey?: number;
   onProjectSelect: (project: Project) => void;
   onCreateProject: () => void;
   onLogout: () => void;
 }
 
-export function Sidebar({ user, activeProjectId, onProjectSelect, onCreateProject, onLogout }: SidebarProps) {
+export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout }: SidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [refreshKey]);
 
   const fetchProjects = async () => {
     try {
