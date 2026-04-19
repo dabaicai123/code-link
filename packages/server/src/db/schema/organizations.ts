@@ -34,6 +34,9 @@ export const organizationInvitations = sqliteTable('organization_invitations', {
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
 });
 
+export type OrgRole = 'owner' | 'developer' | 'member';
+export type InvitationStatus = 'pending' | 'accepted' | 'declined';
+
 export type InsertOrganization = typeof organizations.$inferInsert;
 export type SelectOrganization = typeof organizations.$inferSelect;
 export type InsertOrganizationMember = typeof organizationMembers.$inferInsert;

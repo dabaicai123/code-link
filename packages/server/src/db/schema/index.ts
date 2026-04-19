@@ -15,6 +15,8 @@ export type {
   SelectOrganizationMember,
   InsertOrganizationInvitation,
   SelectOrganizationInvitation,
+  OrgRole,
+  InvitationStatus,
 } from './organizations.js';
 
 // Projects
