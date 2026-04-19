@@ -43,12 +43,6 @@ export function ProjectCard({
   const [showAddRepo, setShowAddRepo] = useState(false);
   const [cloningRepoId, setCloningRepoId] = useState<number | null>(null);
 
-  const statusColor = {
-    running: 'var(--status-running)',
-    stopped: 'var(--status-stopped)',
-    created: 'var(--text-muted)',
-  }[project.status];
-
   const isRunning = project.status === 'running';
 
   // 加载仓库列表
@@ -130,9 +124,11 @@ export function ProjectCard({
           <span
             className={cn(
               'w-[6px] h-[6px] rounded-full ml-auto',
-              isRunning && 'animate-pulse'
+              isRunning && 'animate-pulse',
+              project.status === 'running' && 'bg-status-running',
+              project.status === 'stopped' && 'bg-status-error',
+              project.status === 'created' && 'bg-muted-foreground'
             )}
-            style={{ background: statusColor }}
           />
         </div>
 
