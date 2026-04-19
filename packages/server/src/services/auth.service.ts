@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { UserRepository } from '../repositories/user.repository.js';
 import { JWT_SECRET } from '../middleware/auth.js';
+import { AuthError, ConflictError } from '../utils/errors.js';
 import type { SelectUser } from '../db/schema/index.js';
 
 export interface RegisterInput {
@@ -27,13 +28,11 @@ export class AuthService {
    * 用户注册
    */
   async register(data: RegisterInput): Promise<AuthResult> {
-    // 检查邮箱是否已存在
     const existing = await this.userRepo.findByEmail(data.email);
     if (existing) {
-      throw new Error('该邮箱已被注册');
+      throw new ConflictError('该邮箱已被注册');
     }
 
-    // 创建用户
     const passwordHash = bcrypt.hashSync(data.password, 10);
     const user = await this.userRepo.create({
       name: data.name,
@@ -41,7 +40,6 @@ export class AuthService {
       passwordHash,
     });
 
-    // 生成 JWT
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
     return {
@@ -57,7 +55,7 @@ export class AuthService {
     const user = await this.userRepo.findByEmail(data.email);
 
     if (!user || !bcrypt.compareSync(data.password, user.passwordHash)) {
-      throw new Error('邮箱或密码错误');
+      throw new AuthError('邮箱或密码错误');
     }
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
