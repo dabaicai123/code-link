@@ -1,14 +1,16 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { ProjectService } from '../services/project.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
-import { success, Errors } from '../utils/response.js';
+import { success, Errors, handleRouteError } from '../utils/response.js';
 
 const logger = createLogger('projects');
 
 export function createProjectsRouter(): Router {
   const router = Router();
-  const projectService = new ProjectService();
+  const projectService = container.resolve(ProjectService);
 
   // POST /api/projects - 创建项目
   router.post('/', authMiddleware, async (req, res) => {
@@ -16,15 +18,8 @@ export function createProjectsRouter(): Router {
     try {
       const project = await projectService.create(userId, req.body);
       res.status(201).json(success(project));
-    } catch (error: any) {
-      if (error.message.includes('权限')) {
-        res.status(403).json(Errors.forbidden());
-      } else if (error.message.includes('名称') || error.message.includes('模板')) {
-        res.status(400).json(Errors.paramInvalid(error.message));
-      } else {
-        logger.error('创建项目失败', error);
-        res.status(500).json(Errors.internal('创建项目失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '创建项目失败');
     }
   });
 
@@ -36,9 +31,8 @@ export function createProjectsRouter(): Router {
     try {
       const projects = await projectService.findByUserId(userId, organizationId);
       res.json(success(projects));
-    } catch (error: any) {
-      logger.error('获取项目列表失败', error);
-      res.status(500).json(Errors.internal('获取项目列表失败'));
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '获取项目列表失败');
     }
   });
 
@@ -55,15 +49,8 @@ export function createProjectsRouter(): Router {
     try {
       const project = await projectService.findById(userId, projectId);
       res.json(success(project));
-    } catch (error: any) {
-      if (error.message.includes('权限')) {
-        res.status(403).json(Errors.forbidden());
-      } else if (error.message.includes('不存在')) {
-        res.status(404).json(Errors.notFound('项目'));
-      } else {
-        logger.error('获取项目详情失败', error);
-        res.status(500).json(Errors.internal('获取项目详情失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '获取项目详情失败');
     }
   });
 
@@ -80,15 +67,8 @@ export function createProjectsRouter(): Router {
     try {
       await projectService.delete(userId, projectId);
       res.status(204).send();
-    } catch (error: any) {
-      if (error.message.includes('权限') || error.message.includes('owner')) {
-        res.status(403).json(Errors.forbidden());
-      } else if (error.message.includes('不存在')) {
-        res.status(404).json(Errors.notFound('项目'));
-      } else {
-        logger.error('删除项目失败', error);
-        res.status(500).json(Errors.internal('删除项目失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '删除项目失败');
     }
   });
 

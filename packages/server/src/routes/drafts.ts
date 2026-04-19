@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { DraftService } from '../services/draft.service.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -9,28 +11,21 @@ import {
   createDraftAIResponseEvent,
 } from '../websocket/types.js';
 import { createLogger } from '../logger/index.js';
-import { success, Errors } from '../utils/response.js';
+import { success, Errors, handleRouteError } from '../utils/response.js';
 
 const logger = createLogger('drafts');
 
 export function createDraftsRouter(): Router {
   const router = Router();
-  const draftService = new DraftService();
+  const draftService = container.resolve(DraftService);
 
   router.post('/', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
     try {
       const draft = await draftService.create(userId, req.body);
       res.status(201).json(success({ draft }));
-    } catch (error: any) {
-      if (error.message.includes('权限')) {
-        res.status(403).json(Errors.forbidden());
-      } else if (error.message.includes('缺少') || error.message.includes('标题')) {
-        res.status(400).json(Errors.paramInvalid('', error.message));
-      } else {
-        logger.error('创建 Draft 失败', error);
-        res.status(500).json(Errors.internal('创建 Draft 失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '创建 Draft 失败');
     }
   });
 
@@ -39,9 +34,8 @@ export function createDraftsRouter(): Router {
     try {
       const drafts = await draftService.findByUserId(userId);
       res.json(success(drafts));
-    } catch (error: any) {
-      logger.error('获取 Draft 列表失败', error);
-      res.status(500).json(Errors.internal('获取 Draft 列表失败'));
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '获取 Draft 列表失败');
     }
   });
 
@@ -57,13 +51,8 @@ export function createDraftsRouter(): Router {
     try {
       const result = await draftService.findById(draftId, userId);
       res.json(success(result));
-    } catch (error: any) {
-      if (error.message.includes('不是')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('获取 Draft 详情失败', error);
-        res.status(500).json(Errors.internal('获取 Draft 详情失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '获取 Draft 详情失败');
     }
   });
 
@@ -127,13 +116,8 @@ export function createDraftsRouter(): Router {
       }
 
       res.status(201).json(success({ message }));
-    } catch (error: any) {
-      if (error.message.includes('不是')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('发送消息失败', error);
-        res.status(500).json(Errors.internal('发送消息失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '发送消息失败');
     }
   });
 
@@ -150,13 +134,8 @@ export function createDraftsRouter(): Router {
     try {
       const messages = await draftService.findMessages(draftId, userId, { limit });
       res.json(success(messages));
-    } catch (error: any) {
-      if (error.message.includes('不是')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('获取消息列表失败', error);
-        res.status(500).json(Errors.internal('获取消息列表失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '获取消息列表失败');
     }
   });
 
@@ -180,13 +159,8 @@ export function createDraftsRouter(): Router {
       }
 
       res.json(success({ draft }));
-    } catch (error: any) {
-      if (error.message.includes('不是')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('更新 Draft 状态失败', error);
-        res.status(500).json(Errors.internal('更新 Draft 状态失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '更新 Draft 状态失败');
     }
   });
 
@@ -220,13 +194,8 @@ export function createDraftsRouter(): Router {
       }
 
       res.json(success({ success: true }));
-    } catch (error: any) {
-      if (error.message.includes('不是')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('确认消息失败', error);
-        res.status(500).json(Errors.internal('确认消息失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '确认消息失败');
     }
   });
 
@@ -243,13 +212,8 @@ export function createDraftsRouter(): Router {
     try {
       const confirmations = await draftService.findConfirmations(draftId, messageId, userId);
       res.json(success(confirmations));
-    } catch (error: any) {
-      if (error.message.includes('不是')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('获取确认列表失败', error);
-        res.status(500).json(Errors.internal('获取确认列表失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '获取确认列表失败');
     }
   });
 
@@ -266,13 +230,8 @@ export function createDraftsRouter(): Router {
     try {
       await draftService.addMember(draftId, userId, newUserId);
       res.json(success({ success: true }));
-    } catch (error: any) {
-      if (error.message.includes('owner')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('添加成员失败', error);
-        res.status(500).json(Errors.internal('添加成员失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '添加成员失败');
     }
   });
 
@@ -289,13 +248,8 @@ export function createDraftsRouter(): Router {
     try {
       await draftService.removeMember(draftId, userId, memberId);
       res.json(success({ success: true }));
-    } catch (error: any) {
-      if (error.message.includes('owner')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('移除成员失败', error);
-        res.status(500).json(Errors.internal('移除成员失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '移除成员失败');
     }
   });
 
@@ -311,13 +265,8 @@ export function createDraftsRouter(): Router {
     try {
       await draftService.delete(draftId, userId);
       res.status(204).send();
-    } catch (error: any) {
-      if (error.message.includes('owner')) {
-        res.status(403).json(Errors.forbidden());
-      } else {
-        logger.error('删除 Draft 失败', error);
-        res.status(500).json(Errors.internal('删除 Draft 失败'));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '删除 Draft 失败');
     }
   });
 
