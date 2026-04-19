@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Organization } from '@/lib/api';
-import { storage } from '../storage';
+import { storage } from '@/lib/storage';
 
 interface OrganizationState {
   organizations: Organization[];
@@ -41,9 +41,18 @@ export const useOrganizationStore = create<OrganizationState>()((set, get) => ({
   },
 
   addOrganization: (org) =>
-    set((state) => ({
-      organizations: [...state.organizations, org],
-    })),
+    set((state) => {
+      const newOrgs = [...state.organizations, org];
+      // If this is the first org, auto-select it
+      if (!state.currentOrganization) {
+        storage.setOrgId(org.id);
+        return {
+          organizations: newOrgs,
+          currentOrganization: org,
+        };
+      }
+      return { organizations: newOrgs };
+    }),
 
   updateOrganization: (id, data) =>
     set((state) => ({
@@ -87,14 +96,3 @@ export const useOrganizationStore = create<OrganizationState>()((set, get) => ({
     });
   },
 }));
-
-// Initialize current organization from storage on first client-side load
-let initialized = false;
-if (typeof window !== 'undefined' && !initialized) {
-  initialized = true;
-  const storedOrgId = storage.getOrgId();
-  if (storedOrgId) {
-    // The org will be set when organizations are loaded via setOrganizations
-    // This just ensures the ID is available in storage
-  }
-}
