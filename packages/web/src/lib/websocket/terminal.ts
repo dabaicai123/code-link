@@ -30,7 +30,7 @@ export class TerminalWebSocket extends WebSocketBase {
     this.projectId = projectId;
     this.userId = userId;
 
-    this.on('message', this.handleTerminalMessage.bind(this));
+    this.on('message', (data: unknown) => this.handleTerminalMessage(data as TerminalMessage));
   }
 
   private handleTerminalMessage(message: TerminalMessage): void {
