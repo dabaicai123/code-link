@@ -70,7 +70,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
 
       const token = jwt.sign({ userId: result.id }, TEST_JWT_SECRET, { expiresIn: '7d' });
 
-      res.status(201).json({ data: { token, user: result } });
+      res.status(201).json({ code: 0, data: { token, user: result } });
     } catch (error) {
       console.error('Register error:', error);
       res.status(500).json({ error: '注册失败' });
@@ -101,6 +101,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
       const token = jwt.sign({ userId: user.id }, TEST_JWT_SECRET, { expiresIn: '7d' });
 
       res.json({
+        code: 0,
         data: {
           token,
           user: {
@@ -126,7 +127,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         res.status(404).json({ error: '用户不存在' });
         return;
       }
-      res.json({ data: user });
+      res.json({ code: 0, data: user });
     } catch (error) {
       res.status(500).json({ error: '获取用户信息失败' });
     }
@@ -163,7 +164,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .where(and(...whereConditions))
         .orderBy(desc(projects.createdAt));
 
-      res.json({ data: result });
+      res.json({ code: 0, data: result });
     } catch (error) {
       console.error('Get projects error:', error);
       res.status(500).json({ error: '获取项目列表失败' });
@@ -228,7 +229,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .innerJoin(users, eq(organizationMembers.userId, users.id))
         .where(eq(organizationMembers.organizationId, project.organizationId));
 
-      res.json({ data: { ...project, members } });
+      res.json({ code: 0, data: { ...project, members } });
     } catch (error) {
       console.error('Get project detail error:', error);
       res.status(500).json({ error: '获取项目详情失败' });
@@ -286,7 +287,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .returning()
         .get();
 
-      res.json({ data: updated });
+      res.json({ code: 0, data: updated });
     } catch (error) {
       console.error('Update project error:', error);
       res.status(500).json({ error: '更新项目失败' });
@@ -373,7 +374,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
       }
 
       await db.delete(projects).where(eq(projects.id, projectId));
-      res.json({ data: { success: true } });
+      res.json({ code: 0, data: { success: true } });
     } catch (error) {
       res.status(500).json({ error: '删除项目失败' });
     }
@@ -396,7 +397,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .where(eq(organizationMembers.userId, userId))
         .orderBy(desc(organizations.createdAt));
 
-      res.json({ data: result });
+      res.json({ code: 0, data: result });
     } catch (error) {
       res.status(500).json({ error: '获取组织列表失败' });
     }
@@ -464,7 +465,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         return;
       }
 
-      res.json({ data: org });
+      res.json({ code: 0, data: org });
     } catch (error) {
       console.error('Get organization error:', error);
       res.status(500).json({ error: '获取组织详情失败' });
@@ -513,7 +514,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .innerJoin(users, eq(organizationMembers.userId, users.id))
         .where(eq(organizationMembers.organizationId, orgId));
 
-      res.json({ data: members });
+      res.json({ code: 0, data: members });
     } catch (error) {
       console.error('Get organization members error:', error);
       res.status(500).json({ error: '获取成员列表失败' });
@@ -580,7 +581,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .returning()
         .get();
 
-      res.status(201).json({ data: invitation });
+      res.status(201).json({ code: 0, data: invitation });
     } catch (error) {
       console.error('Create invitation error:', error);
       res.status(500).json({ error: '发送邀请失败' });
@@ -628,7 +629,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .leftJoin(users, eq(organizationInvitations.invitedBy, users.id))
         .where(eq(organizationInvitations.organizationId, orgId));
 
-      res.json({ data: invitations });
+      res.json({ code: 0, data: invitations });
     } catch (error) {
       console.error('Get organization invitations error:', error);
       res.status(500).json({ error: '获取邀请列表失败' });
@@ -684,7 +685,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         return;
       }
 
-      res.json({ data: result });
+      res.json({ code: 0, data: result });
     } catch (error) {
       console.error('Update member role error:', error);
       res.status(500).json({ error: '更新成员角色失败' });
@@ -720,7 +721,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
       // Delete organization (cascade will handle members, invitations, projects)
       await db.delete(organizations).where(eq(organizations.id, orgId));
 
-      res.json({ data: { success: true } });
+      res.json({ code: 0, data: { success: true } });
     } catch (error) {
       console.error('Delete organization error:', error);
       res.status(500).json({ error: '删除组织失败' });
@@ -755,7 +756,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .where(and(...conditions))
         .orderBy(desc(drafts.updatedAt));
 
-      res.json({ data: result });
+      res.json({ code: 0, data: result });
     } catch (error) {
       res.status(500).json({ error: '获取草稿列表失败' });
     }
@@ -824,7 +825,7 @@ export function createTestApp(sqlite: Database.Database): express.Express {
         .where(eq(draftMessages.draftId, draftId))
         .orderBy(asc(draftMessages.createdAt));
 
-      res.json({ data: result });
+      res.json({ code: 0, data: result });
     } catch (error) {
       res.status(500).json({ error: '获取消息列表失败' });
     }
