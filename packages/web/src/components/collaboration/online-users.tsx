@@ -1,6 +1,7 @@
 'use client';
 
 import type { DraftOnlineUser } from '@/lib/socket/types';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 type OnlineUser = DraftOnlineUser;
 
@@ -42,14 +43,11 @@ export function OnlineUsers({ users, currentUserId, maxDisplay = 5 }: OnlineUser
           }}
           title={user.userName}
         >
-          <span
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: user.userId === currentUserId ? 'white' : 'var(--status-success)',
-            }}
-          />
+          <Avatar className="h-4 w-4">
+            <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'var(--bg-hover)' }}>
+              {(user.userName?.[0] || '?').toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user.userName}
           </span>
