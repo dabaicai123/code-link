@@ -1,4 +1,6 @@
 // packages/server/src/routes/builds.ts
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
@@ -11,8 +13,8 @@ const logger = createLogger('builds');
 
 export function createBuildsRouter(): Router {
   const router = Router();
-  const projectRepo = new ProjectRepository();
-  const orgRepo = new OrganizationRepository();
+  const projectRepo = container.resolve(ProjectRepository);
+  const orgRepo = container.resolve(OrganizationRepository);
 
   // POST /api/builds - 创建构建
   router.post('/', authMiddleware, async (req, res) => {

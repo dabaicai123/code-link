@@ -1,4 +1,6 @@
 // packages/server/src/routes/repos.ts
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
@@ -10,9 +12,9 @@ const logger = createLogger('repos');
 
 export function createReposRouter(): Router {
   const router = Router({ mergeParams: true });
-  const projectRepo = new ProjectRepository();
-  const userRepo = new UserRepository();
-  const orgRepo = new OrganizationRepository();
+  const projectRepo = container.resolve(ProjectRepository);
+  const userRepo = container.resolve(UserRepository);
+  const orgRepo = container.resolve(OrganizationRepository);
   const repoManager = new RepoManager();
 
   // 解析仓库 URL

@@ -1,14 +1,16 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { OrganizationService } from '../services/organization.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
-import { success, Errors } from '../utils/response.js';
+import { success, Errors, handleRouteError } from '../utils/response.js';
 
 const logger = createLogger('invitations');
 
 export function createInvitationsRouter(): Router {
   const router = Router();
-  const orgService = new OrganizationService();
+  const orgService = container.resolve(OrganizationService);
 
   // 所有路由都需要认证
   router.use(authMiddleware);

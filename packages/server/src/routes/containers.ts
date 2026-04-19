@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import { createLogger } from '../logger/index.js';
@@ -10,9 +12,9 @@ const logger = createLogger('containers');
 
 export function createContainersRouter(): Router {
   const router = Router();
-  const projectRepo = new ProjectRepository();
-  const claudeConfigRepo = new ClaudeConfigRepository();
-  const orgRepo = new OrganizationRepository();
+  const projectRepo = container.resolve(ProjectRepository);
+  const claudeConfigRepo = container.resolve(ClaudeConfigRepository);
+  const orgRepo = container.resolve(OrganizationRepository);
 
   // POST /api/projects/:id/container/start - 启动容器
   router.post('/:id/container/start', authMiddleware, async (req, res) => {

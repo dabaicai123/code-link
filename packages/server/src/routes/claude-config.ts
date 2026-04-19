@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import { encrypt, decrypt, isEncryptionKeySet } from '../crypto/aes.js';
@@ -21,7 +23,7 @@ const DEFAULT_CONFIG = {
 
 export function createClaudeConfigRouter(): Router {
   const router = Router();
-  const claudeConfigRepo = new ClaudeConfigRepository();
+  const claudeConfigRepo = container.resolve(ClaudeConfigRepository);
 
   // 检查加密密钥是否设置
   if (!isEncryptionKeySet()) {
