@@ -30,7 +30,7 @@ export function TerminalWorkspace({
   onSendMessage,
   onRestart,
 }: TerminalWorkspaceProps) {
-  const [tabs, setTabs] = useState([{ id: 'terminal-1', label: '终端 1' }]);
+  const [tabs, setTabs] = useState([{ id: 'terminal-1', label: 'bash' }]);
   const [activeTabId, setActiveTabId] = useState('terminal-1');
   const [tabCounter, setTabCounter] = useState(1);
 
@@ -53,23 +53,42 @@ export function TerminalWorkspace({
 
   if (!project) {
     return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📁</div>
-          <div>选择一个项目开始工作</div>
+          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📁</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>选择一个项目开始工作</div>
         </div>
       </div>
     );
   }
 
+  const isRunning = project.status === 'running';
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
-      <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* 头部 */}
+      <div style={{
+        padding: '10px 14px',
+        borderBottom: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-secondary)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: project.status === 'running' ? 'var(--status-success)' : 'var(--status-warning)', fontSize: '10px' }}>●</span>
-          <span style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{project.name} — 终端</span>
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: isRunning ? 'var(--status-running)' : 'var(--status-stopped)',
+            animation: isRunning ? 'pulse 2s ease-in-out infinite' : 'none',
+          }} />
+          <span style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{project.name}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>— 终端</span>
         </div>
-        <button onClick={onRestart} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '11px' }}>重启</button>
+        <button onClick={onRestart} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '11px' }}>
+          重启
+        </button>
       </div>
 
       <TabBar tabs={tabs} activeTabId={activeTabId} onTabSelect={setActiveTabId} onTabClose={handleCloseTab} onNewTab={handleNewTab} />

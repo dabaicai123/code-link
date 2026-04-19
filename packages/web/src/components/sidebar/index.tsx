@@ -83,9 +83,9 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
         borderRight: '1px solid var(--border-color)',
       }}
     >
-      <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
-        <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '15px' }}>Code Link</div>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '2px' }}>v1.0.0</div>
+      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
+        <div style={{ color: 'var(--accent-primary)', fontWeight: 600, fontSize: '13px' }}>Code Link</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>v1.0.0</div>
       </div>
 
       <div style={{ flex: 1, overflow: projects.length > 10 ? 'auto' : 'visible', padding: '12px' }}>
@@ -106,10 +106,11 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
               alignItems: 'center',
               justifyContent: 'space-between',
               position: 'relative',
+              transition: 'border-color 0.15s ease',
             }}
           >
             <span>{currentOrganization?.name || '选择组织'}</span>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{showOrgDropdown ? '▲' : '▼'}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>{showOrgDropdown ? '▲' : '▼'}</span>
           </div>
 
           {showOrgDropdown && organizations.length > 0 && (
@@ -132,10 +133,11 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                   }}
                   style={{
                     padding: '10px 12px',
-                    color: currentOrganization?.id === org.id ? 'var(--accent-color)' : 'var(--text-primary)',
+                    color: currentOrganization?.id === org.id ? 'var(--accent-primary)' : 'var(--text-primary)',
                     fontSize: '13px',
                     cursor: 'pointer',
                     borderBottom: org.id !== organizations[organizations.length - 1].id ? '1px solid var(--border-color)' : 'none',
+                    transition: 'background 0.15s ease',
                   }}
                 >
                   {org.name}
@@ -150,22 +152,11 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
         <div style={{ marginBottom: '12px' }}>
           <button
             onClick={() => router.push('/settings')}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              background: 'transparent',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
+            className="btn btn-secondary"
+            style={{ width: '100%', justifyContent: 'space-between' }}
           >
             <span>组织设置</span>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>→</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>→</span>
           </button>
 
           {invitationCount && invitationCount > 0 && (
@@ -174,10 +165,10 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                background: 'rgba(124, 58, 237, 0.1)',
-                border: '1px solid var(--accent-color)',
+                background: 'rgba(217, 119, 87, 0.1)',
+                border: '1px solid var(--accent-primary)',
                 borderRadius: 'var(--radius-md)',
-                color: 'var(--accent-color)',
+                color: 'var(--accent-primary)',
                 fontSize: '13px',
                 cursor: 'pointer',
                 display: 'flex',
@@ -188,8 +179,8 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
             >
               <span>待处理邀请</span>
               <span style={{
-                backgroundColor: 'var(--accent-color)',
-                color: 'white',
+                backgroundColor: 'var(--accent-primary)',
+                color: '#fff',
                 padding: '2px 6px',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '11px',
@@ -208,22 +199,23 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
             background: 'transparent',
             border: '1px dashed var(--border-light)',
             borderRadius: 'var(--radius-md)',
-            color: 'var(--text-secondary)',
+            color: 'var(--text-muted)',
             fontSize: '13px',
             cursor: 'pointer',
             marginBottom: '16px',
+            transition: 'all 0.15s ease',
           }}
         >
           + 新建项目
         </button>
 
         {loading ? (
-          <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>加载中...</div>
+          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>加载中...</div>
         ) : (
           <>
             {runningProjects.length > 0 && (
               <div style={{ marginBottom: '16px' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '8px', paddingLeft: '10px' }}>
                   运行中 ({runningProjects.length})
                 </div>
                 {runningProjects.map((project) => (
@@ -242,7 +234,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
 
             {stoppedProjects.length > 0 && (
               <div style={{ marginBottom: '16px' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '8px', paddingLeft: '10px' }}>
                   已停止 ({stoppedProjects.length})
                 </div>
                 {stoppedProjects.map((project) => (

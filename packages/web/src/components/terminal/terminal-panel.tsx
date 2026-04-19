@@ -42,9 +42,10 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
       theme: {
         background: 'var(--bg-primary)',
         foreground: 'var(--text-primary)',
-        cursor: 'var(--status-success)',
+        cursor: 'var(--status-running)',
         cursorAccent: 'var(--bg-primary)',
         selectionBackground: '#264f78',
+        green: 'var(--status-running)',
       },
       allowProposedApi: true,
       cols: 120,
@@ -173,12 +174,19 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
   // 显示配置提示
   if (showConfigPrompt) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-900">
-        <div className="text-center p-8">
-          <p className="text-gray-300 mb-4">{errorMessage}</p>
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'var(--bg-primary)',
+      }}>
+        <div style={{ textAlign: 'center', padding: '32px' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>{errorMessage}</p>
           <Link
             href="/settings"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="btn btn-primary"
+            style={{ textDecoration: 'none' }}
           >
             前往设置
           </Link>

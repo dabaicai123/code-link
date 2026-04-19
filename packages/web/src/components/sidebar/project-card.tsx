@@ -41,10 +41,12 @@ export function ProjectCard({
   const [cloningRepoId, setCloningRepoId] = useState<number | null>(null);
 
   const statusColor = {
-    running: 'var(--status-success)',
-    stopped: 'var(--status-warning)',
-    created: 'var(--text-disabled)',
+    running: 'var(--status-running)',
+    stopped: 'var(--status-stopped)',
+    created: 'var(--text-muted)',
   }[project.status];
+
+  const isRunning = project.status === 'running';
 
   // 加载仓库列表
   useEffect(() => {
@@ -103,15 +105,28 @@ export function ProjectCard({
       <div
         style={{
           padding: '10px 12px',
-          backgroundColor: isActive ? 'var(--bg-card)' : 'transparent',
-          border: isActive ? '1px solid var(--accent-color)' : '1px solid transparent',
+          backgroundColor: isActive ? 'rgba(217, 119, 87, 0.08)' : 'transparent',
+          border: isActive ? '1px solid var(--accent-primary)' : '1px solid transparent',
           borderRadius: 'var(--radius-md)',
           cursor: 'pointer',
           marginBottom: '6px',
-          opacity: project.status === 'stopped' ? 0.7 : 1,
+          transition: 'all 0.15s ease',
+          position: 'relative',
         }}
         onClick={onClick}
       >
+        {/* 激活状态顶部指示条 */}
+        {isActive && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: 'var(--accent-primary)',
+          }} />
+        )}
+
         {/* 项目名称行 */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
           <span
@@ -121,7 +136,7 @@ export function ProjectCard({
             }}
             style={{
               fontSize: '10px',
-              color: 'var(--text-secondary)',
+              color: 'var(--text-muted)',
               marginRight: '4px',
               cursor: 'pointer',
               width: '16px',
@@ -133,7 +148,15 @@ export function ProjectCard({
           <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500 }}>
             {project.name}
           </span>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: statusColor, marginLeft: 'auto' }} />
+          {/* 状态指示器 */}
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: statusColor,
+            marginLeft: 'auto',
+            animation: isRunning ? 'pulse 2s ease-in-out infinite' : 'none',
+          }} />
         </div>
 
         {/* 模板类型 */}
@@ -143,7 +166,7 @@ export function ProjectCard({
 
         {/* 仓库数量摘要（折叠时显示） */}
         {!isExpanded && repos.length > 0 && (
-          <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginLeft: '20px', marginTop: '4px' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '20px', marginTop: '4px' }}>
             📦 {repos.length} 个仓库
           </div>
         )}
@@ -152,7 +175,7 @@ export function ProjectCard({
         {isExpanded && (
           <div style={{ marginTop: '8px' }}>
             {loadingRepos ? (
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px', padding: '8px 0' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: '12px', padding: '8px 0' }}>
                 加载中...
               </div>
             ) : (
@@ -177,11 +200,12 @@ export function ProjectCard({
                     background: 'transparent',
                     border: '1px dashed var(--border-light)',
                     borderRadius: '4px',
-                    color: 'var(--text-secondary)',
+                    color: 'var(--text-muted)',
                     fontSize: '11px',
                     cursor: 'pointer',
                     marginTop: '4px',
                     marginLeft: '24px',
+                    transition: 'all 0.15s ease',
                   }}
                 >
                   + 添加仓库
