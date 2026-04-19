@@ -1,5 +1,11 @@
 // src/terminal/terminal-manager.ts
-import WebSocket from 'ws';
+// 通用 WebSocket 接口
+export interface WebSocketLike {
+  readyState: number;
+  send: (data: string) => void;
+  on: (event: string, handler: () => void) => void;
+  OPEN: number;
+}
 import {
   streamExecOutput,
   resizeExecTTY,
@@ -15,7 +21,7 @@ const logger = createLogger('terminal-mgr');
 export interface TerminalSession {
   id: string;
   containerId: string;
-  ws: WebSocket;
+  ws: WebSocketLike;
   execSession: ExecSession;
   cols: number;
   rows: number;
@@ -43,7 +49,7 @@ class TerminalManagerImpl {
    */
   async createSession(
     containerId: string,
-    ws: WebSocket,
+    ws: WebSocketLike,
     cols: number = 80,
     rows: number = 24,
     userEnv?: Record<string, string>
@@ -164,8 +170,8 @@ class TerminalManagerImpl {
       closeExecStdin(session.execSession.stream as unknown as NodeJS.WritableStream);
 
       // 关闭 WebSocket 连接
-      if (session.ws.readyState === WebSocket.OPEN) {
-        session.ws.close();
+      if (session.ws.readyState === session.ws.OPEN) {
+        session.ws.send(JSON.stringify({ type: 'exit' }));
       }
 
       // 从 sessions map 中删除
@@ -218,8 +224,8 @@ class TerminalManagerImpl {
   /**
    * 发送消息到 WebSocket
    */
-  private sendToWebSocket(ws: WebSocket, msg: TerminalMessage): void {
-    if (ws.readyState === WebSocket.OPEN) {
+  private sendToWebSocket(ws: WebSocketLike, msg: TerminalMessage): void {
+    if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify(msg));
     }
   }
