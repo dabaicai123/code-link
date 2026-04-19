@@ -1,7 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { api, ApiError, Organization } from '@/lib/api';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useCreateOrganization } from '@/lib/queries';
+import {
+  createOrganizationSchema,
+  type CreateOrganizationInput,
+} from '@/lib/validations/organization';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +17,16 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { toast } from 'sonner';
+import type { Organization } from '@/lib/api';
 
 interface CreateOrganizationDialogProps {
   isOpen: boolean;
@@ -20,31 +34,34 @@ interface CreateOrganizationDialogProps {
   onSuccess: (organization: Organization) => void;
 }
 
-export function CreateOrganizationDialog({ isOpen, onClose, onSuccess }: CreateOrganizationDialogProps) {
-  const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export function CreateOrganizationDialog({
+  isOpen,
+  onClose,
+  onSuccess,
+}: CreateOrganizationDialogProps) {
+  const createOrganization = useCreateOrganization();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
+  const form = useForm<CreateOrganizationInput>({
+    resolver: zodResolver(createOrganizationSchema),
+    defaultValues: {
+      name: '',
+    },
+  });
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
+  const onSubmit = async (values: CreateOrganizationInput) => {
     try {
-      const organization = await api.createOrganization(name.trim());
+      const organization = await createOrganization.mutateAsync(values.name);
+      toast.success('组织创建成功');
       onSuccess(organization);
       handleClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '创建组织失败');
-    } finally {
-      setIsSubmitting(false);
+      toast.error(err instanceof Error ? err.message : '创建组织失败');
     }
-  };
-
-  const handleClose = () => {
-    setName('');
-    setError(null);
-    onClose();
   };
 
   return (
@@ -57,37 +74,33 @@ export function CreateOrganizationDialog({ isOpen, onClose, onSuccess }: CreateO
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          {error && (
-            <div className="p-3 mb-4 rounded-md bg-destructive/10 border border-destructive text-destructive text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="mb-4 space-y-2">
-            <Label htmlFor="org-name">
-              组织名称 <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="org-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="输入组织名称"
-              required
-              maxLength={100}
+        <Form form={form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    组织名称 <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="输入组织名称" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
-              取消
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !name.trim()}>
-              {isSubmitting ? '创建中...' : '创建组织'}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose}>
+                取消
+              </Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? '创建中...' : '创建组织'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
