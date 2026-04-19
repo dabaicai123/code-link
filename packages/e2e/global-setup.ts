@@ -17,9 +17,11 @@ export default async function globalSetup() {
     throw new Error(`
 前端服务未运行: ${errorMessage}
 
-请先构建并启动前端服务器:
-  pnpm --filter @code-link/web build
-  pnpm --filter @code-link/web start
+请先启动前端开发服务器 (推荐使用 turbo 模式加速):
+  pnpm --filter @code-link/web dev --turbo
+
+或者启动生产服务器:
+  pnpm --filter @code-link/web build && pnpm --filter @code-link/web start
 
 或者设置 WEB_BASE_URL 环境变量指向已运行的服务:
   WEB_BASE_URL=http://your-server:port pnpm --filter @code-link/e2e test
