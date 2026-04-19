@@ -1,6 +1,7 @@
 import { defineWorkspace } from 'vitest/config';
 
-// 定义工作区，将容器集成测试与普通测试隔离
+// 使用 forks 模式减少内存占用，每个测试文件在独立进程中运行
+// 限制并行数为 2，降低资源占用
 export default defineWorkspace([
   // 普通单元测试（默认运行）
   {
@@ -11,10 +12,11 @@ export default defineWorkspace([
         'tests/preview-container.test.ts',
       ],
       globals: false,
+      pool: 'forks',
       poolOptions: {
-        threads: {
-          maxThreads: 4,
-          minThreads: 1,
+        forks: {
+          maxForks: 2,
+          minForks: 1,
         },
       },
       testTimeout: 30000,
@@ -23,7 +25,6 @@ export default defineWorkspace([
     },
   },
   // 容器集成测试（需要显式运行：npm run test:container）
-  // 运行命令：vitest run --project container-integration
   {
     test: {
       include: [
@@ -31,12 +32,12 @@ export default defineWorkspace([
         'tests/preview-container.test.ts',
       ],
       globals: false,
-      pool: 'threads',
+      pool: 'forks',
       poolOptions: {
-        threads: {
-          maxThreads: 1,
-          minThreads: 1,
-          singleThread: true,
+        forks: {
+          maxForks: 1,
+          minForks: 1,
+          singleFork: true,
         },
       },
       testTimeout: 180000,
