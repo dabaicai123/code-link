@@ -1,5 +1,7 @@
 'use client';
 
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 export type SettingsTab = 'organization' | 'claude-code';
 
 export interface SettingsTabsProps {
@@ -22,26 +24,19 @@ export function SettingsTabs({ activeTab, onTabChange }: SettingsTabsProps) {
         backgroundColor: 'var(--bg-secondary)',
       }}
     >
-      {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onTabChange(tab.id)}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            border: 'none',
-            backgroundColor: activeTab === tab.id ? 'var(--bg-primary)' : 'transparent',
-            color: activeTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-            fontSize: '14px',
-            textAlign: 'left',
-            cursor: 'pointer',
-            borderLeft: activeTab === tab.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          {tab.label}
-        </button>
-      ))}
+      <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as SettingsTab)} orientation="vertical">
+        <TabsList className="flex-col h-auto bg-transparent gap-1">
+          {TABS.map((tab) => (
+            <TabsTrigger
+              key={tab.id}
+              value={tab.id}
+              className="w-full justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
     </div>
   );
 }
