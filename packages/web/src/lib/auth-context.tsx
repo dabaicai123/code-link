@@ -5,9 +5,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useAuthStore, User } from './stores/auth-store';
 
-/**
- * 认证上下文类型
- */
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -20,38 +17,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * 认证 Provider 组件
- */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, setUser, setToken, logout: storeLogout } = useAuthStore();
   const queryClient = useQueryClient();
 
-  // 获取当前用户信息
-  const { isLoading, error } = useQuery({
+  // Fetch current user info using TanStack Query
+  const { isLoading, error, data } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.get<User>('/auth/me'),
-    enabled: !isAuthenticated && !!queryClient.getQueryData(['currentUser']) === false,
+    enabled: !isAuthenticated,
     retry: false,
   });
 
-  // 初始化时检查登录状态
+  // Update store when query returns user data
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const userData = await api.get<User>('/auth/me');
-        setUser(userData);
-      } catch {
-        // 未登录或 token 失效
-        setUser(null);
-      }
-    };
-
-    // 只有在没有用户信息时才检查
-    if (!user && !isAuthenticated) {
-      checkAuth();
+    if (data) {
+      setUser(data);
     }
-  }, []);
+  }, [data, setUser]);
 
   const login = async (email: string, password: string) => {
     const response = await api.post<{ token: string; user: User }>(
@@ -84,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        loading: isLoading || (!user && !isAuthenticated),
+        loading: isLoading && !isAuthenticated,
         error: error?.message || null,
         login,
         register,
