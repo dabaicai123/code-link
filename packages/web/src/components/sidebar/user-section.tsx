@@ -1,6 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface User {
   id: number;
@@ -17,58 +19,30 @@ export function UserSection({ user, onLogout }: UserSectionProps) {
   const router = useRouter();
 
   return (
-    <div
-      style={{
-        padding: '12px',
-        borderTop: '1px solid var(--border-color)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-      }}
-    >
-      <div
-        style={{
-          width: '28px',
-          height: '28px',
-          backgroundColor: 'var(--accent-primary)',
-          borderRadius: 'var(--radius-sm)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontSize: '11px',
-          fontWeight: 600,
-        }}
-      >
+    <div className="p-3 border-t border-border flex items-center gap-2.5">
+      <div className="w-7 h-7 bg-primary rounded flex items-center justify-center text-white text-[11px] font-semibold">
         {user.name.charAt(0).toUpperCase()}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{user.name}</div>
-        <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{user.email}</div>
+      <div className="flex-1 min-w-0">
+        <div className="text-foreground text-[13px]">{user.name}</div>
+        <div className="text-muted-foreground text-[11px]">{user.email}</div>
       </div>
-      <button
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => router.push('/settings')}
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-sm)',
-          color: 'var(--text-secondary)',
-          cursor: 'pointer',
-          fontSize: '12px',
-          padding: '4px 8px',
-        }}
         title="设置"
       >
-        ⚙
-      </button>
-      <button
+        <span>设置</span>
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
         onClick={onLogout}
-        className="btn btn-secondary"
-        style={{ padding: '4px 8px', fontSize: '12px' }}
         title="退出"
       >
         退出
-      </button>
+      </Button>
     </div>
   );
 }
