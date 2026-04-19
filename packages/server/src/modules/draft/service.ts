@@ -258,6 +258,27 @@ export class DraftService {
     return result;
   }
 
+  checkIsAICommand(content: string): boolean {
+    return isAICommand(content);
+  }
+
+  // ==================== Utility Methods ====================
+
+  async isMember(draftId: number, userId: number): Promise<boolean> {
+    const member = await this.draftRepo.findMember(draftId, userId);
+    return !!member;
+  }
+
+  async isOwner(draftId: number, userId: number): Promise<boolean> {
+    const member = await this.draftRepo.findMember(draftId, userId);
+    return member?.role === 'owner';
+  }
+
+  async getProjectId(draftId: number): Promise<number | null> {
+    const draft = await this.draftRepo.findById(draftId);
+    return draft?.projectId ?? null;
+  }
+
   // ==================== Private Helpers ====================
 
   private async checkDraftAccess(draftId: number, userId: number): Promise<void> {
