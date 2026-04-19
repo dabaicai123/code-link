@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth-context';
 import { OrganizationProvider } from '@/lib/organization-context';
+import { Toaster } from '@/components/ui/sonner';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
         <AuthProvider>
           <OrganizationProvider>{children}</OrganizationProvider>
         </AuthProvider>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );
