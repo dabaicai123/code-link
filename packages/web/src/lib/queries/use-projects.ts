@@ -6,7 +6,10 @@ export interface Project {
   id: number;
   name: string;
   templateType: 'node' | 'node+java' | 'node+python';
+  organizationId: number;
+  containerId: string | null;
   status: 'created' | 'running' | 'stopped';
+  createdBy: number;
   createdAt: string;
 }
 

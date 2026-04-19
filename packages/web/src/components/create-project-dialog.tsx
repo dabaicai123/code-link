@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useOrganizationStore } from '@/lib/stores';
-import { useCreateProject } from '@/lib/queries/use-projects';
+import { useCreateProject, type Project } from '@/lib/queries/use-projects';
 import {
   createProjectSchema,
   type CreateProjectInput,
@@ -43,17 +43,6 @@ const TEMPLATE_OPTIONS: { value: TemplateType; label: string; description: strin
   { value: 'node+java', label: 'Node.js + Java', description: 'Node.js 与 Java 混合环境' },
   { value: 'node+python', label: 'Node.js + Python', description: 'Node.js 与 Python 混合环境' },
 ];
-
-interface Project {
-  id: number;
-  name: string;
-  templateType: TemplateType;
-  organizationId: number;
-  containerId: string | null;
-  status: 'created' | 'running' | 'stopped';
-  createdBy: number;
-  createdAt: string;
-}
 
 interface CreateProjectDialogProps {
   isOpen: boolean;
@@ -109,7 +98,7 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
     try {
       const project = await createProject.mutateAsync(values);
       toast.success('项目创建成功');
-      onSuccess(project as Project);
+      onSuccess(project);
       handleClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '创建项目失败');
