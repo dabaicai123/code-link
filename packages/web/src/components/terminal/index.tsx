@@ -96,7 +96,7 @@ export function TerminalWorkspace({
       <div style={{ flex: 1, minHeight: 0 }}>
         {tabs.map((tab) => (
           <div key={tab.id} style={{ height: '100%', display: activeTabId === tab.id ? 'block' : 'none' }}>
-            <TerminalPanel projectId={String(project.id)} userId={String(userId)} wsUrl={wsUrl} />
+            <TerminalPanel projectId={String(project.id)} />
           </div>
         ))}
       </div>

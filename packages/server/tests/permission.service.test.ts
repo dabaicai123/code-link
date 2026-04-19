@@ -1,12 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import "reflect-metadata";
+import { container } from "tsyringe";
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PermissionService } from '../src/services/permission.service.js';
 import { PermissionError, NotFoundError } from '../src/utils/errors.js';
+import { UserRepository, OrganizationRepository, ProjectRepository } from '../src/repositories/index.js';
 
 describe('PermissionService', () => {
   let service: PermissionService;
 
   beforeEach(() => {
-    service = new PermissionService();
+    container.reset();
+    service = container.resolve(PermissionService);
+  });
+
+  afterEach(() => {
+    container.reset();
   });
 
   it('should throw PermissionError when user is not org member', async () => {

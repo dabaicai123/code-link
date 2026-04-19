@@ -8,7 +8,9 @@ import { DraftHeader } from './draft-header';
 import { DisplayPanel, SelectedElement } from './display-panel';
 import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
-import type { OnlineUser } from '@/lib/socket/types';
+import type { DraftOnlineUser } from '@/lib/socket/types';
+
+type OnlineUser = DraftOnlineUser;
 
 interface CollaborationPanelProps {
   projectId?: number;

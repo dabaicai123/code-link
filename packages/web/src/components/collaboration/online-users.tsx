@@ -1,6 +1,8 @@
 'use client';
 
-import type { OnlineUser } from '@/lib/socket/types';
+import type { DraftOnlineUser } from '@/lib/socket/types';
+
+type OnlineUser = DraftOnlineUser;
 
 interface OnlineUsersProps {
   users: OnlineUser[];

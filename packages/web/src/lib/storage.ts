@@ -42,4 +42,17 @@ export const storage = {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(ORG_ID_KEY);
   },
+
+  // For compatibility with socket code
+  getItem(key: string): string | null {
+    if (!isBrowser()) return null;
+    if (key === 'token') return this.getToken();
+    if (key === 'currentOrganizationId') return this.getOrgId()?.toString() ?? null;
+    return localStorage.getItem(key);
+  },
 };
+
+// Export getStorage for compatibility
+export function getStorage() {
+  return storage;
+}
