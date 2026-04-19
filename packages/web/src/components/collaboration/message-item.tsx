@@ -207,7 +207,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
             width: '28px',
             height: '28px',
             borderRadius: '50%',
-            backgroundColor: isAICommand ? 'var(--accent-color)' : 'var(--bg-hover)',
+            backgroundColor: isAICommand ? 'var(--accent-primary)' : 'var(--bg-hover)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -282,8 +282,8 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
                 fontSize: '10px',
                 border: 'none',
                 borderRadius: 'var(--radius-sm)',
-                backgroundColor: userConfirm === 'agree' ? 'var(--status-success)' : 'var(--bg-hover)',
-                color: userConfirm === 'agree' ? 'white' : 'var(--text-secondary)',
+                backgroundColor: userConfirm === 'agree' ? 'var(--status-running)' : 'var(--bg-hover)',
+                color: userConfirm === 'agree' ? '#fff' : 'var(--text-secondary)',
                 cursor: 'pointer',
               }}
               title="赞同"
@@ -297,8 +297,8 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
                 fontSize: '10px',
                 border: 'none',
                 borderRadius: 'var(--radius-sm)',
-                backgroundColor: userConfirm === 'disagree' ? 'var(--status-error)' : 'var(--bg-hover)',
-                color: userConfirm === 'disagree' ? 'white' : 'var(--text-secondary)',
+                backgroundColor: userConfirm === 'disagree' ? 'var(--status-stopped)' : 'var(--bg-hover)',
+                color: userConfirm === 'disagree' ? '#fff' : 'var(--text-secondary)',
                 cursor: 'pointer',
               }}
               title="反对"
@@ -313,7 +313,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
                 border: 'none',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: userConfirm === 'suggest' ? 'var(--status-warning)' : 'var(--bg-hover)',
-                color: userConfirm === 'suggest' ? 'white' : 'var(--text-secondary)',
+                color: userConfirm === 'suggest' ? '#fff' : 'var(--text-secondary)',
                 cursor: 'pointer',
               }}
               title="建议"
@@ -365,8 +365,8 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
                       padding: '1px 4px',
                       borderRadius: 'var(--radius-sm)',
                       backgroundColor:
-                        conf.type === 'agree' ? 'var(--status-success)' :
-                        conf.type === 'disagree' ? 'var(--status-error)' : 'var(--status-warning)',
+                        conf.type === 'agree' ? 'var(--status-running)' :
+                        conf.type === 'disagree' ? 'var(--status-stopped)' : 'var(--status-warning)',
                       color: 'white',
                       fontSize: '9px',
                     }}

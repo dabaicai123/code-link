@@ -40,8 +40,8 @@ export function AuthForm({ mode }: AuthFormProps) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
       <div style={{ width: '320px', textAlign: 'center' }}>
-        <div style={{ fontSize: '28px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>Code Link</div>
-        <div style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '14px' }}>开发环境管理平台</div>
+        <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--accent-primary)', marginBottom: '8px' }}>Code Link</div>
+        <div style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '13px' }}>开发环境管理平台</div>
 
         <form onSubmit={handleSubmit} style={{ textAlign: 'left' }}>
           {error && <div style={{ padding: '12px', backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--status-error)', borderRadius: 'var(--radius-md)', color: 'var(--status-error)', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
@@ -67,9 +67,9 @@ export function AuthForm({ mode }: AuthFormProps) {
 
         <div style={{ marginTop: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
           {mode === 'login' ? (
-            <>没有账户？ <Link href="/register" style={{ color: 'var(--accent-color)' }}>注册</Link></>
+            <>没有账户？ <Link href="/register" style={{ color: 'var(--accent-primary)' }}>注册</Link></>
           ) : (
-            <>已有账户？ <Link href="/login" style={{ color: 'var(--accent-color)' }}>登录</Link></>
+            <>已有账户？ <Link href="/login" style={{ color: 'var(--accent-primary)' }}>登录</Link></>
           )}
         </div>
       </div>

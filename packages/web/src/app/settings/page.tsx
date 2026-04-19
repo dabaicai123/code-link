@@ -159,12 +159,12 @@ export default function SettingsPage() {
             style={{
               width: '28px',
               height: '28px',
-              backgroundColor: 'var(--accent-color)',
-              borderRadius: '6px',
+              backgroundColor: 'var(--accent-primary)',
+              borderRadius: 'var(--radius-sm)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'white',
+              color: '#fff',
               fontSize: '12px',
               fontWeight: 500,
             }}
@@ -234,7 +234,7 @@ export default function SettingsPage() {
                 <div
                   style={{
                     backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    color: 'var(--status-success)',
+                    color: 'var(--status-running)',
                     padding: '12px 16px',
                     borderRadius: 'var(--radius-md)',
                     marginBottom: '16px',

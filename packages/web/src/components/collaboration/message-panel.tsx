@@ -93,7 +93,7 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
             width: '6px',
             height: '6px',
             borderRadius: '50%',
-            backgroundColor: isConnected ? 'var(--status-success)' : 'var(--status-error)',
+            backgroundColor: isConnected ? 'var(--status-running)' : 'var(--status-stopped)',
           }}
         />
         <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>

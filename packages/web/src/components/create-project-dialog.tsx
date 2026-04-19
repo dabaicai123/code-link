@@ -184,10 +184,10 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
                     display: 'flex',
                     alignItems: 'center',
                     padding: '10px 12px',
-                    border: `1px solid ${templateType === option.value ? 'var(--accent-color)' : 'var(--border-color)'}`,
+                    border: `1px solid ${templateType === option.value ? 'var(--accent-primary)' : 'var(--border-color)'}`,
                     borderRadius: 'var(--radius-md)',
                     cursor: 'pointer',
-                    backgroundColor: templateType === option.value ? 'rgba(124, 58, 237, 0.1)' : 'transparent',
+                    backgroundColor: templateType === option.value ? 'rgba(217, 119, 87, 0.08)' : 'transparent',
                   }}
                 >
                   <input
@@ -196,7 +196,7 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
                     value={option.value}
                     checked={templateType === option.value}
                     onChange={() => setTemplateType(option.value)}
-                    style={{ marginRight: '12px', accentColor: 'var(--accent-color)' }}
+                    style={{ marginRight: '12px', accentColor: 'var(--accent-primary)' }}
                   />
                   <div>
                     <div style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{option.label}</div>

@@ -35,7 +35,7 @@ export function SettingsTabs({ activeTab, onTabChange }: SettingsTabsProps) {
             fontSize: '14px',
             textAlign: 'left',
             cursor: 'pointer',
-            borderLeft: activeTab === tab.id ? '3px solid var(--accent-color)' : '3px solid transparent',
+            borderLeft: activeTab === tab.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
             transition: 'all 0.15s ease',
           }}
         >

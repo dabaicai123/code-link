@@ -141,8 +141,8 @@ export function CollaborationPanel({
                 style={{
                   padding: '4px 10px',
                   fontSize: '11px',
-                  backgroundColor: activePanel === 'display' ? 'var(--accent-color)' : 'var(--bg-hover)',
-                  color: activePanel === 'display' ? 'white' : 'var(--text-secondary)',
+                  backgroundColor: activePanel === 'display' ? 'var(--accent-primary)' : 'var(--bg-hover)',
+                  color: activePanel === 'display' ? '#fff' : 'var(--text-secondary)',
                 }}
               >
                 展示
@@ -153,8 +153,8 @@ export function CollaborationPanel({
                 style={{
                   padding: '4px 10px',
                   fontSize: '11px',
-                  backgroundColor: activePanel === 'drafts' ? 'var(--accent-color)' : 'var(--bg-hover)',
-                  color: activePanel === 'drafts' ? 'white' : 'var(--text-secondary)',
+                  backgroundColor: activePanel === 'drafts' ? 'var(--accent-primary)' : 'var(--bg-hover)',
+                  color: activePanel === 'drafts' ? '#fff' : 'var(--text-secondary)',
                 }}
               >
                 Draft

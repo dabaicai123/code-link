@@ -151,8 +151,8 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
             fontSize: '10px',
             border: 'none',
             borderRadius: 'var(--radius-sm)',
-            backgroundColor: messageType === 'code' ? 'var(--accent-color)' : 'var(--bg-hover)',
-            color: messageType === 'code' ? 'white' : 'var(--text-secondary)',
+            backgroundColor: messageType === 'code' ? 'var(--accent-primary)' : 'var(--bg-hover)',
+            color: messageType === 'code' ? '#fff' : 'var(--text-secondary)',
             cursor: 'pointer',
           }}
         >
@@ -165,8 +165,8 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
             fontSize: '10px',
             border: 'none',
             borderRadius: 'var(--radius-sm)',
-            backgroundColor: messageType === 'ai_command' ? 'var(--accent-color)' : 'var(--bg-hover)',
-            color: messageType === 'ai_command' ? 'white' : 'var(--text-secondary)',
+            backgroundColor: messageType === 'ai_command' ? 'var(--accent-primary)' : 'var(--bg-hover)',
+            color: messageType === 'ai_command' ? '#fff' : 'var(--text-secondary)',
             cursor: 'pointer',
           }}
         >
