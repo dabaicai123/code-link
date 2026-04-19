@@ -90,7 +90,7 @@ export function InviteMemberDialog({
           <DialogTitle>邀请成员</DialogTitle>
         </DialogHeader>
 
-        <Form form={form}>
+        <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               name="email"

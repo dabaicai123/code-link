@@ -97,7 +97,7 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
         </div>
       )}
 
-      <Form form={form}>
+      <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-2">
           <div className="flex-1 relative">
             <FormField

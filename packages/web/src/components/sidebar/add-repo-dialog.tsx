@@ -102,7 +102,7 @@ export function AddRepoDialog({
           <DialogTitle>添加仓库</DialogTitle>
         </DialogHeader>
 
-        <Form form={form}>
+        <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               name="url"
