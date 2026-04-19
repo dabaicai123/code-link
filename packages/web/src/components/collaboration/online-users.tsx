@@ -1,6 +1,6 @@
 'use client';
 
-import type { OnlineUser } from '../../lib/draft-websocket';
+import type { OnlineUser } from '@/lib/socket/types';
 
 interface OnlineUsersProps {
   users: OnlineUser[];

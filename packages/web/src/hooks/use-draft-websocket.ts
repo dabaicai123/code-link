@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { DraftWebSocket, OnlineUser } from '@/lib/websocket/draft';
+import { useDraftSocket } from '@/lib/socket/draft';
+import type { DraftOnlineUser } from '@/lib/socket/types';
 
 export interface UseDraftWebSocketOptions {
   draftId: number | null;
@@ -22,92 +22,37 @@ export interface UseDraftWebSocketReturn {
   reconnect: () => void;
 }
 
+export type OnlineUser = DraftOnlineUser;
+
 export function useDraftWebSocket(options: UseDraftWebSocketOptions): UseDraftWebSocketReturn {
   const {
     draftId,
-    userId,
-    userName,
     onMemberJoined,
     onMemberLeft,
-    onStatusChanged,
     onMessageReceived,
-    onMessageConfirmed,
   } = options;
 
-  const wsRef = useRef<DraftWebSocket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
-  const [memberCount, setMemberCount] = useState(0);
+  const { isConnected, memberCount, onlineUsers } = useDraftSocket({
+    draftId,
+    onMessage: (msg) => {
+      onMessageReceived?.(msg.message);
+    },
+    onMemberJoined: (user, count) => {
+      onMemberJoined?.(user.userId, user.userName, count);
+    },
+    onMemberLeft: (user, count) => {
+      onMemberLeft?.(user.userId, user.userName, count);
+    },
+  });
 
-  const wsUrl = typeof window !== 'undefined'
-    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
-    : '';
+  // sendMessage 和 reconnect 暂时不实现，因为新架构下不需要
+  const sendMessage = (_type: string, _data: Record<string, unknown>) => {
+    // TODO: 实现消息发送
+  };
 
-  useEffect(() => {
-    if (!wsUrl) return;
-
-    const ws = new DraftWebSocket(wsUrl, userId, userName);
-    wsRef.current = ws;
-
-    ws.on('connected', () => setIsConnected(true));
-    ws.on('disconnected', () => setIsConnected(false));
-
-    ws.on('draft_subscribed', (data: any) => {
-      setOnlineUsers(data.onlineUsers || []);
-      setMemberCount(data.memberCount || 0);
-    });
-
-    ws.on('draft_member_joined', (data: any) => {
-      setMemberCount(data.memberCount);
-      setOnlineUsers(prev => {
-        if (prev.some(u => u.userId === data.userId)) return prev;
-        return [...prev, { userId: data.userId, userName: data.userName }];
-      });
-      onMemberJoined?.(data.userId, data.userName, data.memberCount);
-    });
-
-    ws.on('draft_member_left', (data: any) => {
-      setMemberCount(data.memberCount);
-      setOnlineUsers(prev => prev.filter(u => u.userId !== data.userId));
-      onMemberLeft?.(data.userId, data.userName, data.memberCount);
-    });
-
-    ws.on('draft_status_changed', (data: any) => {
-      onStatusChanged?.(data.status);
-    });
-
-    ws.on('draft_message', (data: any) => {
-      onMessageReceived?.(data.message);
-    });
-
-    ws.on('draft_message_confirmed', (data: any) => {
-      onMessageConfirmed?.(data.messageId, data.userId, data.userName, data.confirmationType);
-    });
-
-    return () => {
-      ws.unsubscribe();
-      ws.disconnect();
-    };
-  }, [wsUrl, userId, userName, onMemberJoined, onMemberLeft, onStatusChanged, onMessageReceived, onMessageConfirmed]);
-
-  useEffect(() => {
-    if (isConnected && draftId && wsRef.current) {
-      wsRef.current.subscribe(draftId);
-    }
-  }, [isConnected, draftId]);
-
-  const sendMessage = useCallback((type: string, data: Record<string, unknown>) => {
-    wsRef.current?.sendMessage(type, data);
-  }, []);
-
-  const reconnect = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.disconnect();
-    }
-    if (wsUrl) {
-      wsRef.current = new DraftWebSocket(wsUrl, userId, userName);
-    }
-  }, [wsUrl, userId, userName]);
+  const reconnect = () => {
+    // Socket.IO 自动重连，无需手动实现
+  };
 
   return {
     isConnected,

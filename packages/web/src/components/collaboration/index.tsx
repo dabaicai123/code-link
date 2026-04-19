@@ -6,9 +6,9 @@ import { DraftList } from './draft-list';
 import { MessagePanel } from './message-panel';
 import { DraftHeader } from './draft-header';
 import { DisplayPanel, SelectedElement } from './display-panel';
-import { useDraftWebSocket } from '../../lib/draft-websocket';
+import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
-import type { OnlineUser } from '../../lib/draft-websocket';
+import type { OnlineUser } from '@/lib/socket/types';
 
 interface CollaborationPanelProps {
   projectId?: number;

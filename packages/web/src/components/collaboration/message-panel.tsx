@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { draftsApi } from '../../lib/drafts-api';
-import { useDraftWebSocket } from '../../lib/draft-websocket';
+import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
 import { MessageItem } from './message-item';
 import { MessageInput } from './message-input';
 import type { Draft, DraftMessage, MessageType } from '../../types/draft';

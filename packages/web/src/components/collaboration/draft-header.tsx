@@ -5,7 +5,7 @@ import type { Draft, DraftStatus, DraftMember } from '../../types/draft';
 import { DRAFT_STATUS_LABELS, DRAFT_STATUS_COLORS } from '../../types/draft';
 import { draftsApi } from '../../lib/drafts-api';
 import { OnlineUsers } from './online-users';
-import type { OnlineUser } from '../../lib/draft-websocket';
+import type { OnlineUser } from '@/lib/socket/types';
 
 interface DraftHeaderProps {
   draft: Draft;

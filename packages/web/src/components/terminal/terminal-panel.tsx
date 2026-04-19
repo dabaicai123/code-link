@@ -1,29 +1,25 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { TerminalWebSocket } from '@/lib/websocket/terminal';
+import { useTerminalSocket } from '@/lib/socket/terminal';
 import Link from 'next/link';
 import '@xterm/xterm/css/xterm.css';
 
 interface TerminalPanelProps {
   projectId: string;
-  userId: string;
-  wsUrl?: string;
 }
 
-export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/terminal' }: TerminalPanelProps) {
+export function TerminalPanel({ projectId }: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const wsRef = useRef<TerminalWebSocket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const isConnectedRef = useRef(false);
   const [showConfigPrompt, setShowConfigPrompt] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const mountedRef = useRef(true);
+  const hasStartedRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -75,73 +71,76 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     };
   }, []);
 
-  useEffect(() => {
-    if (!xtermRef.current || !mountedRef.current) return;
-
-    if (wsRef.current) {
-      wsRef.current.disconnect();
-      wsRef.current = null;
+  const handleOutput = useCallback((data: string) => {
+    if (mountedRef.current) {
+      xtermRef.current?.write(data);
     }
+  }, []);
 
-    const terminalUrl = wsUrl.includes('/terminal') ? wsUrl : `${wsUrl}/terminal`;
-    const ws = new TerminalWebSocket(terminalUrl, projectId, userId);
-    wsRef.current = ws;
+  const handleExit = useCallback(() => {
+    if (mountedRef.current) {
+      hasStartedRef.current = false;
+      xtermRef.current?.write('\r\n\x1b[33m[Session ended]\x1b[0m\r\n');
+    }
+  }, []);
 
-    ws.on('connected', () => {
-      if (!mountedRef.current) return;
-      setIsConnected(true);
-      isConnectedRef.current = true;
-      xtermRef.current?.clear();
-      if (fitAddonRef.current) {
-        const dims = fitAddonRef.current.proposeDimensions();
-        ws.start(dims?.cols || 80, dims?.rows || 24);
-      }
-    });
+  const handleError = useCallback((message: string) => {
+    if (!mountedRef.current) return;
 
-    ws.setOnOutput((data) => {
-      if (mountedRef.current) {
-        xtermRef.current?.write(data);
-      }
-    });
+    if (message.includes('请先在「设置')) {
+      setShowConfigPrompt(true);
+      setErrorMessage(message);
+    } else {
+      xtermRef.current?.write(`\r\n\x1b[31m[Error: ${message}]\x1b[0m\r\n`);
+    }
+  }, []);
 
-    ws.setOnExit(() => {
-      if (mountedRef.current) {
-        setIsConnected(false);
-        isConnectedRef.current = false;
-        xtermRef.current?.write('\r\n\x1b[33m[Session ended]\x1b[0m\r\n');
-      }
-    });
+  const { isConnected, isStarted, start, sendInput, resize, ping } = useTerminalSocket({
+    projectId: projectId ? parseInt(projectId, 10) : null,
+    onOutput: handleOutput,
+    onExit: handleExit,
+    onError: handleError,
+  });
 
-    ws.setOnError((msg) => {
-      if (!mountedRef.current) return;
+  // 当连接建立时启动终端
+  useEffect(() => {
+    if (isConnected && !isStarted && !hasStartedRef.current && xtermRef.current && fitAddonRef.current) {
+      hasStartedRef.current = true;
+      xtermRef.current.clear();
+      const dims = fitAddonRef.current.proposeDimensions();
+      start(dims?.cols || 80, dims?.rows || 24);
+    }
+  }, [isConnected, isStarted, start]);
 
-      if (msg.includes('请先在「设置')) {
-        setShowConfigPrompt(true);
-        setErrorMessage(msg);
-      } else {
-        if (!isConnectedRef.current) {
-          xtermRef.current?.write(`\r\n\x1b[31m[Error: ${msg}]\x1b[0m\r\n`);
-        }
-      }
-    });
+  // 处理终端输入
+  useEffect(() => {
+    if (!xtermRef.current || !isStarted) return;
 
     const disposable = xtermRef.current.onData((data) => {
-      if (isConnectedRef.current && mountedRef.current) {
-        ws.sendInput(data);
+      if (isStarted && mountedRef.current) {
+        sendInput(data);
       }
     });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [isStarted, sendInput]);
+
+  // Ping 保活
+  useEffect(() => {
+    if (!isStarted) return;
+
     const pingInterval = setInterval(() => {
-      if (isConnectedRef.current) ws.ping();
+      ping();
     }, 30000);
 
     return () => {
       clearInterval(pingInterval);
-      disposable.dispose();
-      ws.disconnect();
-      wsRef.current = null;
     };
-  }, [projectId, userId, wsUrl]);
+  }, [isStarted, ping]);
 
+  // 处理窗口大小变化
   useEffect(() => {
     if (!containerRef.current || !fitAddonRef.current) return;
 
@@ -149,7 +148,9 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
       if (fitAddonRef.current && xtermRef.current && mountedRef.current) {
         fitAddonRef.current.fit();
         const dims = fitAddonRef.current.proposeDimensions();
-        if (dims && wsRef.current && isConnectedRef.current) wsRef.current.resize(dims.cols, dims.rows);
+        if (dims && isStarted) {
+          resize(dims.cols, dims.rows);
+        }
       }
     };
 
@@ -161,7 +162,7 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
     };
-  }, [isConnected]);
+  }, [isStarted, resize]);
 
   if (showConfigPrompt) {
     return (
