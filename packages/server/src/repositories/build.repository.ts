@@ -1,8 +1,11 @@
+import "reflect-metadata";
+import { singleton } from "tsyringe";
 import { eq, desc } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { builds } from '../db/schema/index.js';
 import type { InsertBuild, SelectBuild } from '../db/schema/index.js';
 
+@singleton()
 export class BuildRepository {
   /**
    * 创建构建

@@ -1,8 +1,11 @@
+import "reflect-metadata";
+import { singleton } from "tsyringe";
 import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { userClaudeConfigs } from '../db/schema/index.js';
 import type { InsertUserClaudeConfig, SelectUserClaudeConfig } from '../db/schema/index.js';
 
+@singleton()
 export class ClaudeConfigRepository {
   /**
    * 根据用户 ID 查找配置

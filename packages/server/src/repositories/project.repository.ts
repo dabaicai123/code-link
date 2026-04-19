@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { singleton } from "tsyringe";
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import {
@@ -21,6 +23,7 @@ export interface ProjectDetail extends SelectProject {
   repos: SelectProjectRepo[];
 }
 
+@singleton()
 export class ProjectRepository {
   /**
    * 根据 ID 查找项目

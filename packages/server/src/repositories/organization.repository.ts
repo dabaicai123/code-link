@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { singleton } from "tsyringe";
 import { eq, and, sql } from 'drizzle-orm';
 import { getDb, getSqliteDb } from '../db/index.js';
 import {
@@ -31,6 +33,7 @@ export interface OrganizationInvitationWithUser extends SelectOrganizationInvita
   invitedByName: string | null;
 }
 
+@singleton()
 export class OrganizationRepository {
   /**
    * 根据 ID 查找组织

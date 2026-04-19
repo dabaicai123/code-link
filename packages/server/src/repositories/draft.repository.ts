@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { singleton } from "tsyringe";
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { getDb, getSqliteDb } from '../db/index.js';
 import {
@@ -27,6 +29,7 @@ export interface DraftMessageWithUser extends SelectDraftMessage {
   userName: string | null;
 }
 
+@singleton()
 export class DraftRepository {
   async findById(draftId: number): Promise<SelectDraft | undefined> {
     const db = getDb();

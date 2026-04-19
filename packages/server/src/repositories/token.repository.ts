@@ -1,8 +1,11 @@
+import "reflect-metadata";
+import { singleton } from "tsyringe";
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { projectTokens } from '../db/schema/index.js';
 import type { InsertProjectToken, SelectProjectToken } from '../db/schema/index.js';
 
+@singleton()
 export class TokenRepository {
   /**
    * 查找用户的 token

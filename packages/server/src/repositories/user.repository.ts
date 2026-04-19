@@ -1,8 +1,11 @@
+import "reflect-metadata";
+import { singleton } from "tsyringe";
 import { eq } from 'drizzle-orm';
 import { getDb } from '../db/index.js';
 import { users } from '../db/schema/index.js';
 import type { InsertUser, SelectUser } from '../db/schema/index.js';
 
+@singleton()
 export class UserRepository {
   /**
    * 根据邮箱查找用户
