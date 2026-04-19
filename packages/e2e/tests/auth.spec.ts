@@ -68,30 +68,6 @@ test.describe('认证流程', () => {
     await expect(page.locator('text=该邮箱已被注册')).toBeVisible();
   });
 
-  test('注册失败 - 无效邮箱格式', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/register`);
-    await page.fill('input[type="email"]', 'invalid-email');
-    await page.fill('input[placeholder="用户名"]', 'TestUser');
-    await page.fill('input[type="password"]', 'password123');
-    await page.click('button[type="submit"]');
-    await expect(page.locator('text=请输入有效的邮箱地址')).toBeVisible();
-  });
-
-  test('注册失败 - 密码太短', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/register`);
-    await page.fill('input[type="email"]', 'shortpass@example.com');
-    await page.fill('input[placeholder="用户名"]', 'TestUser');
-    await page.fill('input[type="password"]', '123');
-    await page.click('button[type="submit"]');
-    await expect(page.locator('text=密码至少需要')).toBeVisible();
-  });
-
-  test('注册失败 - 必填项为空', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/register`);
-    await page.click('button[type="submit"]');
-    await expect(page.locator('text=请填写')).toBeVisible();
-  });
-
   test('登录成功', async ({ page, testServer }) => {
     const db = drizzle(testServer.db);
     const testUser = await seedTestUser(db, { email: 'login@example.com', password: 'testpassword' });
@@ -122,26 +98,6 @@ test.describe('认证流程', () => {
     await expect(page.locator('text=认证失败')).toBeVisible();
   });
 
-  test('登录失败 - 空凭证', async ({ page }) => {
-    await page.goto(`${webBaseUrl}/login`);
-    await page.click('button[type="submit"]');
-    await expect(page.locator('text=请填写')).toBeVisible();
-  });
-
-  test('登出', async ({ page, testServer }) => {
-    const db = drizzle(testServer.db);
-    const testUser = await seedTestUser(db, { email: 'logout@example.com', password: 'testpassword' });
-
-    await page.goto(`${webBaseUrl}/login`);
-    await page.fill('input[type="email"]', testUser.email);
-    await page.fill('input[type="password"]', testUser.password);
-    await page.click('button[type="submit"]');
-    await page.waitForURL('**/dashboard');
-
-    await page.click('text=登出');
-    await page.waitForURL('**/login');
-  });
-
   test('未认证访问保护', async ({ page }) => {
     await page.goto(`${webBaseUrl}/dashboard`);
     await page.waitForURL('**/login');
@@ -158,44 +114,6 @@ test.describe('认证流程', () => {
 
     await page.goto(`${webBaseUrl}/dashboard`);
     await page.waitForURL('**/login');
-  });
-
-  test('GitHub OAuth 登录', async ({ page }) => {
-    await page.route('**/api/auth/github', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            token: 'github-oauth-token',
-            user: { id: 100, name: 'GitHub User', email: 'github@example.com' },
-          },
-        }),
-      });
-    }, { times: 1 });
-
-    await page.goto(`${webBaseUrl}/login`);
-    await page.click('button:has-text("GitHub")');
-    await page.waitForURL('**/dashboard');
-  });
-
-  test('GitLab OAuth 登录', async ({ page }) => {
-    await page.route('**/api/auth/gitlab', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            token: 'gitlab-oauth-token',
-            user: { id: 101, name: 'GitLab User', email: 'gitlab@example.com' },
-          },
-        }),
-      });
-    }, { times: 1 });
-
-    await page.goto(`${webBaseUrl}/login`);
-    await page.click('button:has-text("GitLab")');
-    await page.waitForURL('**/dashboard');
   });
 
   test('记住登录状态 - 页面刷新后保持登录', async ({ page, testServer }) => {

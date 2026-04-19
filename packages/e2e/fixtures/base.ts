@@ -38,19 +38,25 @@ export const test = base.extend<E2EFixtures>({
     const db = drizzle(testServer.db);
     const user = await seedTestUser(db);
 
-    // 设置认证 token（在所有页面创建之前）
-    await context.addInitScript((tokenValue) => {
-      localStorage.setItem('token', tokenValue);
-    }, generateTestToken(user.id));
-
-    // 设置 API 路由转发（在页面级别）
+    // 设置 API 路由转发（必须在 token 设置之前）
     await page.route('**/api/**', async (route) => {
       const url = route.request().url();
       const apiPath = url.replace(/^.*\/api/, `${testServer.baseUrl}/api`);
+
+      // 获取原始 headers，但过滤掉 Playwright 添加的 headers
+      const originalHeaders = route.request().headers();
+      const headers: Record<string, string> = {};
+      for (const [key, value] of Object.entries(originalHeaders)) {
+        // 只保留必要的 headers
+        if (['content-type', 'authorization', 'accept'].includes(key.toLowerCase())) {
+          headers[key] = value;
+        }
+      }
+
       try {
         const response = await fetch(apiPath, {
           method: route.request().method(),
-          headers: route.request().headers(),
+          headers,
           body: route.request().postData(),
         });
         const body = await response.text();
@@ -60,13 +66,17 @@ export const test = base.extend<E2EFixtures>({
           body,
         });
       } catch (error) {
-        // 如果测试服务器不可达，返回错误
         await route.fulfill({
           status: 500,
           body: JSON.stringify({ error: '测试服务器不可达' }),
         });
       }
     });
+
+    // 设置认证 token（在所有页面创建之前）
+    await context.addInitScript((tokenValue) => {
+      localStorage.setItem('token', tokenValue);
+    }, generateTestToken(user.id));
 
     await use(user);
   },
