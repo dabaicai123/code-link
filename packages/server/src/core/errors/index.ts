@@ -20,3 +20,5 @@ export {
   type ErrorResponse,
   type ApiResponse,
 } from './response.js';
+
+export { createErrorHandler, asyncHandler } from './handler.js';
