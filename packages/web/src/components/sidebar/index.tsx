@@ -188,7 +188,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
           style={{ border: '1px dashed var(--border-light)', color: 'var(--text-muted)' }}
         >
           + 新建项目
-        </button>
+        </Button>
 
         {loading ? (
           <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>加载中...</div>
