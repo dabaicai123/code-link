@@ -1,15 +1,16 @@
 // packages/e2e/tests/collaboration.spec.ts
 import { test, expect } from '../fixtures/base';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { seedTestProject } from '../helpers/test-db';
+import { seedTestOrganization, seedTestProject } from '../helpers/test-db';
 
 test.describe('协作功能', () => {
   // 使用 testUser fixture 自动设置的认证和 API 路由
 
   test.beforeEach(async ({ page, testServer, testUser, webBaseUrl }) => {
-    // 只创建测试项目，认证和路由由 fixture 处理
+    // 创建组织和项目
     const db = drizzle(testServer.db);
-    await seedTestProject(db, testUser.id, undefined, { name: 'Collab Project' });
+    const orgId = await seedTestOrganization(db, testUser.id, 'Collab Org');
+    await seedTestProject(db, testUser.id, orgId, { name: 'Collab Project' });
     await page.goto(`${webBaseUrl}/dashboard`);
   });
 
