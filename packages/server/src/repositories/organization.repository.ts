@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { getDb, getSqliteDb } from '../db/index.js';
 import {
   organizations,
@@ -159,14 +159,14 @@ export class OrganizationRepository {
    */
   async countOwners(orgId: number): Promise<number> {
     const db = getDb();
-    const result = db.select({ count: organizationMembers.id })
+    const result = await db.select({ count: sql<number>`count(*)` })
       .from(organizationMembers)
       .where(and(
         eq(organizationMembers.organizationId, orgId),
         eq(organizationMembers.role, 'owner')
       ))
-      .all();
-    return result.length;
+      .get();
+    return result?.count ?? 0;
   }
 
   /**
@@ -357,11 +357,11 @@ export class OrganizationRepository {
    */
   async countProjects(orgId: number): Promise<number> {
     const db = getDb();
-    const result = db.select({ id: projects.id })
+    const result = await db.select({ count: sql<number>`count(*)` })
       .from(projects)
       .where(eq(projects.organizationId, orgId))
-      .all();
-    return result.length;
+      .get();
+    return result?.count ?? 0;
   }
 
   /**

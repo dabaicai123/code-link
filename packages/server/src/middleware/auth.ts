@@ -33,6 +33,11 @@ if (!process.env.JWT_SECRET) {
 
 export const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_SECRET;
 
+// 单例 Repository 实例（避免每次请求重新创建）
+const userRepo = new UserRepository();
+const orgRepo = new OrganizationRepository();
+const projectRepo = new ProjectRepository();
+
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -69,9 +74,6 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
  * @param minRole 最低需要的角色
  */
 export function createOrgMemberMiddleware(minRole: OrgRole) {
-  const userRepo = new UserRepository();
-  const orgRepo = new OrganizationRepository();
-
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = (req as any).userId;
     const orgIdParam = req.params.orgId || req.params.id || req.body.organization_id;
@@ -120,10 +122,6 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
  * @param minRole 最低需要的角色
  */
 export function createProjectMemberMiddleware(minRole: OrgRole) {
-  const userRepo = new UserRepository();
-  const orgRepo = new OrganizationRepository();
-  const projectRepo = new ProjectRepository();
-
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = (req as any).userId;
     const projectIdParam = req.params.id || req.params.projectId;
@@ -175,9 +173,6 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
  * 超级管理员或现有组织的 owner 可以创建
  */
 export function createCanCreateOrgMiddleware() {
-  const userRepo = new UserRepository();
-  const orgRepo = new OrganizationRepository();
-
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = (req as any).userId;
 

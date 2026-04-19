@@ -2,20 +2,7 @@
 
 import { useState } from 'react';
 import { api, ApiError, OrganizationMember, OrgRole } from '@/lib/api';
-
-const ROLE_LABELS: Record<OrgRole, string> = {
-  owner: 'Owner',
-  developer: 'Developer',
-  member: 'Member',
-};
-
-const ROLE_COLORS: Record<OrgRole, string> = {
-  owner: 'var(--accent-color)',
-  developer: 'var(--status-success)',
-  member: 'var(--text-secondary)',
-};
-
-const ROLE_OPTIONS: OrgRole[] = ['owner', 'developer', 'member'];
+import { ROLE_LABELS, ROLE_COLORS, ROLE_OPTIONS } from '@/lib/constants';
 
 interface OrganizationMemberListProps {
   organizationId: number;

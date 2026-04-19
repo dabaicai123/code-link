@@ -1,5 +1,8 @@
 // packages/server/src/utils/response.ts
 
+import type { Response } from 'express';
+import { BusinessError, isBusinessError } from './errors.js';
+
 /**
  * API 统一响应格式
  */
@@ -71,3 +74,27 @@ export const Errors = {
   conflict: (msg: string) => fail(ErrorCode.CONFLICT, msg),
   alreadyExists: (resource: string) => fail(ErrorCode.ALREADY_EXISTS, `${resource}已存在`),
 };
+
+/**
+ * 错误码映射（BusinessError code -> ErrorCode）
+ */
+const errorCodeMap: Record<string, number> = {
+  FORBIDDEN: ErrorCode.FORBIDDEN,
+  NOT_FOUND: ErrorCode.NOT_FOUND,
+  BAD_REQUEST: ErrorCode.PARAM_INVALID,
+  CONFLICT: ErrorCode.CONFLICT,
+  UNAUTHORIZED: ErrorCode.UNAUTHORIZED,
+};
+
+/**
+ * 统一处理路由错误
+ */
+export function handleRouteError(res: Response, error: unknown, logger: { error: (msg: string, err: unknown) => void }, context: string): void {
+  if (isBusinessError(error)) {
+    const code = errorCodeMap[error.code] || ErrorCode.INTERNAL_ERROR;
+    res.status(error.httpStatus).json(fail(code, error.message));
+  } else {
+    logger.error(context, error);
+    res.status(500).json(Errors.internal('服务器内部错误'));
+  }
+}

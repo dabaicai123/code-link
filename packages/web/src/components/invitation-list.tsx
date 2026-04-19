@@ -3,18 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError, OrganizationInvitation, OrgRole } from '@/lib/api';
-
-const ROLE_LABELS: Record<OrgRole, string> = {
-  owner: 'Owner',
-  developer: 'Developer',
-  member: 'Member',
-};
-
-const ROLE_COLORS: Record<OrgRole, string> = {
-  owner: 'var(--accent-color)',
-  developer: 'var(--status-success)',
-  member: 'var(--text-secondary)',
-};
+import { ROLE_LABELS, ROLE_COLORS } from '@/lib/constants';
 
 interface InvitationListProps {
   invitations: OrganizationInvitation[];
