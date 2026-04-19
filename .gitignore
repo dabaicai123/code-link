@@ -59,3 +59,5 @@ docs/superpowers/
 *.temp
 .tmp/
 .temp/
+packages/server/dist-tests/
+test-results/

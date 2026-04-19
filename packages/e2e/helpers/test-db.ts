@@ -33,10 +33,12 @@ export interface TestUser {
   password: string;
 }
 
+export type DrizzleDb = ReturnType<typeof drizzle>;
+
 /**
  * 创建内存测试数据库并初始化 schema
  */
-export function createTestDb(): { sqlite: Database.Database; db: ReturnType<typeof drizzle> } {
+export function createTestDb(): { sqlite: Database.Database; db: DrizzleDb } {
   const sqlite = new Database(':memory:');
   sqlite.pragma('foreign_keys = ON');
 
@@ -51,7 +53,7 @@ export function createTestDb(): { sqlite: Database.Database; db: ReturnType<type
  * 创建测试用户
  */
 export async function seedTestUser(
-  db: ReturnType<typeof drizzle>,
+  db: DrizzleDb,
   overrides?: Partial<TestUser>
 ): Promise<TestUser> {
   const email = overrides?.email || 'test@example.com';
@@ -72,7 +74,7 @@ export async function seedTestUser(
  * 创建测试组织
  */
 export async function seedTestOrganization(
-  db: ReturnType<typeof drizzle>,
+  db: DrizzleDb,
   userId: number,
   name?: string
 ): Promise<number> {
@@ -100,7 +102,7 @@ export async function seedTestOrganization(
  * 创建测试项目
  */
 export async function seedTestProject(
-  db: ReturnType<typeof drizzle>,
+  db: DrizzleDb,
   userId: number,
   organizationId: number,
   overrides?: { name?: string; templateType?: 'node' | 'node+java' | 'node+python' }
@@ -130,7 +132,7 @@ export function closeTestDb(sqlite: Database.Database): void {
  * 创建测试草稿
  */
 export async function seedTestDraft(
-  db: ReturnType<typeof drizzle>,
+  db: DrizzleDb,
   userId: number,
   projectId: number,
   overrides?: { title?: string; status?: 'discussing' | 'confirmed' | 'archived' }
@@ -161,7 +163,7 @@ export async function seedTestDraft(
  * 创建测试消息
  */
 export async function seedTestMessage(
-  db: ReturnType<typeof drizzle>,
+  db: DrizzleDb,
   draftId: number,
   userId: number,
   overrides?: { content?: string; messageType?: 'text' | 'system'; parentId?: number }
@@ -185,7 +187,7 @@ export async function seedTestMessage(
  * 创建测试邀请
  */
 export async function seedTestInvitation(
-  db: ReturnType<typeof drizzle>,
+  db: DrizzleDb,
   organizationId: number,
   invitedBy: number,
   overrides?: { email?: string; role?: 'owner' | 'developer' | 'member'; status?: 'pending' | 'accepted' | 'declined' }

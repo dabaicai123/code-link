@@ -144,4 +144,9 @@ export class TerminalWebSocket extends WebSocketBase {
     }
     return btoa(binary);
   }
+
+  disconnect(): void {
+    this.sessionId = null;
+    super.disconnect();
+  }
 }
