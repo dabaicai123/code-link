@@ -6,7 +6,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 2, // 有限并行，提高速度
+  workers: 6, // 更高并行度
   reporter: [['list'], ['html', { outputFolder: 'playwright-report' }]],
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',
@@ -44,7 +44,7 @@ export default defineConfig({
       dependencies: ['setup'],
       testMatch: ['projects.spec.ts', 'collaboration.spec.ts', 'organizations.spec.ts'],
     },
-    // 认证测试 project - 不复用认证状态，每个测试独立登录
+    // 认证测试 project - 不复用认证状态
     {
       name: 'auth-tests',
       use: {
@@ -52,6 +52,7 @@ export default defineConfig({
         channel: undefined,
       },
       testMatch: 'auth.spec.ts',
+      // 并行运行，不需要依赖 setup
     },
   ],
 });
