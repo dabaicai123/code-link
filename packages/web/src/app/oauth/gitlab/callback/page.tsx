@@ -5,9 +5,25 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
-/**
- * GitLab OAuth 回调处理组件
- */
+const spinnerStyle = { animation: 'spin 1s linear infinite', height: '32px', width: '32px', color: 'var(--accent-color)', margin: '0 auto' };
+
+function LoadingSpinner() {
+  return (
+    <svg style={spinnerStyle} fill="none" viewBox="0 0 24 24">
+      <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  );
+}
+
+function PageContainer({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
+      <div style={{ textAlign: 'center' }}>{children}</div>
+    </div>
+  );
+}
+
 function GitLabCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -16,12 +32,8 @@ function GitLabCallbackContent() {
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
-    // 等待认证状态加载完成
-    if (authLoading) {
-      return;
-    }
+    if (authLoading) return;
 
-    // 如果用户未登录，跳转到登录页
     if (!user) {
       router.push('/login');
       return;
@@ -35,174 +47,91 @@ function GitLabCallbackContent() {
       return;
     }
 
-    // 调用后端 API 完成 OAuth 授权
-    api
-      .post('/gitlab/oauth/callback', {
-        code,
-        userId: user.id,
-      })
-      .then(() => {
+    const handleCallback = async () => {
+      try {
+        await api.post('/gitlab/oauth/callback', {
+          code,
+          userId: user.id,
+        });
         setStatus('success');
         setTimeout(() => {
           router.push('/dashboard');
         }, 2000);
-      })
-      .catch((err) => {
+      } catch (err) {
         setStatus('error');
-        const message =
-          err instanceof ApiError ? err.message : 'GitLab 授权失败，请重试';
+        const message = err instanceof ApiError ? err.message : 'GitLab 授权失败，请重试';
         setErrorMessage(message);
-      });
+      }
+    };
+
+    handleCallback();
   }, [searchParams, user, authLoading, router]);
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <svg
-            className="animate-spin h-8 w-8 text-indigo-600 mx-auto"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
-          <p className="mt-2 text-gray-600">加载中...</p>
-        </div>
-      </div>
+      <PageContainer>
+        <LoadingSpinner />
+        <p style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>加载中...</p>
+      </PageContainer>
     );
   }
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <svg
-            className="animate-spin h-8 w-8 text-indigo-600 mx-auto"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
-          <p className="mt-2 text-gray-600">正在授权 GitLab...</p>
-        </div>
-      </div>
+      <PageContainer>
+        <LoadingSpinner />
+        <p style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>正在授权 GitLab...</p>
+      </PageContainer>
     );
   }
 
   if (status === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <svg
-            className="h-12 w-12 text-green-500 mx-auto"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-          <p className="mt-2 text-gray-900 font-medium">GitLab 授权成功！</p>
-          <p className="mt-1 text-gray-500 text-sm">正在跳转到控制台...</p>
-        </div>
-      </div>
+      <PageContainer>
+        <svg style={{ height: '48px', width: '48px', color: 'var(--status-success)', margin: '0 auto' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+        <p style={{ marginTop: '8px', color: 'var(--text-primary)', fontWeight: 500 }}>GitLab 授权成功！</p>
+        <p style={{ marginTop: '4px', color: 'var(--text-secondary)', fontSize: '13px' }}>正在跳转到控制台...</p>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <svg
-          className="h-12 w-12 text-red-500 mx-auto"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-        <p className="mt-2 text-gray-900 font-medium">GitLab 授权失败</p>
-        {errorMessage && (
-          <p className="mt-1 text-gray-500 text-sm">{errorMessage}</p>
-        )}
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="mt-4 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-        >
-          返回控制台
-        </button>
-      </div>
-    </div>
+    <PageContainer>
+      <svg style={{ height: '48px', width: '48px', color: 'var(--status-error)', margin: '0 auto' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+      <p style={{ marginTop: '8px', color: 'var(--text-primary)', fontWeight: 500 }}>GitLab 授权失败</p>
+      {errorMessage && <p style={{ marginTop: '4px', color: 'var(--text-secondary)', fontSize: '13px' }}>{errorMessage}</p>}
+      <button
+        onClick={() => router.push('/dashboard')}
+        style={{
+          marginTop: '16px',
+          padding: '8px 16px',
+          fontSize: '13px',
+          fontWeight: 500,
+          color: 'white',
+          backgroundColor: 'var(--accent-color)',
+          border: 'none',
+          borderRadius: 'var(--radius-md)',
+          cursor: 'pointer',
+        }}
+      >
+        返回控制台
+      </button>
+    </PageContainer>
   );
 }
 
-/**
- * GitLab OAuth 回调页面
- * 注意：useSearchParams 需要 Suspense boundary
- */
 export default function GitLabOAuthCallback() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <svg
-              className="animate-spin h-8 w-8 text-indigo-600 mx-auto"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            <p className="mt-2 text-gray-600">加载中...</p>
-          </div>
-        </div>
+        <PageContainer>
+          <LoadingSpinner />
+          <p style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>加载中...</p>
+        </PageContainer>
       }
     >
       <GitLabCallbackContent />
