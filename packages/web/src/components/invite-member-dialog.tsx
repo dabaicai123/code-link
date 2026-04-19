@@ -1,7 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { api, ApiError, OrgRole, OrganizationInvitation } from '@/lib/api';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useInviteMember } from '@/lib/queries';
+import {
+  inviteMemberSchema,
+  type InviteMemberInput,
+} from '@/lib/validations/invitation';
 import {
   Dialog,
   DialogContent,
@@ -11,15 +16,29 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { cn } from '@/lib/utils';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
+import type { OrganizationInvitation } from '@/lib/api';
 
-const ROLE_OPTIONS: { value: OrgRole; label: string; description: string }[] = [
-  { value: 'owner', label: 'Owner', description: '可以管理组织、邀请成员、创建和删除项目' },
-  { value: 'developer', label: 'Developer', description: '可以创建项目、添加仓库、执行构建' },
-  { value: 'member', label: 'Member', description: '可以查看项目和聊天记录' },
-];
+const ROLE_OPTIONS = [
+  { value: 'member', label: '成员', description: '可以查看项目和聊天记录' },
+  { value: 'developer', label: '开发者', description: '可以创建项目、添加仓库、执行构建' },
+  { value: 'owner', label: '管理员', description: '可以管理组织、邀请成员、创建和删除项目' },
+] as const;
 
 interface InviteMemberDialogProps {
   organizationId: number;
@@ -28,33 +47,40 @@ interface InviteMemberDialogProps {
   onSuccess: (invitation: OrganizationInvitation) => void;
 }
 
-export function InviteMemberDialog({ organizationId, isOpen, onClose, onSuccess }: InviteMemberDialogProps) {
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<OrgRole>('member');
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export function InviteMemberDialog({
+  organizationId,
+  isOpen,
+  onClose,
+  onSuccess,
+}: InviteMemberDialogProps) {
+  const inviteMember = useInviteMember();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
+  const form = useForm<InviteMemberInput>({
+    resolver: zodResolver(inviteMemberSchema),
+    defaultValues: {
+      email: '',
+      role: 'member',
+    },
+  });
 
+  const handleClose = () => {
+    form.reset();
+    onClose();
+  };
+
+  const onSubmit = async (values: InviteMemberInput) => {
     try {
-      const invitation = await api.inviteMember(organizationId, email.trim().toLowerCase(), role);
+      const invitation = await inviteMember.mutateAsync({
+        orgId: organizationId,
+        email: values.email.trim().toLowerCase(),
+        role: values.role,
+      });
+      toast.success('邀请已发送');
       onSuccess(invitation);
       handleClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '邀请失败');
-    } finally {
-      setIsSubmitting(false);
+      toast.error(err instanceof Error ? err.message : '发送邀请失败');
     }
-  };
-
-  const handleClose = () => {
-    setEmail('');
-    setRole('member');
-    setError(null);
-    onClose();
   };
 
   return (
@@ -64,66 +90,66 @@ export function InviteMemberDialog({ organizationId, isOpen, onClose, onSuccess 
           <DialogTitle>邀请成员</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          {error && (
-            <div className="p-3 mb-4 rounded-md bg-destructive/10 border border-destructive text-destructive text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="mb-4 space-y-2">
-            <Label htmlFor="invite-email">
-              邮箱地址 <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="invite-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="输入被邀请人的邮箱"
-              required
+        <Form form={form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    邮箱地址 <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="输入成员邮箱"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="mb-4 space-y-2">
-            <Label>
-              角色 <span className="text-destructive">*</span>
-            </Label>
-            <RadioGroup
-              value={role}
-              onValueChange={(value) => setRole(value as OrgRole)}
-              className="flex flex-col gap-2"
-            >
-              {ROLE_OPTIONS.map((option) => (
-                <div
-                  key={option.value}
-                  className={cn(
-                    'flex items-center space-x-3 rounded-md border p-2.5 cursor-pointer transition-colors',
-                    role === option.value
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'
-                  )}
-                  onClick={() => setRole(option.value)}
-                >
-                  <RadioGroupItem value={option.value} id={`role-${option.value}`} />
-                  <div className="flex-1">
-                    <div className="text-[13px] font-medium">{option.label}</div>
-                    <div className="text-[11px] text-muted-foreground">{option.description}</div>
-                  </div>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
+            <FormField
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    角色 <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择角色" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {ROLE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
-              取消
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !email.trim()}>
-              {isSubmitting ? '邀请中...' : '发送邀请'}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose}>
+                取消
+              </Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? '发送中...' : '发送邀请'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
