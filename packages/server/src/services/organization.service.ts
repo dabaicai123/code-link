@@ -1,13 +1,13 @@
 import { OrganizationRepository } from '../repositories/organization.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
-import { isSuperAdmin } from '../utils/super-admin.js';
-import { PermissionError, NotFoundError, ParamError, ConflictError } from '../utils/errors.js';
+import { PermissionService } from './permission.service.js';
+import { NotFoundError, ParamError, ConflictError } from '../utils/errors.js';
 import type {
   OrganizationWithRole,
   OrganizationMemberWithUser,
   OrganizationInvitationWithUser,
 } from '../repositories/organization.repository.js';
-import type { SelectOrganization } from '../db/schema/index.js';
+import type { SelectOrganization, OrgRole } from '../db/schema/index.js';
 
 export interface CreateOrganizationInput {
   name: string;
@@ -19,12 +19,12 @@ export interface UpdateOrganizationInput {
 
 export interface InviteMemberInput {
   email: string;
-  role: 'owner' | 'developer' | 'member';
+  role: OrgRole;
 }
 
 export interface UpdateMemberRoleInput {
   userId: number;
-  role: 'owner' | 'developer' | 'member';
+  role: OrgRole;
 }
 
 export interface OrganizationDetail {
@@ -38,6 +38,7 @@ export interface OrganizationDetail {
 export class OrganizationService {
   private orgRepo = new OrganizationRepository();
   private userRepo = new UserRepository();
+  private permService = new PermissionService();
 
   /**
    * 创建组织
@@ -51,20 +52,7 @@ export class OrganizationService {
       throw new ParamError('组织名称不能超过 100 个字符');
     }
 
-    // 检查用户是否有权限创建组织
-    const user = await this.userRepo.findById(userId);
-    if (!user) {
-      throw new NotFoundError('用户');
-    }
-
-    const isSuper = isSuperAdmin(user.email);
-    if (!isSuper) {
-      const isOwner = await this.orgRepo.isOwnerOfAny(userId);
-      if (!isOwner) {
-        throw new PermissionError('只有组织 owner 或超级管理员可以创建组织');
-      }
-    }
-
+    await this.permService.checkCanCreateOrg(userId);
     return this.orgRepo.createWithOwner(trimmedName, userId);
   }
 
@@ -84,16 +72,7 @@ export class OrganizationService {
       throw new NotFoundError('组织');
     }
 
-    // 检查访问权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
-
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(orgId, userId);
-      if (!membership) {
-        throw new PermissionError('您不是该组织的成员');
-      }
-    }
+    await this.permService.checkOrgRole(userId, orgId, 'member');
 
     const members = await this.orgRepo.findMembers(orgId);
     return { ...org, members };
@@ -111,17 +90,7 @@ export class OrganizationService {
       throw new ParamError('组织名称不能超过 100 个字符');
     }
 
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
-
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(orgId, userId);
-      if (!membership || membership.role !== 'owner') {
-        throw new PermissionError('只有组织 owner 可以修改组织名称');
-      }
-    }
-
+    await this.permService.checkOrgOwner(userId, orgId);
     return this.orgRepo.updateName(orgId, trimmedName);
   }
 
@@ -129,18 +98,8 @@ export class OrganizationService {
    * 删除组织
    */
   async delete(orgId: number, userId: number): Promise<void> {
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
+    await this.permService.checkOrgOwner(userId, orgId);
 
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(orgId, userId);
-      if (!membership || membership.role !== 'owner') {
-        throw new PermissionError('只有组织 owner 可以删除组织');
-      }
-    }
-
-    // 检查组织下是否有项目
     const projectCount = await this.orgRepo.countProjects(orgId);
     if (projectCount > 0) {
       throw new ConflictError('组织下还有项目，请先删除或迁移项目');
@@ -153,29 +112,18 @@ export class OrganizationService {
    * 更新成员角色
    */
   async updateMemberRole(orgId: number, userId: number, input: UpdateMemberRoleInput): Promise<OrganizationMemberWithUser> {
-    const validRoles = ['owner', 'developer', 'member'];
+    const validRoles: OrgRole[] = ['owner', 'developer', 'member'];
     if (!validRoles.includes(input.role)) {
       throw new ParamError('无效的角色，必须是 owner、developer 或 member');
     }
 
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
+    await this.permService.checkOrgOwner(userId, orgId);
 
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(orgId, userId);
-      if (!membership || membership.role !== 'owner') {
-        throw new PermissionError('只有组织 owner 可以修改成员角色');
-      }
-    }
-
-    // 检查目标成员是否存在
     const targetMembership = await this.orgRepo.findUserMembership(orgId, input.userId);
     if (!targetMembership) {
       throw new NotFoundError('该用户不是组织成员');
     }
 
-    // 检查是否是最后一个 owner
     if (targetMembership.role === 'owner' && input.role !== 'owner') {
       const ownerCount = await this.orgRepo.countOwners(orgId);
       if (ownerCount <= 1) {
@@ -185,7 +133,6 @@ export class OrganizationService {
 
     await this.orgRepo.updateMemberRole(orgId, input.userId, input.role);
 
-    // 获取更新后的成员信息
     const members = await this.orgRepo.findMembers(orgId);
     const updatedMember = members.find(m => m.userId === input.userId);
     if (!updatedMember) {
@@ -199,29 +146,17 @@ export class OrganizationService {
    * 移除成员
    */
   async removeMember(orgId: number, userId: number, targetUserId: number): Promise<void> {
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
+    await this.permService.checkOrgOwner(userId, orgId);
 
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(orgId, userId);
-      if (!membership || membership.role !== 'owner') {
-        throw new PermissionError('只有组织 owner 可以移除成员');
-      }
-    }
-
-    // 不能移除自己
     if (targetUserId === userId) {
       throw new ConflictError('不能移除自己');
     }
 
-    // 检查目标成员是否存在
     const targetMembership = await this.orgRepo.findUserMembership(orgId, targetUserId);
     if (!targetMembership) {
       throw new NotFoundError('该用户不是组织成员');
     }
 
-    // 检查是否是最后一个 owner
     if (targetMembership.role === 'owner') {
       const ownerCount = await this.orgRepo.countOwners(orgId);
       if (ownerCount <= 1) {
@@ -236,29 +171,18 @@ export class OrganizationService {
    * 邀请成员
    */
   async inviteMember(orgId: number, userId: number, input: InviteMemberInput): Promise<OrganizationInvitationWithUser> {
-    // 验证邮箱格式
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!input.email || !emailRegex.test(input.email)) {
       throw new ParamError('邮箱地址格式不正确');
     }
 
-    const validRoles = ['owner', 'developer', 'member'];
+    const validRoles: OrgRole[] = ['owner', 'developer', 'member'];
     if (!validRoles.includes(input.role)) {
       throw new ParamError('无效的角色，必须是 owner、developer 或 member');
     }
 
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
+    await this.permService.checkOrgOwner(userId, orgId);
 
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(orgId, userId);
-      if (!membership || membership.role !== 'owner') {
-        throw new PermissionError('只有组织 owner 可以邀请成员');
-      }
-    }
-
-    // 检查用户是否已是组织成员
     const existingUser = await this.userRepo.findByEmail(input.email);
     if (existingUser) {
       const existingMembership = await this.orgRepo.findUserMembership(orgId, existingUser.id);
@@ -267,7 +191,6 @@ export class OrganizationService {
       }
     }
 
-    // 检查是否已有待处理邀请
     const hasPending = await this.orgRepo.hasPendingInvitation(orgId, input.email);
     if (hasPending) {
       throw new ConflictError('该邮箱已有待处理的邀请');
@@ -281,7 +204,6 @@ export class OrganizationService {
       status: 'pending',
     });
 
-    // 获取邀请信息
     const invitations = await this.orgRepo.findPendingInvitationsByOrg(orgId);
     const invitation = invitations.find(inv => inv.email === input.email.toLowerCase());
     if (!invitation) {
@@ -295,17 +217,7 @@ export class OrganizationService {
    * 获取组织的待处理邀请列表
    */
   async findPendingInvitations(orgId: number, userId: number): Promise<OrganizationInvitationWithUser[]> {
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
-
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(orgId, userId);
-      if (!membership || membership.role !== 'owner') {
-        throw new PermissionError('只有组织 owner 可以查看邀请列表');
-      }
-    }
-
+    await this.permService.checkOrgOwner(userId, orgId);
     return this.orgRepo.findPendingInvitationsByOrg(orgId);
   }
 
@@ -313,17 +225,7 @@ export class OrganizationService {
    * 取消邀请
    */
   async cancelInvitation(orgId: number, userId: number, invId: number): Promise<void> {
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
-
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(orgId, userId);
-      if (!membership || membership.role !== 'owner') {
-        throw new PermissionError('只有组织 owner 可以取消邀请');
-      }
-    }
-
+    await this.permService.checkOrgOwner(userId, orgId);
     await this.orgRepo.deleteInvitation(invId, orgId);
   }
 
