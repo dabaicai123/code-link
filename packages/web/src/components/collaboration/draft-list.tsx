@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { draftsApi } from '../../lib/drafts-api';
 import type { Draft } from '../../types/draft';
 import { DRAFT_STATUS_LABELS, DRAFT_STATUS_COLORS } from '../../types/draft';
+import { formatShortDate } from '@/lib/date-utils';
 
 interface DraftListProps {
   projectId?: number;
@@ -49,23 +50,6 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
       onSelectDraft(result.draft);
     } catch (err) {
       console.error('Failed to create draft:', err);
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    } else if (days === 1) {
-      return '昨天';
-    } else if (days < 7) {
-      return `${days}天前`;
-    } else {
-      return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
     }
   };
 
@@ -163,7 +147,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
                   {draft.title}
                 </span>
                 <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                  {formatDate(draft.updatedAt)}
+                  {formatShortDate(draft.updatedAt)}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
