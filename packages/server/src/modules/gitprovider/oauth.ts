@@ -1,4 +1,5 @@
 // src/modules/gitprovider/oauth.ts
+import crypto from 'crypto';
 import type { OAuthConfig, TokenResponse } from './types.js';
 
 export function getGitHubOAuthUrl(config: OAuthConfig): string {
@@ -6,7 +7,7 @@ export function getGitHubOAuthUrl(config: OAuthConfig): string {
     client_id: config.githubClientId,
     redirect_uri: `${config.redirectUri}/github`,
     scope: 'repo',
-    state: Math.random().toString(36).substring(7),
+    state: crypto.randomBytes(16).toString('hex'),
   });
 
   return `https://github.com/login/oauth/authorize?${params.toString()}`;
@@ -18,7 +19,7 @@ export function getGitLabOAuthUrl(config: OAuthConfig): string {
     redirect_uri: `${config.redirectUri}/gitlab`,
     response_type: 'code',
     scope: 'api',
-    state: Math.random().toString(36).substring(7),
+    state: crypto.randomBytes(16).toString('hex'),
   });
 
   return `${config.gitlabBaseUrl}/oauth/authorize?${params.toString()}`;
