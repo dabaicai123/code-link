@@ -32,14 +32,6 @@
     --border-color: #333333;
     --border-light: #404040;
 
-    /* 旧变量兼容 */
-    --accent-color: #d97757;
-    --accent-hover-old: #c55a3b;
-    --accent-light-old: #f0a080;
-    --text-disabled: #6b6b6b;
-    --status-success: #4ade80;
-    --status-error: #f87171;
-
     /* 尺寸 */
     --sidebar-width: 250px;
     --status-bar-height: 32px;
@@ -98,108 +90,13 @@ html, body {
 a { color: var(--accent-primary); text-decoration: none; }
 a:hover { color: var(--accent-light); }
 
-/* 按钮 */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: var(--font-sans);
-  border-radius: var(--radius-md);
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-primary {
-  background: var(--accent-primary);
-  color: #fff;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn-secondary {
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-}
-
-/* 输入框 */
-.input {
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 13px;
-  font-family: var(--font-sans);
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  transition: border-color 0.15s ease;
-}
-
-.input::placeholder { color: var(--text-muted); }
-.input:focus { outline: none; border-color: var(--accent-primary); }
-
-/* 卡片 */
-.card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 14px;
-}
-
-/* 元素标签样式 */
-.element-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.element-tag .remove {
-  color: var(--text-muted);
-  cursor: pointer;
-  margin-left: 2px;
-}
-
-.element-tag .remove:hover {
-  color: var(--status-error);
-}
-
 /* 滚动条 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
-/* 状态指示器动画 */
+/* 动画 */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -208,4 +105,107 @@ a:hover { color: var(--accent-light); }
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+
+/* Tailwind 组件层扩展 */
+@layer components {
+  /* 布局容器 */
+  .sidebar-container {
+    width: var(--sidebar-width);
+    height: 100%;
+    background-color: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+  }
+
+  .panel-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-primary);
+  }
+
+  .panel-header {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* 状态指示器 */
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .status-running {
+    background-color: var(--status-running);
+  }
+
+  .status-stopped {
+    background-color: var(--status-stopped);
+  }
+
+  /* 标签样式 */
+  .element-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .element-tag .remove {
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-left: 2px;
+  }
+
+  .element-tag .remove:hover {
+    color: var(--status-stopped);
+  }
+
+  /* 项目卡片 */
+  .project-card {
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: all 0.15s ease;
+    position: relative;
+    border: 1px solid transparent;
+  }
+
+  .project-card:hover {
+    background-color: var(--bg-hover);
+  }
+
+  .project-card.active {
+    background-color: rgba(217, 119, 87, 0.08);
+    border-color: var(--accent-primary);
+  }
+
+  .project-card.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-primary);
+  }
 }
