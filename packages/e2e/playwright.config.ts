@@ -28,22 +28,6 @@ export default defineConfig({
   },
 
   projects: [
-    // 认证 setup project - 创建认证状态供其他测试复用
-    {
-      name: 'setup',
-      testMatch: 'auth.setup.ts',
-    },
-    // 主测试 project - 复用认证状态
-    {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/user.json',
-        channel: undefined,
-      },
-      dependencies: ['setup'],
-      testMatch: ['projects.spec.ts', 'collaboration.spec.ts', 'organizations.spec.ts'],
-    },
     // 认证测试 project - 不复用认证状态
     {
       name: 'auth-tests',
@@ -52,7 +36,15 @@ export default defineConfig({
         channel: undefined,
       },
       testMatch: 'auth.spec.ts',
-      // 并行运行，不需要依赖 setup
+    },
+    // 主测试 project - 使用 fixtures 设置认证和 API route
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: undefined,
+      },
+      testMatch: ['projects.spec.ts', 'collaboration.spec.ts', 'organizations.spec.ts'],
     },
   ],
 });

@@ -17,59 +17,58 @@ export interface E2EFixtures {
 let globalTestServer: TestServer | null = null;
 let globalTestDb: { sqlite: Database.Database; db: any } | null = null;
 
-// 设置 API 路由转发到测试服务器
-async function setupApiRoutes(page: Page, testServer: TestServer) {
-  await page.route('**/api/**', async (route) => {
-    const url = route.request().url();
-    const apiPath = url.replace(/^.*\/api/, `${testServer.baseUrl}/api`);
-    const response = await fetch(apiPath, {
-      method: route.request().method(),
-      headers: route.request().headers(),
-      body: route.request().postData(),
-    });
-    const body = await response.text();
-    await route.fulfill({
-      status: response.status,
-      headers: Object.fromEntries(response.headers.entries()),
-      body,
-    });
-  });
-}
-
 export const test = base.extend<E2EFixtures>({
-  // 测试服务器 fixture
+  // 测试服务器 fixture - 先初始化
   testServer: async ({}, use) => {
-    // 如果已存在全局服务器，复用它
     if (!globalTestServer) {
-      // 创建测试数据库
       globalTestDb = createTestDb();
-      // 启动测试服务器
       globalTestServer = await startTestServer(globalTestDb.sqlite);
     }
     await use(globalTestServer);
   },
 
+  // 前端基础 URL
+  webBaseUrl: async ({}, use) => {
+    await use(process.env.WEB_BASE_URL || 'http://localhost:3000');
+  },
+
   // 测试用户 fixture - 自动设置认证和 API 路由
-  testUser: async ({ page, testServer }, use) => {
+  testUser: async ({ page, context, testServer }, use) => {
     const { drizzle } = await import('drizzle-orm/better-sqlite3');
     const db = drizzle(testServer.db);
     const user = await seedTestUser(db);
 
-    // 设置认证 token
-    const token = generateTestToken(user.id);
-    await page.addInitScript((tokenValue) => {
+    // 设置认证 token（在所有页面创建之前）
+    await context.addInitScript((tokenValue) => {
       localStorage.setItem('token', tokenValue);
-    }, token);
+    }, generateTestToken(user.id));
 
-    // 设置 API 路由转发
-    await setupApiRoutes(page, testServer);
+    // 设置 API 路由转发（在页面级别）
+    await page.route('**/api/**', async (route) => {
+      const url = route.request().url();
+      const apiPath = url.replace(/^.*\/api/, `${testServer.baseUrl}/api`);
+      try {
+        const response = await fetch(apiPath, {
+          method: route.request().method(),
+          headers: route.request().headers(),
+          body: route.request().postData(),
+        });
+        const body = await response.text();
+        await route.fulfill({
+          status: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+          body,
+        });
+      } catch (error) {
+        // 如果测试服务器不可达，返回错误
+        await route.fulfill({
+          status: 500,
+          body: JSON.stringify({ error: '测试服务器不可达' }),
+        });
+      }
+    });
 
     await use(user);
-  },
-
-  // 前端基础 URL（默认本地开发服务器）
-  webBaseUrl: async ({}, use) => {
-    await use(process.env.WEB_BASE_URL || 'http://localhost:3000');
   },
 });
 
@@ -109,36 +108,3 @@ export async function cleanupGlobalResources() {
 
 // 导出 expect
 export { expect } from '@playwright/test';
-
-// 辅助函数：创建已认证的浏览器上下文
-export async function createAuthenticatedContext(
-  browser: any,
-  testServer: TestServer,
-  user: TestUser
-): Promise<{ context: BrowserContext; page: Page }> {
-  const token = generateTestToken(user.id);
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
-  // 设置 token 到 localStorage
-  await page.addInitScript((tokenValue) => {
-    localStorage.setItem('token', tokenValue);
-  }, token);
-
-  return { context, page };
-}
-
-// 辅助函数：登录用户
-export async function loginAsUser(
-  page: Page,
-  webBaseUrl: string,
-  email: string,
-  password: string
-): Promise<void> {
-  await page.goto(`${webBaseUrl}/login`);
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', password);
-  await page.click('button[type="submit"]');
-  // 等待跳转到 dashboard
-  await page.waitForURL('**/dashboard');
-}
