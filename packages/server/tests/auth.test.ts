@@ -1,4 +1,6 @@
 // packages/server/tests/auth.test.ts
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
@@ -11,6 +13,8 @@ describe('认证路由', () => {
   let db: Database.Database;
 
   beforeEach(() => {
+    // 重置容器
+    container.reset();
     // 关闭现有数据库连接，重置单例
     closeDb();
     // 创建新的内存数据库
@@ -23,6 +27,7 @@ describe('认证路由', () => {
   });
 
   afterEach(() => {
+    container.reset();
     closeDb();
   });
 
