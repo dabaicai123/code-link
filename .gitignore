@@ -7,7 +7,7 @@ node_modules/
 # Build outputs
 dist/
 .next/
-build/
+/build/
 out/
 *.tsbuildinfo
 
