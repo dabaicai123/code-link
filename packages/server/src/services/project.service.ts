@@ -1,7 +1,6 @@
 import { ProjectRepository } from '../repositories/project.repository.js';
-import { OrganizationRepository } from '../repositories/organization.repository.js';
-import { UserRepository } from '../repositories/user.repository.js';
-import { isSuperAdmin } from '../utils/super-admin.js';
+import { PermissionService } from './permission.service.js';
+import { NotFoundError, ParamError, ConflictError } from '../utils/errors.js';
 import type { SelectProject, SelectProjectRepo } from '../db/schema/index.js';
 import type { ProjectDetail, ProjectMemberWithUser } from '../repositories/project.repository.js';
 
@@ -17,34 +16,22 @@ export interface AddRepoInput {
 
 export class ProjectService {
   private projectRepo = new ProjectRepository();
-  private orgRepo = new OrganizationRepository();
-  private userRepo = new UserRepository();
+  private permService = new PermissionService();
 
   /**
    * 创建项目
    */
   async create(userId: number, input: CreateProjectInput): Promise<SelectProject> {
-    // 验证名称
     if (!input.name || typeof input.name !== 'string' || input.name.length > 100) {
-      throw new Error('项目名称必须是 1-100 字符的字符串');
+      throw new ParamError('项目名称必须是 1-100 字符的字符串');
     }
 
-    // 验证模板类型
     const validTemplateTypes = ['node', 'node+java', 'node+python'];
     if (!validTemplateTypes.includes(input.templateType)) {
-      throw new Error('无效的模板类型，必须是 node, node+java 或 node+python');
+      throw new ParamError('无效的模板类型，必须是 node, node+java 或 node+python');
     }
 
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
-
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(input.organizationId, userId);
-      if (!membership || !['owner', 'developer'].includes(membership.role)) {
-        throw new Error('您没有权限在该组织下创建项目');
-      }
-    }
+    await this.permService.checkOrgRole(userId, input.organizationId, 'developer');
 
     return this.projectRepo.create({
       name: input.name,
@@ -65,22 +52,7 @@ export class ProjectService {
    * 获取项目详情
    */
   async findById(userId: number, projectId: number): Promise<ProjectDetail> {
-    const project = await this.projectRepo.findById(projectId);
-    if (!project) {
-      throw new Error('项目不存在');
-    }
-
-    // 检查访问权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
-
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership) {
-        throw new Error('您没有权限访问该项目');
-      }
-    }
-
+    const project = await this.permService.checkProjectAccess(userId, projectId);
     const members = await this.projectRepo.findProjectMembers(project.organizationId);
     const repos = await this.projectRepo.findRepos(projectId);
 
@@ -91,22 +63,8 @@ export class ProjectService {
    * 删除项目
    */
   async delete(userId: number, projectId: number): Promise<void> {
-    const project = await this.projectRepo.findById(projectId);
-    if (!project) {
-      throw new Error('项目不存在');
-    }
-
-    // 检查权限
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
-
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership || membership.role !== 'owner') {
-        throw new Error('只有组织 owner 可以删除项目');
-      }
-    }
-
+    const project = await this.permService.checkProjectAccess(userId, projectId);
+    await this.permService.checkOrgOwner(userId, project.organizationId);
     await this.projectRepo.delete(projectId);
   }
 
@@ -142,29 +100,19 @@ export class ProjectService {
    * 检查用户是否是项目成员
    */
   async isProjectMember(projectId: number, userId: number): Promise<boolean> {
-    const project = await this.projectRepo.findById(projectId);
-    if (!project) {
+    try {
+      await this.permService.checkProjectAccess(userId, projectId);
+      return true;
+    } catch {
       return false;
     }
-
-    const user = await this.userRepo.findById(userId);
-    if (user && isSuperAdmin(user.email)) {
-      return true;
-    }
-
-    const membership = await this.orgRepo.findUserMembership(project.organizationId, userId);
-    return !!membership;
   }
 
   /**
    * 获取项目仓库列表
    */
   async findRepos(projectId: number, userId: number): Promise<SelectProjectRepo[]> {
-    const isMember = await this.isProjectMember(projectId, userId);
-    if (!isMember) {
-      throw new Error('项目不存在');
-    }
-
+    await this.permService.checkProjectAccess(userId, projectId);
     return this.projectRepo.findRepos(projectId);
   }
 
@@ -172,14 +120,11 @@ export class ProjectService {
    * 添加仓库到项目
    */
   async addRepo(projectId: number, userId: number, input: AddRepoInput): Promise<SelectProjectRepo> {
-    const isMember = await this.isProjectMember(projectId, userId);
-    if (!isMember) {
-      throw new Error('项目不存在');
-    }
+    await this.permService.checkProjectAccess(userId, projectId);
 
     const parsed = this.parseRepoUrl(input.url);
     if (!parsed) {
-      throw new Error('无效的仓库 URL，仅支持 GitHub 和 GitLab');
+      throw new ParamError('无效的仓库 URL，仅支持 GitHub 和 GitLab');
     }
 
     try {
@@ -191,7 +136,7 @@ export class ProjectService {
       });
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'SQLITE_CONSTRAINT') {
-        throw new Error('该仓库已添加到项目中');
+        throw new ConflictError('该仓库已添加到项目中');
       }
       throw new Error('添加仓库失败');
     }
@@ -201,14 +146,11 @@ export class ProjectService {
    * 删除仓库
    */
   async deleteRepo(projectId: number, userId: number, repoId: number): Promise<void> {
-    const isMember = await this.isProjectMember(projectId, userId);
-    if (!isMember) {
-      throw new Error('项目不存在');
-    }
+    await this.permService.checkProjectAccess(userId, projectId);
 
     const repo = await this.projectRepo.findRepo(repoId, projectId);
     if (!repo) {
-      throw new Error('仓库不存在');
+      throw new NotFoundError('仓库');
     }
 
     await this.projectRepo.deleteRepo(repoId);
@@ -225,16 +167,6 @@ export class ProjectService {
    * 获取项目信息（用于仓库操作）
    */
   async getProjectForRepo(projectId: number, userId: number): Promise<SelectProject> {
-    const project = await this.projectRepo.findById(projectId);
-    if (!project) {
-      throw new Error('项目不存在');
-    }
-
-    const isMember = await this.isProjectMember(projectId, userId);
-    if (!isMember) {
-      throw new Error('项目不存在');
-    }
-
-    return project;
+    return this.permService.checkProjectAccess(userId, projectId);
   }
 }
