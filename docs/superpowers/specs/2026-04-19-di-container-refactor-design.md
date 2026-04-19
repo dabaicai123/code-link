@@ -1,4 +1,4 @@
-# 后端架构重构：引入轻量 DI 容器
+# 后端架构重构：使用 TSyringe DI 容器
 
 ## 背景
 
@@ -16,155 +16,121 @@
 - 统一依赖管理，支持依赖注入
 - 简化测试，支持 mock 替换
 - 统一错误处理和权限逻辑
-- 保持轻量，避免引入复杂框架
+- 使用 TSyringe 轻量 DI 库，减少手写代码
+
+## 技术选型：TSyringe
+
+选择 TSyringe 的原因：
+- 微软官方维护，轻量级
+- 使用装饰器语法，代码简洁
+- 支持 `@singleton()` 自动管理单例
+- 测试友好，`container.reset()` + 注册 mock
+- 与 TypeScript 完美集成
 
 ## 架构设计
 
-### 1. DI 容器核心
+### 1. 安装依赖
 
-创建 `Container` 类管理所有依赖实例：
+```bash
+npm install tsyringe reflect-metadata
+```
 
-```typescript
-// src/container.ts
-export class Container {
-  private instances: Map<string, any> = new Map();
-  private factories: Map<string, () => any> = new Map();
+### 2. TypeScript 配置
 
-  // 注册工厂函数
-  register<T>(name: string, factory: () => T): void {
-    this.factories.set(name, factory);
-  }
-
-  // 获取单例实例
-  get<T>(name: string): T {
-    if (!this.instances.has(name)) {
-      const factory = this.factories.get(name);
-      if (!factory) throw new Error(`未注册依赖: ${name}`);
-      this.instances.set(name, factory());
-    }
-    return this.instances.get(name);
-  }
-
-  // 创建临时实例（用于测试覆盖）
-  create<T>(name: string): T {
-    const factory = this.factories.get(name);
-    if (!factory) throw new Error(`未注册依赖: ${name}`);
-    return factory();
-  }
-
-  // 重置实例（用于测试）
-  reset(): void {
-    this.instances.clear();
-  }
-
-  // 覆盖实例（用于测试 mock）
-  override<T>(name: string, instance: T): void {
-    this.instances.set(name, instance);
+```jsonc
+// tsconfig.json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    // 其他配置...
   }
 }
 ```
 
-### 2. 默认容器配置
+### 3. 应用入口导入 reflect-metadata
 
 ```typescript
-// src/container.config.ts
-export function configureContainer(container: Container): void {
-  // 数据库连接（最底层）
-  container.register('db', () => getDb());
-  container.register('sqliteDb', () => getSqliteDb());
-
-  // Repository 层
-  container.register('UserRepository', () => new UserRepository(
-    container.get('db')
-  ));
-  container.register('OrganizationRepository', () => new OrganizationRepository(
-    container.get('db'),
-    container.get('sqliteDb')
-  ));
-  container.register('ProjectRepository', () => new ProjectRepository(
-    container.get('db')
-  ));
-  container.register('DraftRepository', () => new DraftRepository(
-    container.get('db'),
-    container.get('sqliteDb')
-  ));
-  container.register('TokenRepository', () => new TokenRepository(
-    container.get('db')
-  ));
-  container.register('BuildRepository', () => new BuildRepository(
-    container.get('db')
-  ));
-  container.register('ClaudeConfigRepository', () => new ClaudeConfigRepository(
-    container.get('db')
-  ));
-
-  // Service 层
-  container.register('PermissionService', () => new PermissionService(
-    container.get('UserRepository'),
-    container.get('OrganizationRepository'),
-    container.get('ProjectRepository')
-  ));
-  container.register('AuthService', () => new AuthService(
-    container.get('UserRepository')
-  ));
-  container.register('OrganizationService', () => new OrganizationService(
-    container.get('OrganizationRepository'),
-    container.get('UserRepository'),
-    container.get('PermissionService')
-  ));
-  container.register('ProjectService', () => new ProjectService(
-    container.get('ProjectRepository'),
-    container.get('PermissionService')
-  ));
-  container.register('DraftService', () => new DraftService(
-    container.get('DraftRepository'),
-    container.get('ProjectRepository'),
-    container.get('PermissionService')
-  ));
-}
+// src/index.ts（最顶部）
+import "reflect-metadata";
 ```
 
-### 3. Repository 改造
+### 4. Repository 改造
 
-Repository 通过构造函数接收 db 实例：
+使用 `@singleton()` 装饰器，数据库连接保持 getDb() 单例：
 
 ```typescript
 // repositories/user.repository.ts
-export class UserRepository {
-  constructor(private db: ReturnType<typeof drizzle>) {}
+import { singleton } from "tsyringe";
+import { getDb } from "../db/index.js";
+import { users } from "../db/schema/index.js";
+import type { InsertUser, SelectUser } from "../db/schema/index.js";
 
+@singleton()
+export class UserRepository {
   async findByEmail(email: string): Promise<SelectUser | undefined> {
-    return this.db.select().from(users).where(eq(users.email, email)).get();
+    return getDb().select().from(users).where(eq(users.email, email)).get();
   }
-  // ... 其他方法不再调用 getDb()
+
+  async findById(id: number): Promise<SelectUser | undefined> {
+    return getDb().select().from(users).where(eq(users.id, id)).get();
+  }
+
+  async create(data: InsertUser): Promise<SelectUser> {
+    return getDb().insert(users).values(data).returning().get();
+  }
 }
 ```
 
-### 4. Service 改造
+### 5. Service 改造
 
-Service 通过构造函数接收 Repository：
+使用 `@singleton()` + 构造函数注入：
 
 ```typescript
 // services/auth.service.ts
+import { singleton, inject } from "tsyringe";
+import { UserRepository } from "../repositories/user.repository.js";
+
+@singleton()
 export class AuthService {
-  constructor(private userRepo: UserRepository) {}
+  constructor(
+    @inject(UserRepository) private userRepo: UserRepository
+  ) {}
 
   async register(data: RegisterInput): Promise<AuthResult> {
     const existing = await this.userRepo.findByEmail(data.email);
+    if (existing) {
+      throw new ConflictError('该邮箱已被注册');
+    }
+    // ...
+  }
+
+  async login(data: LoginInput): Promise<AuthResult> {
+    const user = await this.userRepo.findByEmail(data.email);
     // ...
   }
 }
 ```
 
-### 5. 路由层改造
+### 6. 路由层改造
 
-路由通过容器获取 Service：
+使用 `container.resolve()` 获取 Service 实例：
 
 ```typescript
 // routes/auth.ts
-export function createAuthRouter(container: Container): Router {
+import "reflect-metadata";
+import { container } from "tsyringe";
+import { Router } from "express";
+import { AuthService } from "../services/auth.service.js";
+import { authMiddleware } from "../middleware/auth.js";
+import { success, Errors, handleRouteError } from "../utils/response.js";
+import { createLogger } from "../logger/index.js";
+
+const logger = createLogger('auth');
+
+export function createAuthRouter(): Router {
   const router = Router();
-  const authService = container.get<AuthService>('AuthService');
+  const authService = container.resolve(AuthService);
 
   router.post('/register', async (req, res) => {
     try {
@@ -174,104 +140,265 @@ export function createAuthRouter(container: Container): Router {
       handleRouteError(res, error, logger, '注册失败');
     }
   });
-  // ...
+
+  router.post('/login', async (req, res) => {
+    try {
+      const result = await authService.login(req.body);
+      res.json(success(result));
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '登录失败');
+    }
+  });
+
+  router.get('/me', authMiddleware, async (req, res) => {
+    const userId = (req as any).userId;
+    try {
+      const user = await authService.getUser(userId);
+      if (!user) {
+        res.status(404).json(Errors.notFound('用户'));
+        return;
+      }
+      res.json(success(user));
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '获取用户信息失败');
+    }
+  });
+
+  return router;
 }
 ```
 
-### 6. 统一错误处理
+### 7. Middleware 改造
 
-所有路由统一使用 `handleRouteError`，移除字符串匹配方式。
+```typescript
+// middleware/auth.ts
+import "reflect-metadata";
+import { container } from "tsyringe";
+import { UserRepository, OrganizationRepository, ProjectRepository } from "../repositories/index.js";
+import { PermissionService } from "../services/permission.service.js";
 
-Service 层抛出 `BusinessError` 子类，路由层自动映射 HTTP 状态码。
+// 单例实例通过容器获取
+const userRepo = container.resolve(UserRepository);
+const orgRepo = container.resolve(OrganizationRepository);
+const permService = container.resolve(PermissionService);
 
-### 7. 统一权限层级
+export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+  // ... 现有逻辑不变，使用 userRepo/permService
+}
 
-移除 auth.ts 中的 `ROLE_HIERARCHY`，统一使用 PermissionService 或提取为公共常量：
+export function createOrgMemberMiddleware(minRole: OrgRole) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // 使用 permService 检查权限
+    await permService.checkOrgRole(userId, orgId, minRole);
+    next();
+  };
+}
+```
+
+### 8. 统一权限层级
+
+移除 auth.ts 中的 `ROLE_HIERARCHY`，提取为公共常量：
 
 ```typescript
 // utils/roles.ts
+import type { OrgRole } from "../db/schema/index.js";
+
 export const ROLE_HIERARCHY: Record<OrgRole, number> = {
   owner: 3,
   developer: 2,
   member: 1,
 };
-```
 
-### 8. 数据库连接统一
-
-合并 connection.ts 和 drizzle.ts，统一单例管理：
-
-```typescript
-// db/index.ts（重写）
-export { getDb, getSqliteDb, closeDb } from './drizzle.js';
-// 移除 connection.ts，将其功能合并到 drizzle.ts
-```
-
-### 9. 应用启动
-
-```typescript
-// index.ts
-export function createApp(container?: Container): express.Express {
-  const app = express();
-
-  // 使用默认容器或传入的自定义容器（测试用）
-  const c = container || createDefaultContainer();
-
-  app.use('/api/auth', createAuthRouter(c));
-  app.use('/api/organizations', createOrganizationsRouter(c));
-  // ...
+export function hasRole(userRole: OrgRole, requiredRole: OrgRole): boolean {
+  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }
+```
+
+PermissionService 和 middleware 都使用这个常量。
+
+### 9. 统一错误处理
+
+所有路由统一使用 `handleRouteError`，移除字符串匹配方式。
+
+drafts.ts 改造示例：
+
+```typescript
+// routes/drafts.ts（改造后）
+router.post('/', authMiddleware, async (req, res) => {
+  const userId = (req as any).userId;
+  try {
+    const draft = await draftService.create(userId, req.body);
+    res.status(201).json(success({ draft }));
+  } catch (error: unknown) {
+    handleRouteError(res, error, logger, '创建 Draft 失败');
+  }
+});
+```
+
+### 10. 数据库连接统一
+
+合并 connection.ts 和 drizzle.ts：
+
+```typescript
+// db/drizzle.ts（保留，删除 connection.ts）
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
+import * as schema from "./schema/index.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(__dirname, "../../../..");
+const DATA_DIR = path.join(PROJECT_ROOT, "data");
+
+let defaultSqliteDb: Database.Database | null = null;
+let defaultDb: ReturnType<typeof drizzle> | null = null;
+
+export function getSqliteDb(dbPath?: string): Database.Database {
+  if (dbPath) {
+    if (defaultSqliteDb) {
+      defaultSqliteDb.close();
+      defaultSqliteDb = null;
+      defaultDb = null;
+    }
+    defaultSqliteDb = new Database(dbPath);
+    defaultSqliteDb.pragma("journal_mode = WAL");
+    defaultSqliteDb.pragma("foreign_keys = ON");
+    return defaultSqliteDb;
+  }
+  if (!defaultSqliteDb) {
+    const dbPath = process.env.DB_PATH || path.join(DATA_DIR, "code-link.db");
+    defaultSqliteDb = new Database(dbPath);
+    defaultSqliteDb.pragma("journal_mode = WAL");
+    defaultSqliteDb.pragma("foreign_keys = ON");
+  }
+  return defaultSqliteDb;
+}
+
+export function getDb(dbPath?: string): ReturnType<typeof drizzle> {
+  if (dbPath) {
+    if (defaultSqliteDb) {
+      defaultSqliteDb.close();
+      defaultSqliteDb = null;
+      defaultDb = null;
+    }
+    const sqliteDb = new Database(dbPath);
+    sqliteDb.pragma("journal_mode = WAL");
+    sqliteDb.pragma("foreign_keys = ON");
+    defaultSqliteDb = sqliteDb;
+    defaultDb = drizzle(sqliteDb, { schema });
+    return defaultDb;
+  }
+  if (!defaultDb) {
+    defaultDb = drizzle(getSqliteDb(), { schema });
+  }
+  return defaultDb;
+}
+
+export function closeDb(): void {
+  if (defaultSqliteDb) {
+    defaultSqliteDb.close();
+    defaultSqliteDb = null;
+    defaultDb = null;
+  }
+}
+
+export { getSqliteDb as getNativeDb };
+```
+
+```typescript
+// db/index.ts
+export { getDb, getSqliteDb, getNativeDb, closeDb } from "./drizzle.js";
+export * from "./schema/index.js";
+export { initSchema, initDefaultAdmin } from "./init.js";
+// 删除 connection.ts 导出
 ```
 
 ## 文件改动清单
 
 | 文件 | 改动类型 | 说明 |
 |------|----------|------|
-| `src/container.ts` | 新增 | DI 容器核心 |
-| `src/container.config.ts` | 新增 | 默认容器配置 |
+| `package.json` | 修改 | 添加 tsyringe、reflect-metadata 依赖 |
+| `tsconfig.json` | 修改 | 启用 experimentalDecorators、emitDecoratorMetadata |
+| `src/index.ts` | 修改 | 顶部导入 reflect-metadata |
 | `src/utils/roles.ts` | 新增 | 统一角色层级常量 |
-| `src/db/drizzle.ts` | 修改 | 合并 connection.ts 功能 |
 | `src/db/connection.ts` | 删除 | 功能合并到 drizzle.ts |
-| `repositories/*.ts` | 修改 | 构造函数接收 db |
-| `services/*.ts` | 修改 | 构造函数接收 Repository |
-| `routes/*.ts` | 修改 | 从容器获取 Service |
-| `middleware/auth.ts` | 修改 | 使用容器、统一角色层级 |
-| `src/index.ts` | 修改 | 创建容器并传递给路由 |
+| `src/db/drizzle.ts` | 修改 | 保持现有，删除 connection.ts 依赖 |
+| `src/db/index.ts` | 修改 | 移除 connection.ts 导出 |
+| `repositories/*.ts` | 修改 | 添加 @singleton() 装饰器 |
+| `services/*.ts` | 修改 | 添加 @singleton() + 构造函数注入 |
+| `middleware/auth.ts` | 修改 | 使用容器获取实例、统一角色层级 |
+| `routes/*.ts` | 修改 | 使用 container.resolve()、统一错误处理 |
+| `tests/*.test.ts` | 修改 | 使用 container.reset() + mock 注入 |
 
 ## 测试改进
 
-测试时可以注入 mock 依赖：
+使用 TSyringe 的 mock 功能：
 
 ```typescript
 // tests/auth.service.test.ts
-const mockUserRepo = {
-  findByEmail: vi.fn().mockResolvedValue(undefined),
-  create: vi.fn().mockResolvedValue({ id: 1, email: 'test@test.com' }),
-};
+import "reflect-metadata";
+import { container } from "tsyringe";
+import { vi, describe, it, expect, beforeEach } from "vitest";
+import { AuthService } from "../src/services/auth.service.js";
+import { UserRepository } from "../src/repositories/user.repository.js";
 
-const container = new Container();
-container.override('UserRepository', mockUserRepo);
+describe("AuthService", () => {
+  beforeEach(() => {
+    container.reset();
+  });
 
-const authService = container.get<AuthService>('AuthService');
-// 现可以测试 AuthService 而无需真实数据库
+  it("should register new user", async () => {
+    // 创建 mock
+    const mockUserRepo = {
+      findByEmail: vi.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockResolvedValue({ id: 1, email: "test@test.com", name: "Test" }),
+    };
+
+    // 注册 mock 替换真实实例
+    container.registerInstance(UserRepository, mockUserRepo as any);
+
+    const authService = container.resolve(AuthService);
+    const result = await authService.register({
+      email: "test@test.com",
+      password: "password123",
+      name: "Test",
+    });
+
+    expect(result.user.email).toBe("test@test.com");
+    expect(mockUserRepo.findByEmail).toHaveBeenCalledWith("test@test.com");
+  });
+});
 ```
 
 ## 实施顺序
 
-1. 创建 Container 核心类
-2. 创建统一角色层级常量
-3. 合并数据库连接管理
-4. 改造 Repository 层
-5. 改造 Service 层
-6. 改造路由层
-7. 创建默认容器配置
-8. 更新应用启动入口
-9. 更新测试代码
+1. 安装 tsyringe + reflect-metadata 依赖
+2. 更新 tsconfig.json 配置
+3. 创建统一角色层级常量 `utils/roles.ts`
+4. 在 src/index.ts 顶部导入 reflect-metadata
+5. 改造 Repository 层（添加 @singleton()）
+6. 改造 Service 层（添加 @singleton() + 构造函数注入）
+7. 改造 middleware/auth.ts（使用容器、统一角色层级）
+8. 改造路由层（使用 container.resolve()、统一错误处理）
+9. 删除 db/connection.ts，清理 db/index.ts
+10. 更新测试代码使用 container.reset() + mock
 
 ## 风险与对策
 
 | 风险 | 对策 |
 |------|------|
+| 装饰器是实验性特性 | TypeScript 已稳定支持多年，主流框架都在用 |
 | 改动范围大 | 分阶段实施，每阶段确保测试通过 |
 | 破坏现有功能 | 保持 API 接口不变，只改内部实现 |
 | 测试覆盖不足 | 先写测试再重构，确保行为不变 |
+| reflect-metadata 导入顺序 | 必须在所有文件顶部导入，否则装饰器元数据失效 |
+
+## 预期收益
+
+1. **代码简洁**：装饰器语法，无需手写 Container 类
+2. **单例自动管理**：`@singleton()` 装饰器自动管理生命周期
+3. **测试友好**：轻松注入 mock，无需真实数据库
+4. **依赖清晰**：构造函数注入，依赖关系一目了然
+5. **错误处理统一**：所有路由使用 handleRouteError
+6. **权限逻辑统一**：ROLE_HIERARCHY 集中管理
