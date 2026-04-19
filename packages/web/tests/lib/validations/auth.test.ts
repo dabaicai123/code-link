@@ -11,6 +11,14 @@ describe('auth validations', () => {
       expect(result.success).toBe(true);
     });
 
+    it('accepts short password for login', () => {
+      const result = loginSchema.safeParse({
+        email: 'test@example.com',
+        password: 'abc',
+      });
+      expect(result.success).toBe(true);
+    });
+
     it('rejects invalid email', () => {
       const result = loginSchema.safeParse({
         email: 'invalid-email',

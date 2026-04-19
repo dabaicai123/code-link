@@ -7,8 +7,7 @@ export const loginSchema = z.object({
     .email('请输入有效的邮箱地址'),
   password: z
     .string()
-    .min(1, '请输入密码')
-    .min(6, '密码至少需要 6 个字符'),
+    .min(1, '请输入密码'),
 });
 
 export const registerSchema = z.object({
@@ -24,7 +23,8 @@ export const registerSchema = z.object({
   password: z
     .string()
     .min(1, '请输入密码')
-    .min(6, '密码至少需要 6 个字符'),
+    .min(6, '密码至少需要 6 个字符')
+    .max(100, '密码不能超过 100 个字符'),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
