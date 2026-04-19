@@ -6,7 +6,8 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 6, // 更高并行度
+  // CI 环境使用较少 workers 保证稳定性，本地使用更多 workers 加速
+  workers: process.env.CI ? 2 : 4,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report' }]],
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',
@@ -18,13 +19,13 @@ export default defineConfig({
     launchOptions: {
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
     },
-    // 减少默认超时时间
-    actionTimeout: 5000,
-    navigationTimeout: 10000,
+    // 收紧超时时间，快速失败
+    actionTimeout: 3000,
+    navigationTimeout: 8000,
   },
-  // 限制 expect 超时
+  // 收紧 expect 超时，快速失败
   expect: {
-    timeout: 5000,
+    timeout: 3000,
   },
 
   projects: [
