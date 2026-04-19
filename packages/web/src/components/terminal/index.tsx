@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { TabBar } from './tab-bar';
 import { TerminalPanel } from './terminal-panel';
 import { MessageEditor, SelectedElement } from './message-editor';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useTerminalSocket } from '@/lib/socket/terminal';
 
 interface Project {
   id: number;
@@ -21,6 +22,7 @@ interface TerminalWorkspaceProps {
   onRemoveElement: (id: string) => void;
   onSendMessage: (message: string, elements: SelectedElement[]) => void;
   onRestart?: () => void;
+  onTerminalReady?: (sendFn: (elements: SelectedElement[], message: string) => void) => void;
 }
 
 export function TerminalWorkspace({
@@ -31,6 +33,7 @@ export function TerminalWorkspace({
   onRemoveElement,
   onSendMessage,
   onRestart,
+  onTerminalReady,
 }: TerminalWorkspaceProps) {
   const [tabs, setTabs] = useState([{ id: 'terminal-1', label: 'bash' }]);
   const [activeTabId, setActiveTabId] = useState('terminal-1');
@@ -52,6 +55,25 @@ export function TerminalWorkspace({
       return newTabs;
     });
   }, [activeTabId]);
+
+  // 连接终端 WebSocket
+  const { isConnected, isStarted, start, sendClaudeMessage } = useTerminalSocket({
+    projectId: project?.id ?? null,
+  });
+
+  // 启动终端
+  useEffect(() => {
+    if (isConnected && !isStarted && project?.status === 'running') {
+      start(80, 24);
+    }
+  }, [isConnected, isStarted, project?.status, start]);
+
+  // 通知父组件终端已准备好
+  useEffect(() => {
+    if (onTerminalReady && sendClaudeMessage) {
+      onTerminalReady(sendClaudeMessage);
+    }
+  }, [onTerminalReady, sendClaudeMessage]);
 
   if (!project) {
     return (

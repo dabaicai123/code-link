@@ -222,6 +222,34 @@ class TerminalManagerImpl {
   }
 
   /**
+   * 发送消息到终端 stdin
+   * @param sessionId 会话 ID
+   * @param encodedMessage Base64 编码的消息
+   */
+  sendToTerminal(sessionId: string, encodedMessage: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      logger.warn(`Session ${sessionId} not found for sending message`);
+      return;
+    }
+
+    try {
+      // 解码 Base64 消息
+      const decoded = Buffer.from(encodedMessage, 'base64').toString('utf-8');
+
+      // 写入终端 stdin
+      writeToExecStream(
+        session.execSession.stream as unknown as NodeJS.WritableStream,
+        decoded
+      );
+
+      logger.info(`Message sent to terminal session ${sessionId}`);
+    } catch (error) {
+      logger.error(`Failed to send message to session ${sessionId}`, error);
+    }
+  }
+
+  /**
    * 发送消息到 WebSocket
    */
   private sendToWebSocket(ws: WebSocketLike, msg: TerminalMessage): void {

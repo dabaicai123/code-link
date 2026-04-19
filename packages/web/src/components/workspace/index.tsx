@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { TerminalWorkspace } from '@/components/terminal';
 import { CollaborationPanel } from '@/components/collaboration';
 import { ResizableSplit } from './resizable-split';
@@ -22,6 +22,7 @@ interface WorkspaceProps {
 
 export function Workspace({ project, userId, wsUrl, onRestart }: WorkspaceProps) {
   const [elements, setElements] = useState<SelectedElement[]>([]);
+  const sendClaudeMessageRef = useRef<((elements: SelectedElement[], message: string) => void) | null>(null);
 
   const handleAddElement = useCallback((element: SelectedElement) => {
     setElements((prev) => [...prev, element]);
@@ -32,9 +33,17 @@ export function Workspace({ project, userId, wsUrl, onRestart }: WorkspaceProps)
   }, []);
 
   const handleSendMessage = useCallback((message: string, els: SelectedElement[]) => {
-    // TODO: 发送消息到 Claude Code
-    console.log('Sending message:', { message, elements: els });
-    setElements([]);
+    // 发送消息到 Claude Code 终端
+    if (sendClaudeMessageRef.current) {
+      sendClaudeMessageRef.current(els, message);
+      setElements([]);
+    } else {
+      console.warn('Terminal not ready, message not sent:', { message, elements: els });
+    }
+  }, []);
+
+  const handleTerminalReady = useCallback((sendFn: (elements: SelectedElement[], message: string) => void) => {
+    sendClaudeMessageRef.current = sendFn;
   }, []);
 
   return (
@@ -48,6 +57,7 @@ export function Workspace({ project, userId, wsUrl, onRestart }: WorkspaceProps)
           onRemoveElement={handleRemoveElement}
           onSendMessage={handleSendMessage}
           onRestart={onRestart}
+          onTerminalReady={handleTerminalReady}
         />
       }
       right={<CollaborationPanel onAddElement={handleAddElement} />}

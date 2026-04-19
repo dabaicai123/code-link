@@ -3,6 +3,7 @@
 
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { getTerminalSocket } from './index';
+import { formatClaudeMessage, type ClaudeMessage, type SelectedElement } from '@/types/claude-message';
 
 interface UseTerminalSocketOptions {
   projectId: number | null;
@@ -110,6 +111,31 @@ export function useTerminalSocket(options: UseTerminalSocketOptions) {
     socket.emit('ping', {});
   }, [socket]);
 
+  const sendClaudeMessage = useCallback(
+    (elements: SelectedElement[], userRequest: string) => {
+      if (!sessionIdRef.current) {
+        console.warn('Terminal session not started');
+        return;
+      }
+
+      const message: ClaudeMessage = {
+        type: 'claude-request',
+        elements,
+        userRequest,
+        timestamp: Date.now(),
+      };
+
+      const formattedMessage = formatClaudeMessage(message);
+      const encoded = encodeBase64(formattedMessage + '\n');
+
+      socket.emit('claude-message', {
+        sessionId: sessionIdRef.current,
+        data: encoded,
+      });
+    },
+    [socket]
+  );
+
   return {
     isConnected,
     isStarted,
@@ -117,6 +143,7 @@ export function useTerminalSocket(options: UseTerminalSocketOptions) {
     sendInput,
     resize,
     ping,
+    sendClaudeMessage,
   };
 }
 

@@ -129,6 +129,10 @@ export const TerminalEvents = {
     rows: z.number(),
   }),
   ping: z.object({}),
+  claudeMessage: z.object({
+    sessionId: z.string(),
+    data: z.string(), // Base64 编码
+  }),
 
   // 服务端 -> 客户端
   started: z.object({
@@ -157,6 +161,7 @@ export type DraftMessageBroadcast = z.infer<typeof DraftEvents.draftMessage>;
 export type TerminalStartEvent = z.infer<typeof TerminalEvents.start>;
 export type TerminalInputEvent = z.infer<typeof TerminalEvents.input>;
 export type TerminalOutputEvent = z.infer<typeof TerminalEvents.output>;
+export type TerminalClaudeMessageEvent = z.infer<typeof TerminalEvents.claudeMessage>;
 
 // Socket 数据类型
 export interface SocketData {

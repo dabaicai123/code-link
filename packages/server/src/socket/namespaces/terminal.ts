@@ -135,6 +135,17 @@ export function setupTerminalNamespace(namespace: Namespace): void {
       }
     });
 
+    // 发送 Claude 消息到终端
+    socket.on('claude-message', (data: unknown) => {
+      const parsed = TerminalEvents.claudeMessage.safeParse(data);
+      if (!parsed.success || !currentSessionId) return;
+
+      const { sessionId, data: encodedMessage } = parsed.data;
+      if (sessionId !== currentSessionId) return;
+
+      terminalManager.sendToTerminal(sessionId, encodedMessage);
+    });
+
     // Ping
     socket.on('ping', () => {
       socket.emit('pong', {});
