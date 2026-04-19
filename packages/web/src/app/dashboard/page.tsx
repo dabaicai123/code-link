@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/sidebar';
 import { Workspace } from '@/components/workspace';
 import { CreateProjectDialog } from '@/components/create-project-dialog';
 import { api, ApiError } from '@/lib/api';
+import { Loading } from '@/components/ui/loading';
 
 interface Project {
   id: number;
@@ -116,14 +117,17 @@ export default function DashboardPage() {
     }
   }, [activeProject, router]);
 
-  const handleLogout = () => { logout(); router.push('/login'); };
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   if (authLoading || !user) {
-    return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)' }}>加载中...</div>;
+    return <Loading />;
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', overflow: 'hidden' }}>
+    <div className="h-screen flex overflow-hidden">
       <Sidebar
         user={user}
         activeProjectId={activeProject?.id ?? null}
@@ -133,14 +137,9 @@ export default function DashboardPage() {
         onLogout={handleLogout}
         invitationCount={invitationCount}
       />
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+      <div className="flex-1 overflow-hidden relative">
         {isStarting ? (
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '14px', color: 'var(--text-primary)', marginBottom: '8px' }}>正在启动容器...</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>请稍候</div>
-            </div>
-          </div>
+          <Loading text="正在启动容器..." />
         ) : (
           <Workspace
             project={activeProject}

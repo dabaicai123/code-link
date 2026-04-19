@@ -2,6 +2,16 @@
 
 import { useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface AddRepoDialogProps {
   projectId: number;
@@ -73,56 +83,51 @@ export function AddRepoDialog({ projectId, isOpen, onClose, onSuccess }: AddRepo
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.7)' }} onClick={handleClose} />
-
-      <div style={{ position: 'relative', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', width: '400px', maxWidth: '90vw', padding: '24px', zIndex: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ color: 'var(--text-primary)', fontSize: '18px', fontWeight: 600 }}>添加仓库</h2>
-          <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '20px' }}>✕</button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle>添加仓库</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           {error && (
-            <div style={{ padding: '12px', backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--status-error)', borderRadius: 'var(--radius-md)', color: 'var(--status-error)', fontSize: '13px', marginBottom: '16px' }}>
+            <div className="p-3 mb-4 rounded-md bg-destructive/10 border border-destructive text-destructive text-sm">
               {error}
             </div>
           )}
 
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
-              仓库 URL
-            </label>
-            <input
+          <div className="mb-4 space-y-2">
+            <Label htmlFor="repo-url">仓库 URL</Label>
+            <Input
+              id="repo-url"
               type="url"
               value={url}
               onChange={(e) => handleUrlChange(e.target.value)}
-              className="input"
               placeholder="https://github.com/owner/repo"
               required
             />
           </div>
 
           {preview && (
-            <div style={{ padding: '12px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-md)', marginBottom: '16px' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '4px' }}>识别为</div>
-              <div style={{ color: 'var(--text-primary)', fontSize: '13px' }}>
+            <div className="p-3 bg-muted rounded-md mb-4">
+              <div className="text-muted-foreground text-[11px] mb-1">识别为</div>
+              <div className="text-foreground text-[13px]">
                 {preview.provider} / {preview.repoName}
               </div>
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-            <button type="button" onClick={handleClose} className="btn btn-secondary">取消</button>
-            <button type="submit" disabled={isSubmitting || !preview} className="btn btn-primary">
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleClose}>
+              取消
+            </Button>
+            <Button type="submit" disabled={isSubmitting || !preview}>
               {isSubmitting ? '添加中...' : '添加'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

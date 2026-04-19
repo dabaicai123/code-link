@@ -6,6 +6,8 @@ import { DRAFT_STATUS_LABELS, DRAFT_STATUS_COLORS } from '../../types/draft';
 import { draftsApi } from '../../lib/drafts-api';
 import { OnlineUsers } from './online-users';
 import type { DraftOnlineUser } from '@/lib/socket/types';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 // Alias for backward compatibility
 type OnlineUser = DraftOnlineUser;
@@ -58,82 +60,41 @@ export function DraftHeader({
   const isOwner = members.find(m => m.userId === currentUserId)?.role === 'owner';
 
   return (
-    <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+    <div className="p-3 border-b border-border bg-secondary">
       {/* 标题和状态 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="m-0 text-sm font-semibold text-foreground flex-1">
           {draft.title}
         </h3>
 
         {/* 状态选择器 */}
-        <div style={{ position: 'relative' }}>
-          <button
+        <div className="relative">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowStatusMenu(!showStatusMenu)}
             disabled={updating}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '4px 8px',
-              fontSize: '11px',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: DRAFT_STATUS_COLORS[draft.status],
-              color: 'white',
-              cursor: 'pointer',
-              opacity: updating ? 0.7 : 1,
-            }}
+            className={cn(
+              'text-xs',
+              updating && 'opacity-70'
+            )}
+            style={{ backgroundColor: DRAFT_STATUS_COLORS[draft.status], color: 'white', borderColor: 'transparent' }}
           >
             {DRAFT_STATUS_LABELS[draft.status]}
-            <span style={{ fontSize: '8px' }}>▼</span>
-          </button>
+            <span className="text-[8px] ml-1">▼</span>
+          </Button>
 
           {showStatusMenu && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: '4px',
-                backgroundColor: 'var(--bg-primary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                zIndex: 10,
-                minWidth: '120px',
-              }}
-            >
+            <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-md shadow-lg z-10 min-w-[120px]">
               {(Object.keys(DRAFT_STATUS_LABELS) as DraftStatus[]).map((status) => (
                 <button
                   key={status}
                   onClick={() => handleStatusChange(status)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '8px 12px',
-                    fontSize: '12px',
-                    textAlign: 'left',
-                    border: 'none',
-                    backgroundColor: 'transparent',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
+                  className="block w-full px-3 py-2 text-xs text-left bg-transparent text-foreground hover:bg-hover cursor-pointer"
                 >
                   <span
-                    style={{
-                      display: 'inline-block',
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      backgroundColor: DRAFT_STATUS_COLORS[status],
-                      marginRight: '8px',
-                    }}
+                    className="inline-block w-2 h-2 rounded-full mr-2"
+                    style={{ backgroundColor: DRAFT_STATUS_COLORS[status] }}
                   />
                   {DRAFT_STATUS_LABELS[status]}
                 </button>
@@ -144,105 +105,61 @@ export function DraftHeader({
 
         {/* 更多操作 */}
         {isOwner && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleDelete}
-            style={{
-              padding: '4px 8px',
-              fontSize: '11px',
-              border: '1px solid var(--status-error)',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: 'transparent',
-              color: 'var(--status-error)',
-              cursor: 'pointer',
-            }}
+            className="text-xs border-destructive text-destructive hover:bg-destructive hover:text-white"
           >
             删除
-          </button>
+          </Button>
         )}
       </div>
 
       {/* 在线用户 */}
-      <div style={{ marginBottom: '8px' }}>
+      <div className="mb-2">
         <OnlineUsers users={onlineUsers} currentUserId={currentUserId} />
       </div>
 
       {/* 成员信息 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <button
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setShowMemberMenu(!showMemberMenu)}
-          style={{
-            padding: '4px 8px',
-            fontSize: '10px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            backgroundColor: 'var(--bg-hover)',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-          }}
+          className="text-[10px]"
         >
           👥 {members.length} 成员
-        </button>
+        </Button>
       </div>
 
       {/* 成员列表弹出 */}
       {showMemberMenu && (
-        <div
-          style={{
-            marginTop: '8px',
-            padding: '8px',
-            backgroundColor: 'var(--bg-primary)',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border-color)',
-          }}
-        >
+        <div className="mt-2 p-2 bg-card rounded-sm border border-border">
           {members.map((member) => (
             <div
               key={member.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '4px 0',
-                fontSize: '12px',
-              }}
+              className="flex items-center gap-2 py-1 text-xs"
             >
-              <div
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--bg-hover)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '10px',
-                  color: 'var(--text-primary)',
-                }}
-              >
+              <div className="w-5 h-5 rounded-full bg-hover flex items-center justify-center text-[10px] text-foreground">
                 {(member.userName?.[0] || '?').toUpperCase()}
               </div>
-              <span style={{ color: 'var(--text-primary)' }}>{member.userName}</span>
+              <span className="text-foreground">{member.userName}</span>
               <span
-                style={{
-                  fontSize: '9px',
-                  padding: '1px 4px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: member.role === 'owner' ? 'var(--accent-color)' : 'var(--bg-hover)',
-                  color: member.role === 'owner' ? 'white' : 'var(--text-secondary)',
-                }}
+                className={cn(
+                  'text-[9px] px-1 py-0.5 rounded-sm',
+                  member.role === 'owner' ? 'bg-primary text-white' : 'bg-hover text-muted-foreground'
+                )}
               >
                 {member.role === 'owner' ? '所有者' : '参与者'}
               </span>
               <span
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: onlineUsers.some(u => u.userId === member.userId)
-                    ? 'var(--status-success)'
-                    : 'var(--text-secondary)',
-                  marginLeft: 'auto',
-                }}
+                className={cn(
+                  'w-1.5 h-1.5 rounded-full ml-auto',
+                  onlineUsers.some(u => u.userId === member.userId)
+                    ? 'bg-status-running'
+                    : 'bg-muted-foreground'
+                )}
                 title={onlineUsers.some(u => u.userId === member.userId) ? '在线' : '离线'}
               />
             </div>

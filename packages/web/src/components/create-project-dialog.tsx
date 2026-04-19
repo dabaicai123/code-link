@@ -3,6 +3,19 @@
 import { useState, useEffect } from 'react';
 import { api, ApiError, Organization, OrgRole } from '@/lib/api';
 import { useOrganization } from '@/lib/organization-context';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 type TemplateType = 'node' | 'node+java' | 'node+python';
 
@@ -89,132 +102,110 @@ export function CreateProjectDialog({ isOpen, onClose, onSuccess }: CreateProjec
     onClose();
   };
 
-  if (!isOpen) return null;
-
-  // 如果没有可创建项目的组织，显示提示
-  if (!loadingOrgs && organizations.length === 0) {
-    return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.7)' }} onClick={handleClose} />
-
-        <div style={{ position: 'relative', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', width: '400px', maxWidth: '90vw', padding: '24px', zIndex: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ color: 'var(--text-primary)', fontSize: '18px', fontWeight: 600 }}>创建新项目</h2>
-            <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '20px' }}>✕</button>
-          </div>
-
-          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            <div style={{ marginBottom: '12px' }}>您没有权限创建项目</div>
-            <div style={{ fontSize: '12px' }}>请联系组织管理员邀请您加入组织，或创建一个新组织</div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-            <button type="button" onClick={handleClose} className="btn btn-secondary">关闭</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.7)' }} onClick={handleClose} />
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle>创建新项目</DialogTitle>
+        </DialogHeader>
 
-      <div style={{ position: 'relative', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', width: '400px', maxWidth: '90vw', padding: '24px', zIndex: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ color: 'var(--text-primary)', fontSize: '18px', fontWeight: 600 }}>创建新项目</h2>
-          <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '20px' }}>✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          {error && (
-            <div style={{ padding: '12px', backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--status-error)', borderRadius: 'var(--radius-md)', color: 'var(--status-error)', fontSize: '13px', marginBottom: '16px' }}>
-              {error}
-            </div>
-          )}
-
-          {/* 组织选择 */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
-              所属组织 <span style={{ color: 'var(--status-error)' }}>*</span>
-            </label>
-            {loadingOrgs ? (
-              <div style={{ color: 'var(--text-secondary)', padding: '8px' }}>加载中...</div>
-            ) : (
-              <select
-                value={selectedOrgId || ''}
-                onChange={(e) => setSelectedOrgId(parseInt(e.target.value, 10))}
-                className="input"
-                required
-              >
-                {organizations.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.name} ({org.role === 'owner' ? 'Owner' : 'Developer'})
-                  </option>
-                ))}
-              </select>
-            )}
+        {/* 无权限提示 */}
+        {!loadingOrgs && organizations.length === 0 ? (
+          <div className="py-5 text-center">
+            <p className="text-secondary mb-3">您没有权限创建项目</p>
+            <p className="text-xs text-muted-foreground">请联系组织管理员邀请您加入组织，或创建一个新组织</p>
           </div>
-
-          {/* 项目名称 */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
-              项目名称 <span style={{ color: 'var(--status-error)' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="input"
-              placeholder="输入项目名称"
-              required
-            />
-          </div>
-
-          {/* 模板类型 */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>
-              模板类型 <span style={{ color: 'var(--status-error)' }}>*</span>
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {TEMPLATE_OPTIONS.map((option) => (
-                <label
-                  key={option.value}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 12px',
-                    border: `1px solid ${templateType === option.value ? 'var(--accent-primary)' : 'var(--border-color)'}`,
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    backgroundColor: templateType === option.value ? 'rgba(217, 119, 87, 0.08)' : 'transparent',
-                  }}
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {/* 组织选择 */}
+            <div className="mb-4 space-y-2">
+              <Label>
+                所属组织 <span className="text-destructive">*</span>
+              </Label>
+              {loadingOrgs ? (
+                <div className="text-muted-foreground p-2">加载中...</div>
+              ) : (
+                <Select
+                  value={selectedOrgId?.toString() || ''}
+                  onValueChange={(value) => setSelectedOrgId(parseInt(value, 10))}
                 >
-                  <input
-                    type="radio"
-                    name="template-type"
-                    value={option.value}
-                    checked={templateType === option.value}
-                    onChange={() => setTemplateType(option.value)}
-                    style={{ marginRight: '12px', accentColor: 'var(--accent-primary)' }}
-                  />
-                  <div>
-                    <div style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{option.label}</div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{option.description}</div>
-                  </div>
-                </label>
-              ))}
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择组织" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id.toString()}>
+                        {org.name} ({org.role === 'owner' ? 'Owner' : 'Developer'})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-          </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-            <button type="button" onClick={handleClose} className="btn btn-secondary">取消</button>
-            <button type="submit" disabled={isSubmitting} className="btn btn-primary">
-              {isSubmitting ? '创建中...' : '创建项目'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            {/* 项目名称 */}
+            <div className="mb-4 space-y-2">
+              <Label htmlFor="project-name">
+                项目名称 <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="project-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="输入项目名称"
+                required
+              />
+            </div>
+
+            {/* 模板类型 */}
+            <div className="mb-4 space-y-2">
+              <Label>
+                模板类型 <span className="text-destructive">*</span>
+              </Label>
+              <RadioGroup
+                value={templateType}
+                onValueChange={(value) => setTemplateType(value as TemplateType)}
+                className="flex flex-col gap-2"
+              >
+                {TEMPLATE_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    className={`flex items-center space-x-3 rounded-md border p-3 cursor-pointer transition-colors ${
+                      templateType === option.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => setTemplateType(option.value)}
+                  >
+                    <RadioGroupItem value={option.value} id={`template-${option.value}`} />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{option.label}</div>
+                      <div className="text-xs text-muted-foreground">{option.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            {/* 错误提示 */}
+            {error && (
+              <div className="p-3 mb-4 rounded-md bg-destructive/10 border border-destructive text-destructive text-sm">
+                {error}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose}>
+                取消
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? '创建中...' : '创建项目'}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

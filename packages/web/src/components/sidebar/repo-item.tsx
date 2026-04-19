@@ -1,5 +1,9 @@
 'use client';
 
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading';
+
 interface Repo {
   id: number;
   provider: 'github' | 'gitlab';
@@ -18,12 +22,12 @@ interface RepoItemProps {
 const PROVIDER_CONFIG = {
   github: {
     icon: 'GH',
-    color: '#8b949e',
+    color: 'text-muted-foreground',
     label: 'GitHub',
   },
   gitlab: {
     icon: 'GL',
-    color: '#fc6d26',
+    color: 'text-orange-500',
     label: 'GitLab',
   },
 };
@@ -32,66 +36,41 @@ export function RepoItem({ repo, onClone, onDelete, isCloning }: RepoItemProps) 
   const config = PROVIDER_CONFIG[repo.provider];
 
   return (
-    <div
-      style={{
-        padding: '8px 12px 8px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        backgroundColor: 'var(--bg-secondary)',
-        borderRadius: '4px',
-        marginBottom: '4px',
-      }}
-    >
-      <span
-        style={{
-          fontSize: '10px',
-          fontWeight: 600,
-          color: config.color,
-          width: '20px',
-          textAlign: 'center',
-        }}
-      >
+    <div className="px-3 py-2 pl-6 flex items-center gap-2 bg-secondary rounded mb-1">
+      <span className={cn('text-[10px] font-semibold w-5 text-center', config.color)}>
         {config.icon}
       </span>
-      <span style={{ color: 'var(--text-primary)', fontSize: '12px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span className="text-foreground text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
         {repo.repoName}
       </span>
       {repo.cloned ? (
         onDelete && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onDelete}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--status-error)',
-              fontSize: '11px',
-              cursor: 'pointer',
-              opacity: 0.6,
-              flexShrink: 0,
-            }}
+            className="text-destructive text-[11px] opacity-60 hover:opacity-100 h-auto py-1 px-2"
           >
             删除
-          </button>
+          </Button>
         )
       ) : onClone && (
-        <button
+        <Button
+          variant="default"
+          size="sm"
           onClick={onClone}
           disabled={isCloning}
-          style={{
-            background: 'var(--accent-color)',
-            border: 'none',
-            color: 'white',
-            fontSize: '10px',
-            cursor: isCloning ? 'wait' : 'pointer',
-            opacity: isCloning ? 0.5 : 1,
-            padding: '3px 8px',
-            borderRadius: '4px',
-            flexShrink: 0,
-          }}
+          className="h-auto py-1 px-2 text-[10px]"
         >
-          {isCloning ? 'clone中...' : 'clone'}
-        </button>
+          {isCloning ? (
+            <>
+              <LoadingSpinner size="sm" className="mr-1" />
+              clone中...
+            </>
+          ) : (
+            'clone'
+          )}
+        </Button>
       )}
     </div>
   );

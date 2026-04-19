@@ -10,6 +10,7 @@ import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
 import type { DraftOnlineUser } from '@/lib/socket/types';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type OnlineUser = DraftOnlineUser;
 
@@ -100,57 +101,39 @@ export function CollaborationPanel({
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
+    <div className="panel-container">
       {/* 头部导航 */}
-      <div
-        style={{
-          padding: '8px 12px',
-          borderBottom: '1px solid var(--border-color)',
-          backgroundColor: 'var(--bg-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
+      <div className="panel-header">
         {viewMode === 'draft' ? (
           <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBackToList}
-              style={{ fontSize: '11px' }}
-            >
+            <Button variant="ghost" size="sm" onClick={handleBackToList}>
               ← 返回
             </Button>
-            <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
+            <span className="text-sm font-medium">
               {selectedDraft?.title}
             </span>
           </>
         ) : (
           <>
-            <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
-              协作面板
-            </span>
-            <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
+            <span className="text-sm font-medium">协作面板</span>
+            <div className="flex gap-1 ml-auto">
               <Button
                 size="sm"
                 onClick={() => setActivePanel('display')}
-                style={{
-                  fontSize: '11px',
-                  backgroundColor: activePanel === 'display' ? 'var(--accent-primary)' : 'var(--bg-hover)',
-                  color: activePanel === 'display' ? '#fff' : 'var(--text-secondary)',
-                }}
+                className={cn(
+                  'text-xs',
+                  activePanel === 'display' ? 'bg-primary text-white' : 'bg-hover text-secondary'
+                )}
               >
                 展示
               </Button>
               <Button
                 size="sm"
                 onClick={() => setActivePanel('drafts')}
-                style={{
-                  fontSize: '11px',
-                  backgroundColor: activePanel === 'drafts' ? 'var(--accent-primary)' : 'var(--bg-hover)',
-                  color: activePanel === 'drafts' ? '#fff' : 'var(--text-secondary)',
-                }}
+                className={cn(
+                  'text-xs',
+                  activePanel === 'drafts' ? 'bg-primary text-white' : 'bg-hover text-secondary'
+                )}
               >
                 Draft
               </Button>
@@ -169,7 +152,7 @@ export function CollaborationPanel({
           selectedDraftId={selectedDraft?.id}
         />
       ) : selectedDraft ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="flex-1 flex flex-col overflow-hidden">
           <DraftHeader
             draft={selectedDraft}
             members={members}

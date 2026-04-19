@@ -7,6 +7,7 @@ import { UserSection } from './user-section';
 import { api, ApiError, Organization } from '@/lib/api';
 import { useOrganization } from '@/lib/organization-context';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface Project {
   id: number;
@@ -74,57 +75,34 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
   const stoppedProjects = projects.filter((p) => p.status !== 'running');
 
   return (
-    <div
-      style={{
-        width: 'var(--sidebar-width)',
-        height: '100%',
-        backgroundColor: 'var(--bg-secondary)',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRight: '1px solid var(--border-color)',
-      }}
-    >
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
-        <div style={{ color: 'var(--accent-primary)', fontWeight: 600, fontSize: '13px' }}>Code Link</div>
-        <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>v1.0.0</div>
+    <div className="sidebar-container">
+      <div className="p-3.5 border-b border-border">
+        <div className="text-accent-primary font-semibold text-[13px]">Code Link</div>
+        <div className="text-muted-foreground text-[11px] mt-0.5">v1.0.0</div>
       </div>
 
-      <div style={{ flex: 1, overflow: projects.length > 10 ? 'auto' : 'visible', padding: '12px' }}>
+      <div className={cn(
+        "flex-1 p-3",
+        projects.length > 10 ? "overflow-auto" : "overflow-visible"
+      )}>
         {/* 组织选择器 */}
-        <div style={{ marginBottom: '12px' }}>
+        <div className="mb-3">
           <div
             onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              background: showOrgDropdown ? 'var(--bg-primary)' : 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              position: 'relative',
-              transition: 'border-color 0.15s ease',
-            }}
+            className={cn(
+              "w-full px-3 py-2.5 border border-border rounded-md",
+              "text-[13px] cursor-pointer flex items-center justify-between relative",
+              "transition-colors duration-150",
+              showOrgDropdown ? "bg-primary/5" : "bg-card"
+            )}
           >
             <span>{currentOrganization?.name || '选择组织'}</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>{showOrgDropdown ? '▲' : '▼'}</span>
+            <span className="text-muted-foreground text-[10px]">{showOrgDropdown ? '▲' : '▼'}</span>
           </div>
 
           {showOrgDropdown && organizations.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              width: 'calc(var(--sidebar-width) - 24px)',
-              marginTop: '4px',
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              zIndex: 100,
-            }}>
-              {organizations.map((org) => (
+            <div className="absolute w-[calc(var(--sidebar-width)-24px)] mt-1 bg-card border border-border rounded-md z-[100]">
+              {organizations.map((org, index) => (
                 <div
                   key={org.id}
                   onClick={() => {
@@ -132,17 +110,14 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                     setShowOrgDropdown(false);
                     setLoading(true);
                   }}
-                  style={{
-                    padding: '10px 12px',
-                    color: currentOrganization?.id === org.id ? 'var(--accent-primary)' : 'var(--text-primary)',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    borderBottom: org.id !== organizations[organizations.length - 1].id ? '1px solid var(--border-color)' : 'none',
-                    transition: 'background 0.15s ease',
-                  }}
+                  className={cn(
+                    "px-3 py-2.5 text-[13px] cursor-pointer transition-colors duration-150",
+                    currentOrganization?.id === org.id ? "text-accent-primary" : "text-primary",
+                    index !== organizations.length - 1 && "border-b border-border"
+                  )}
                 >
                   {org.name}
-                  {currentOrganization?.id === org.id && <span style={{ marginLeft: '8px', fontSize: '11px' }}>✓</span>}
+                  {currentOrganization?.id === org.id && <span className="ml-2 text-[11px]">✓</span>}
                 </div>
               ))}
             </div>
@@ -150,31 +125,24 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
         </div>
 
         {/* 导航入口 */}
-        <div style={{ marginBottom: '12px' }}>
+        <div className="mb-3">
           <Button
             variant="secondary"
             onClick={() => router.push('/settings')}
             className="w-full justify-between"
           >
             <span>组织设置</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>→</span>
+            <span className="text-muted-foreground text-[11px]">→</span>
           </Button>
 
           {invitationCount && invitationCount > 0 && (
             <Button
               variant="outline"
               onClick={() => router.push('/invitations')}
-              className="w-full justify-between mt-1.5"
-              style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
+              className="w-full justify-between mt-1.5 border-accent-primary text-accent-primary"
             >
               <span>待处理邀请</span>
-              <span style={{
-                backgroundColor: 'var(--accent-primary)',
-                color: '#fff',
-                padding: '2px 6px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '11px',
-              }}>
+              <span className="bg-accent-primary text-white px-1.5 py-0.5 rounded-sm text-[11px]">
                 {invitationCount}
               </span>
             </Button>
@@ -184,19 +152,18 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
         <Button
           variant="ghost"
           onClick={onCreateProject}
-          className="w-full mb-4"
-          style={{ border: '1px dashed var(--border-light)', color: 'var(--text-muted)' }}
+          className="w-full mb-4 border border-dashed border-border-light text-muted-foreground"
         >
           + 新建项目
         </Button>
 
         {loading ? (
-          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>加载中...</div>
+          <div className="text-muted-foreground text-center p-5">加载中...</div>
         ) : (
           <>
             {runningProjects.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '8px', paddingLeft: '10px' }}>
+              <div className="mb-4">
+                <div className="text-muted-foreground text-[11px] mb-2 pl-2.5">
                   运行中 ({runningProjects.length})
                 </div>
                 {runningProjects.map((project) => (
@@ -214,8 +181,8 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
             )}
 
             {stoppedProjects.length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '8px', paddingLeft: '10px' }}>
+              <div className="mb-4">
+                <div className="text-muted-foreground text-[11px] mb-2 pl-2.5">
                   已停止 ({stoppedProjects.length})
                 </div>
                 {stoppedProjects.map((project) => (

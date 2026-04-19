@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { RepoItem } from './repo-item';
 import { AddRepoDialog } from './add-repo-dialog';
 import { api, ApiError, Repo } from '@/lib/api';
@@ -40,12 +42,6 @@ export function ProjectCard({
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [showAddRepo, setShowAddRepo] = useState(false);
   const [cloningRepoId, setCloningRepoId] = useState<number | null>(null);
-
-  const statusColor = {
-    running: 'var(--status-running)',
-    stopped: 'var(--status-stopped)',
-    created: 'var(--text-muted)',
-  }[project.status];
 
   const isRunning = project.status === 'running';
 
@@ -104,79 +100,55 @@ export function ProjectCard({
   return (
     <>
       <div
-        style={{
-          padding: '10px 12px',
-          backgroundColor: isActive ? 'rgba(217, 119, 87, 0.08)' : 'transparent',
-          border: isActive ? '1px solid var(--accent-primary)' : '1px solid transparent',
-          borderRadius: 'var(--radius-md)',
-          cursor: 'pointer',
-          marginBottom: '6px',
-          transition: 'all 0.15s ease',
-          position: 'relative',
-        }}
+        className={cn(
+          'project-card',
+          isActive && 'active'
+        )}
         onClick={onClick}
       >
-        {/* 激活状态顶部指示条 */}
-        {isActive && (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '2px',
-            background: 'var(--accent-primary)',
-          }} />
-        )}
-
         {/* 项目名称行 */}
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+        <div className="flex items-center mb-1">
           <span
             onClick={(e) => {
               e.stopPropagation();
               onToggleExpand?.();
             }}
-            style={{
-              fontSize: '10px',
-              color: 'var(--text-muted)',
-              marginRight: '4px',
-              cursor: 'pointer',
-              width: '16px',
-              textAlign: 'center',
-            }}
+            className="text-[10px] text-[var(--text-muted)] mr-1 cursor-pointer w-4 text-center"
           >
             {isExpanded ? '▼' : '▶'}
           </span>
-          <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500 }}>
+          <span className="text-[var(--text-primary)] text-[13px] font-medium">
             {project.name}
           </span>
           {/* 状态指示器 */}
-          <span style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: statusColor,
-            marginLeft: 'auto',
-            animation: isRunning ? 'pulse 2s ease-in-out infinite' : 'none',
-          }} />
+          <span
+            className={cn(
+              'w-[6px] h-[6px] rounded-full ml-auto',
+              isRunning && 'animate-pulse',
+              project.status === 'running' && 'bg-status-running',
+              project.status === 'stopped' && 'bg-status-error',
+              project.status === 'created' && 'bg-muted-foreground'
+            )}
+          />
         </div>
 
         {/* 模板类型 */}
-        <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginLeft: '20px' }}>
+        <div className="text-[var(--text-secondary)] text-[11px] ml-5">
           {TEMPLATE_LABELS[project.templateType]}
         </div>
 
         {/* 仓库数量摘要（折叠时显示） */}
         {!isExpanded && repos.length > 0 && (
-          <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '20px', marginTop: '4px' }}>
+          <div className="text-[var(--text-muted)] text-[11px] ml-5 mt-1">
             📦 {repos.length} 个仓库
           </div>
         )}
 
         {/* 展开的仓库列表 */}
         {isExpanded && (
-          <div style={{ marginTop: '8px' }}>
+          <div className="mt-2">
             {loadingRepos ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: '12px', padding: '8px 0' }}>
+              <div className="text-[var(--text-muted)] text-xs py-2">
                 加载中...
               </div>
             ) : (
@@ -190,27 +162,17 @@ export function ProjectCard({
                     isCloning={cloningRepoId === repo.id}
                   />
                 ))}
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowAddRepo(true);
                   }}
-                  style={{
-                    width: 'calc(100% - 24px)',
-                    padding: '6px',
-                    background: 'transparent',
-                    border: '1px dashed var(--border-light)',
-                    borderRadius: '4px',
-                    color: 'var(--text-muted)',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    marginTop: '4px',
-                    marginLeft: '24px',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className="w-[calc(100%-24px)] h-auto py-1.5 px-0 border border-dashed border-[var(--border-light)] text-[var(--text-muted)] text-[11px] mt-1 ml-6 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
                 >
                   + 添加仓库
-                </button>
+                </Button>
               </>
             )}
           </div>
