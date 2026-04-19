@@ -83,22 +83,23 @@ describe('Errors', () => {
   describe('response helpers', () => {
     it('should create success response', () => {
       const res = success({ id: 1, name: 'test' });
-      expect(res).toEqual({ success: true, data: { id: 1, name: 'test' } });
+      expect(res).toEqual({ code: 0, data: { id: 1, name: 'test' } });
     });
 
     it('should create error response', () => {
-      const res = errorResponse('NOT_FOUND', '资源不存在', 404);
+      const res = errorResponse(40001, '资源不存在');
       expect(res).toEqual({
-        success: false,
-        error: { code: 'NOT_FOUND', message: '资源不存在' },
+        code: 40001,
+        error: '资源不存在',
       });
     });
 
     it('should create error response with details', () => {
-      const res = errorResponse('VALIDATION_ERROR', '验证失败', 400, ['field required']);
+      const res = errorResponse(20002, '验证失败', ['field required']);
       expect(res).toEqual({
-        success: false,
-        error: { code: 'VALIDATION_ERROR', message: '验证失败', details: ['field required'] },
+        code: 20002,
+        error: '验证失败',
+        details: ['field required'],
       });
     });
   });

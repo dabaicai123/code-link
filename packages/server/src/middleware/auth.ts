@@ -1,11 +1,13 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
+import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { createLogger } from '../logger/index.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
 import { ROLE_HIERARCHY } from '../utils/roles.js';
 import { UserRepository, OrganizationRepository, ProjectRepository } from '../repositories/index.js';
 import { Errors } from '../utils/response.js';
+import { getConfig } from '../core/config.js';
 import type { OrgRole } from '../types.js';
 
 // 扩展 Express Request 类型
@@ -25,17 +27,6 @@ const userRepo = container.resolve(UserRepository);
 const orgRepo = container.resolve(OrganizationRepository);
 const projectRepo = container.resolve(ProjectRepository);
 
-// 延迟加载 AuthService 避免循环依赖
-let AuthServiceClass: typeof import('../modules/auth/service.js').AuthService | null = null;
-
-async function verifyToken(token: string): Promise<number> {
-  if (!AuthServiceClass) {
-    AuthServiceClass = (await import('../modules/auth/service.js')).AuthService;
-  }
-  const authService = container.resolve(AuthServiceClass);
-  return authService.verifyToken(token);
-}
-
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -51,16 +42,21 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     return;
   }
 
-  verifyToken(token)
-    .then(userId => {
-      logger.debug(`Token verified for userId=${userId}`);
-      req.userId = userId;
-      next();
-    })
-    .catch(err => {
-      logger.warn('Token verification failed', err);
+  try {
+    const config = getConfig();
+    const payload = jwt.verify(token, config.jwtSecret);
+    if (typeof payload !== 'object' || payload === null || typeof payload.userId !== 'number') {
+      logger.warn('Invalid token payload structure');
       res.status(401).json(Errors.unauthorized());
-    });
+      return;
+    }
+    logger.debug(`Token verified for userId=${payload.userId}`);
+    req.userId = payload.userId;
+    next();
+  } catch (err) {
+    logger.warn('Token verification failed', err);
+    res.status(401).json(Errors.unauthorized());
+  }
 }
 
 /**

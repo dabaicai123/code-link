@@ -1,54 +1,47 @@
 export interface SuccessResponse<T> {
-  success: true;
+  code: 0;
   data: T;
 }
 
 export interface ErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: string[];
-  };
+  code: number;
+  error: string;
+  details?: string[];
 }
 
 export type ApiResponse<T> = SuccessResponse<T> | ErrorResponse;
 
 export function success<T>(data: T): SuccessResponse<T> {
-  return { success: true, data };
+  return { code: 0, data };
 }
 
 export function errorResponse(
-  code: string,
+  code: number,
   message: string,
-  httpStatus: number,
   details?: string[]
 ): ErrorResponse {
-  return {
-    success: false,
-    error: { code, message, details },
-  };
+  return { code, error: message, details };
 }
 
 export const Errors = {
   notFound: (resource: string): ErrorResponse =>
-    errorResponse('NOT_FOUND', `${resource}不存在`, 404),
+    errorResponse(40001, `${resource}不存在`),
 
   forbidden: (message: string = '权限不足'): ErrorResponse =>
-    errorResponse('FORBIDDEN', message, 403),
+    errorResponse(30002, message),
 
   unauthorized: (message: string = '请先登录'): ErrorResponse =>
-    errorResponse('UNAUTHORIZED', message, 401),
+    errorResponse(30001, message),
 
   badRequest: (message: string, details?: string[]): ErrorResponse =>
-    errorResponse('BAD_REQUEST', message, 400, details),
+    errorResponse(20002, message, details),
 
   validationError: (details: string[]): ErrorResponse =>
-    errorResponse('VALIDATION_ERROR', '参数验证失败', 400, details),
+    errorResponse(20002, '参数验证失败', details),
 
   conflict: (message: string): ErrorResponse =>
-    errorResponse('CONFLICT', message, 409),
+    errorResponse(40003, message),
 
   internal: (message: string = '服务器内部错误'): ErrorResponse =>
-    errorResponse('INTERNAL_ERROR', message, 500),
+    errorResponse(10001, message),
 };

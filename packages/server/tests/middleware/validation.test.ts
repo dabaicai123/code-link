@@ -34,15 +34,13 @@ describe('Validation Middleware', () => {
     it('should reject invalid body', () => {
       mockReq.body = { name: '', age: -1 };
       validateBody(schema)(mockReq as Request, mockRes as Response, mockNext);
-      
+
       expect(mockNext).not.toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          success: false,
-          error: expect.objectContaining({
-            code: 'VALIDATION_ERROR',
-          }),
+          code: 20002,
+          error: '参数验证失败',
         })
       );
     });

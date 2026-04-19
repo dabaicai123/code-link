@@ -37,8 +37,8 @@ describe('createErrorHandler', () => {
 
     expect(mockRes.status).toHaveBeenCalledWith(404);
     expect(mockRes.json).toHaveBeenCalledWith({
-      success: false,
-      error: { code: 'NOT_FOUND', message: '项目不存在' },
+      code: 40001,
+      error: '项目不存在',
     });
   });
 
@@ -48,12 +48,9 @@ describe('createErrorHandler', () => {
 
     expect(mockRes.status).toHaveBeenCalledWith(400);
     expect(mockRes.json).toHaveBeenCalledWith({
-      success: false,
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: '参数验证失败',
-        details: ['field is required', 'invalid format'],
-      },
+      code: 20002,
+      error: '参数验证失败',
+      details: ['field is required', 'invalid format'],
     });
   });
 
@@ -63,8 +60,8 @@ describe('createErrorHandler', () => {
 
     expect(mockRes.status).toHaveBeenCalledWith(500);
     expect(mockRes.json).toHaveBeenCalledWith({
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: '服务器内部错误' },
+      code: 10001,
+      error: '服务器内部错误',
     });
     expect(mockLogger.error).toHaveBeenCalled();
   });

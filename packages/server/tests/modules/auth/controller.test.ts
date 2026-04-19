@@ -47,7 +47,7 @@ describe('AuthController', () => {
       });
       expect(statusMock).toHaveBeenCalledWith(201);
       expect(jsonMock).toHaveBeenCalledWith({
-        success: true,
+        code: 0,
         data: {
           token: 'test-token',
           user: { id: 1, name: 'Test', email: 'test@example.com' },
@@ -71,7 +71,7 @@ describe('AuthController', () => {
         password: 'password',
       });
       expect(jsonMock).toHaveBeenCalledWith({
-        success: true,
+        code: 0,
         data: {
           token: 'test-token',
           user: { id: 1, name: 'Test', email: 'test@example.com' },
@@ -93,7 +93,7 @@ describe('AuthController', () => {
 
       expect(mockService.getUser).toHaveBeenCalledWith(1);
       expect(jsonMock).toHaveBeenCalledWith({
-        success: true,
+        code: 0,
         data: { id: 1, name: 'Test', email: 'test@example.com' },
       });
     });

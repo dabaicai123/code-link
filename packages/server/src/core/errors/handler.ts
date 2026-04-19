@@ -3,21 +3,32 @@ import { isAppError } from './errors.js';
 import { errorResponse } from './response.js';
 import { LoggerService } from '../logger/logger.js';
 
+const ErrorCodeMap: Record<string, number> = {
+  'NOT_FOUND': 40001,
+  'FORBIDDEN': 30002,
+  'UNAUTHORIZED': 30001,
+  'VALIDATION_ERROR': 20002,
+  'BAD_REQUEST': 20002,
+  'CONFLICT': 40003,
+  'INTERNAL_ERROR': 10001,
+};
+
 export function createErrorHandler(logger: LoggerService) {
   return (err: Error, req: Request, res: Response, _next: NextFunction): void => {
     const requestId = (req as any).requestId || 'unknown';
 
     if (isAppError(err)) {
       logger.warn(`[${requestId}] ${err.code}: ${err.message}`);
+      const code = ErrorCodeMap[err.code] || 10001;
       res.status(err.httpStatus).json(
-        errorResponse(err.code, err.message, err.httpStatus, err.details)
+        errorResponse(code, err.message, err.details)
       );
       return;
     }
 
     logger.error(`[${requestId}] Unexpected error:`, err);
     res.status(500).json(
-      errorResponse('INTERNAL_ERROR', '服务器内部错误', 500)
+      errorResponse(10001, '服务器内部错误')
     );
   };
 }
