@@ -3,13 +3,7 @@ import { container } from "tsyringe";
 import { Router } from 'express';
 import { DraftService } from '../services/draft.service.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { getWebSocketServer } from '../websocket/server.js';
-import {
-  createDraftMessageEvent,
-  createDraftStatusChangedEvent,
-  createDraftMessageConfirmedEvent,
-  createDraftAIResponseEvent,
-} from '../websocket/types.js';
+import { getSocketServer, broadcastDraftMessage, getDraftOnlineUsers } from '../socket/index.js';
 import { createLogger } from '../logger/index.js';
 import { success, Errors, handleRouteError } from '../utils/response.js';
 
@@ -58,6 +52,7 @@ export function createDraftsRouter(): Router {
 
   router.post('/:draftId/messages', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
+    const userName = (req as any).userName || 'Unknown';
     const draftId = parseInt(req.params.draftId as string, 10);
     const { content, messageType, parentId, metadata } = req.body;
 
@@ -77,9 +72,10 @@ export function createDraftsRouter(): Router {
         metadata: metadata ? JSON.stringify(metadata) : undefined,
       });
 
-      const wsServer = getWebSocketServer();
-      if (wsServer) {
-        const wsMessage = createDraftMessageEvent(draftId, {
+      const ioServer = getSocketServer();
+      if (ioServer) {
+        const draftNamespace = ioServer.of('/draft');
+        broadcastDraftMessage(draftNamespace, draftId, {
           id: message.id,
           draft_id: message.draftId,
           parent_id: message.parentId,
@@ -88,15 +84,15 @@ export function createDraftsRouter(): Router {
           content: message.content || '',
           message_type: message.messageType,
           created_at: message.createdAt,
-        });
-        wsServer.broadcastDraftMessage(draftId, wsMessage, userId);
+        }, userId);
       }
 
       if (isAI) {
         draftService.handleAICommand(draftId, userId, content, message.id)
           .then((result) => {
-            if (result.message && wsServer) {
-              const aiWsMessage = createDraftAIResponseEvent(draftId, {
+            if (result.message && ioServer) {
+              const draftNamespace = ioServer.of('/draft');
+              broadcastDraftMessage(draftNamespace, draftId, {
                 id: result.message.id,
                 draft_id: result.message.draftId,
                 parent_id: result.message.parentId,
@@ -106,8 +102,7 @@ export function createDraftsRouter(): Router {
                 message_type: result.message.messageType,
                 metadata: result.message.metadata || null,
                 created_at: result.message.createdAt,
-              }, result.success ? 'success' : 'error');
-              wsServer.broadcastDraftMessage(draftId, aiWsMessage);
+              });
             }
           })
           .catch((error) => {
@@ -152,10 +147,14 @@ export function createDraftsRouter(): Router {
     try {
       const draft = await draftService.updateStatus(draftId, userId, status);
 
-      const wsServer = getWebSocketServer();
-      if (wsServer) {
-        const wsMessage = createDraftStatusChangedEvent(draftId, status);
-        wsServer.broadcastDraftMessage(draftId, wsMessage);
+      const ioServer = getSocketServer();
+      if (ioServer) {
+        const draftNamespace = ioServer.of('/draft');
+        draftNamespace.to(`draft:${draftId}`).emit('draftStatusChanged', {
+          draftId,
+          status,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       res.json(success({ draft }));
@@ -166,6 +165,7 @@ export function createDraftsRouter(): Router {
 
   router.post('/:draftId/messages/:messageId/confirm', authMiddleware, async (req, res) => {
     const userId = (req as any).userId;
+    const userName = (req as any).userName || 'Unknown';
     const draftId = parseInt(req.params.draftId as string, 10);
     const messageId = parseInt(req.params.messageId as string, 10);
     const { type, comment } = req.body;
@@ -181,16 +181,17 @@ export function createDraftsRouter(): Router {
         comment,
       });
 
-      const wsServer = getWebSocketServer();
-      if (wsServer) {
-        const wsMessage = createDraftMessageConfirmedEvent(
+      const ioServer = getSocketServer();
+      if (ioServer) {
+        const draftNamespace = ioServer.of('/draft');
+        draftNamespace.to(`draft:${draftId}`).emit('draftMessageConfirmed', {
           draftId,
           messageId,
-          result.userId,
-          result.userName,
-          result.type
-        );
-        wsServer.broadcastDraftMessage(draftId, wsMessage);
+          userId: result.userId,
+          userName: result.userName,
+          confirmationType: result.type,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       res.json(success({ success: true }));
