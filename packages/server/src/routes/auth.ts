@@ -1,22 +1,23 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { AuthService } from '../services/auth.service.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { success, Errors } from '../utils/response.js';
+import { success, Errors, handleRouteError } from '../utils/response.js';
+import { createLogger } from '../logger/index.js';
+
+const logger = createLogger('auth');
 
 export function createAuthRouter(): Router {
   const router = Router();
-  const authService = new AuthService();
+  const authService = container.resolve(AuthService);
 
   router.post('/register', async (req, res) => {
     try {
       const result = await authService.register(req.body);
       res.status(201).json(success(result));
-    } catch (error: any) {
-      if (error.message === '该邮箱已被注册') {
-        res.status(409).json(Errors.alreadyExists('该邮箱'));
-      } else {
-        res.status(400).json(Errors.paramInvalid('', error.message));
-      }
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '注册失败');
     }
   });
 
@@ -29,8 +30,8 @@ export function createAuthRouter(): Router {
     try {
       const result = await authService.login(req.body);
       res.json(success(result));
-    } catch (error: any) {
-      res.status(401).json(Errors.unauthorized());
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '登录失败');
     }
   });
 
@@ -43,8 +44,8 @@ export function createAuthRouter(): Router {
         return;
       }
       res.json(success(user));
-    } catch (error: any) {
-      res.status(500).json(Errors.internal(error.message));
+    } catch (error: unknown) {
+      handleRouteError(res, error, logger, '获取用户信息失败');
     }
   });
 

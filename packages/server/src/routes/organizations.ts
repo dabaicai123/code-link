@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { Router } from 'express';
 import { OrganizationService } from '../services/organization.service.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -9,7 +11,7 @@ const logger = createLogger('organizations');
 
 export function createOrganizationsRouter(): Router {
   const router = Router();
-  const orgService = new OrganizationService();
+  const orgService = container.resolve(OrganizationService);
 
   // 所有路由都需要认证
   router.use(authMiddleware);
