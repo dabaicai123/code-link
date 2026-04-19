@@ -1,23 +1,22 @@
+import "reflect-metadata";
+import { singleton, inject } from "tsyringe";
 import { UserRepository } from '../repositories/user.repository.js';
 import { OrganizationRepository } from '../repositories/organization.repository.js';
 import { ProjectRepository } from '../repositories/project.repository.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
 import { PermissionError, NotFoundError } from '../utils/errors.js';
-import type { SelectOrganizationMember } from '../db/schema/index.js';
+import { ROLE_HIERARCHY } from '../utils/roles.js';
 import type { SelectProject } from '../db/schema/index.js';
 
 type OrgRole = 'owner' | 'developer' | 'member';
 
-const ROLE_HIERARCHY: Record<OrgRole, number> = {
-  owner: 3,
-  developer: 2,
-  member: 1,
-};
-
+@singleton()
 export class PermissionService {
-  private userRepo = new UserRepository();
-  private orgRepo = new OrganizationRepository();
-  private projectRepo = new ProjectRepository();
+  constructor(
+    @inject(UserRepository) private userRepo: UserRepository,
+    @inject(OrganizationRepository) private orgRepo: OrganizationRepository,
+    @inject(ProjectRepository) private projectRepo: ProjectRepository
+  ) {}
 
   /**
    * 检查用户是否是超级管理员

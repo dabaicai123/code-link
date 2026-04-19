@@ -1,8 +1,10 @@
+import "reflect-metadata";
+import { singleton, inject } from "tsyringe";
 import { ProjectRepository } from '../repositories/project.repository.js';
 import { PermissionService } from './permission.service.js';
 import { NotFoundError, ParamError, ConflictError } from '../utils/errors.js';
 import type { SelectProject, SelectProjectRepo } from '../db/schema/index.js';
-import type { ProjectDetail, ProjectMemberWithUser } from '../repositories/project.repository.js';
+import type { ProjectDetail } from '../repositories/project.repository.js';
 
 export interface CreateProjectInput {
   name: string;
@@ -14,9 +16,12 @@ export interface AddRepoInput {
   url: string;
 }
 
+@singleton()
 export class ProjectService {
-  private projectRepo = new ProjectRepository();
-  private permService = new PermissionService();
+  constructor(
+    @inject(ProjectRepository) private projectRepo: ProjectRepository,
+    @inject(PermissionService) private permService: PermissionService
+  ) {}
 
   /**
    * 创建项目

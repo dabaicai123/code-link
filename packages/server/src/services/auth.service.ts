@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { singleton, inject } from "tsyringe";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { UserRepository } from '../repositories/user.repository.js';
@@ -21,8 +23,11 @@ export interface AuthResult {
   user: Omit<SelectUser, 'passwordHash'>;
 }
 
+@singleton()
 export class AuthService {
-  private userRepo = new UserRepository();
+  constructor(
+    @inject(UserRepository) private userRepo: UserRepository
+  ) {}
 
   /**
    * 用户注册

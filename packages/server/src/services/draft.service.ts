@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { singleton, inject } from "tsyringe";
 import { DraftRepository } from '../repositories/draft.repository.js';
 import { ProjectRepository } from '../repositories/project.repository.js';
 import { PermissionService } from './permission.service.js';
@@ -13,10 +15,13 @@ export interface CreateDraftInput {
   memberIds?: number[];
 }
 
+@singleton()
 export class DraftService {
-  private draftRepo = new DraftRepository();
-  private projectRepo = new ProjectRepository();
-  private permService = new PermissionService();
+  constructor(
+    @inject(DraftRepository) private draftRepo: DraftRepository,
+    @inject(ProjectRepository) private projectRepo: ProjectRepository,
+    @inject(PermissionService) private permService: PermissionService
+  ) {}
 
   async create(userId: number, input: CreateDraftInput): Promise<SelectDraft> {
     if (!input.projectId || !input.title) {

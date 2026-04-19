@@ -1,3 +1,5 @@
+import "reflect-metadata";
+import { singleton, inject } from "tsyringe";
 import { OrganizationRepository } from '../repositories/organization.repository.js';
 import { UserRepository } from '../repositories/user.repository.js';
 import { PermissionService } from './permission.service.js';
@@ -7,7 +9,8 @@ import type {
   OrganizationMemberWithUser,
   OrganizationInvitationWithUser,
 } from '../repositories/organization.repository.js';
-import type { SelectOrganization, OrgRole } from '../db/schema/index.js';
+import type { SelectOrganization } from '../db/schema/index.js';
+import type { OrgRole } from '../types.js';
 
 export interface CreateOrganizationInput {
   name: string;
@@ -35,10 +38,13 @@ export interface OrganizationDetail {
   members: OrganizationMemberWithUser[];
 }
 
+@singleton()
 export class OrganizationService {
-  private orgRepo = new OrganizationRepository();
-  private userRepo = new UserRepository();
-  private permService = new PermissionService();
+  constructor(
+    @inject(OrganizationRepository) private orgRepo: OrganizationRepository,
+    @inject(UserRepository) private userRepo: UserRepository,
+    @inject(PermissionService) private permService: PermissionService
+  ) {}
 
   /**
    * 创建组织
@@ -255,7 +261,6 @@ export class OrganizationService {
       throw new NotFoundError('邀请');
     }
 
-    // 使用事务一次性完成：更新邀请状态 + 添加成员 + 获取组织和成员信息
     return this.orgRepo.acceptInvitationInTransaction(
       invId,
       invitation.organizationId,
