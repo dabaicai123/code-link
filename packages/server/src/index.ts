@@ -15,7 +15,7 @@ import { createClaudeConfigRouter } from './routes/claude-config.js';
 import { createDraftsRouter } from './routes/drafts.js';
 import { createOrganizationsRouter } from './routes/organizations.js';
 import { createInvitationsRouter } from './routes/invitations.js';
-import { createWebSocketServer } from './websocket/server.js';
+import { createSocketServer } from './socket/index.js';
 import { requestLoggingMiddleware, createLogger } from './logger/index.js';
 import { setEncryptionKey } from './crypto/aes.js';
 import { initAIClient } from './ai/client.js';
@@ -58,12 +58,12 @@ export function startServer(port: number = 3001): void {
   const app = createApp();
   const server = createServer(app);
 
-  // 初始化 WebSocket 服务器
-  createWebSocketServer(server);
+  // 初始化 Socket.IO 服务器
+  createSocketServer(server);
 
   server.listen(port, () => {
     logger.info(`Server running on http://localhost:${port}`);
-    logger.info(`WebSocket server ready on ws://localhost:${port}`);
+    logger.info(`Socket.IO server ready on ws://localhost:${port}`);
   });
 }
 
