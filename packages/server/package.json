@@ -28,8 +28,10 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "reflect-metadata": "^0.2.2",
+    "socket.io": "^4.8.3",
     "tsyringe": "^4.10.0",
-    "ws": "^8.20.0"
+    "ws": "^8.20.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
