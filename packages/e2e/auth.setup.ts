@@ -7,6 +7,25 @@ import Database from 'better-sqlite3';
 let testServer: Awaited<ReturnType<typeof startTestServer>> | null = null;
 let testDb: { sqlite: Database.Database; db: any } | null = null;
 
+// 设置 API 路由转发到测试服务器
+async function setupApiRoutes(page: import('@playwright/test').Page, baseUrl: string) {
+  await page.route('**/api/**', async (route) => {
+    const url = route.request().url();
+    const apiPath = url.replace(/^.*\/api/, `${baseUrl}/api`);
+    const response = await fetch(apiPath, {
+      method: route.request().method(),
+      headers: route.request().headers(),
+      body: route.request().postData(),
+    });
+    const body = await response.text();
+    await route.fulfill({
+      status: response.status,
+      headers: Object.fromEntries(response.headers.entries()),
+      body,
+    });
+  });
+}
+
 setup('prepare test environment and authenticate', async ({ browser }) => {
   // 创建测试数据库
   testDb = createTestDb();
@@ -22,32 +41,29 @@ setup('prepare test environment and authenticate', async ({ browser }) => {
   // 创建已认证的浏览器上下文并保存状态
   const token = generateTestToken(testUser.id);
   const context = await browser.newContext();
+  const page = await context.newPage();
+
+  // 设置 API 路由
+  await setupApiRoutes(page, testServer.baseUrl);
 
   // 设置 token 到 localStorage
-  await context.addInitScript((tokenValue) => {
+  await page.addInitScript((tokenValue) => {
     localStorage.setItem('token', tokenValue);
   }, token);
-
-  const page = await context.newPage();
 
   // 访问前端验证认证状态
   const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
   await page.goto(`${webBaseUrl}/dashboard`);
 
-  // 等待页面加载，验证用户信息已加载
-  await page.waitForTimeout(2000); // 给前端时间加载用户信息
+  // 等待页面加载
+  await page.waitForTimeout(1000);
 
   // 保存认证状态
   await page.context().storageState({ path: 'playwright/.auth/user.json' });
 
   // 清理
   await context.close();
-});
 
-// 环境变量暴露测试服务器地址，供其他测试使用
-setup.afterAll(async () => {
-  // 设置环境变量供其他测试使用
-  if (testServer) {
-    process.env.E2E_BASE_URL = testServer.baseUrl;
-  }
+  // 环境变量暴露测试服务器地址，供其他测试使用
+  process.env.E2E_BASE_URL = testServer.baseUrl;
 });
