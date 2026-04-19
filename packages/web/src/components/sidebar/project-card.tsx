@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { RepoItem } from './repo-item';
 import { AddRepoDialog } from './add-repo-dialog';
 import { api, ApiError, Repo } from '@/lib/api';
@@ -74,7 +75,7 @@ export function ProjectCard({
     } catch (err) {
       console.error('Clone failed:', err);
       if (err instanceof ApiError) {
-        alert(err.message);
+        toast.error(err.message);
       }
     } finally {
       setCloningRepoId(null);
@@ -89,7 +90,7 @@ export function ProjectCard({
     } catch (err) {
       console.error('Delete failed:', err);
       if (err instanceof ApiError) {
-        alert(err.message);
+        toast.error(err.message);
       }
     }
   };

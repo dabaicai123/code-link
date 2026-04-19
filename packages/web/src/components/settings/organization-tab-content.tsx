@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { api, ApiError, Organization, OrganizationDetail, OrgRole } from '@/lib/api';
 import { CreateOrganizationDialog } from '@/components/create-organization-dialog';
 import { OrganizationDetailPanel } from './organization-detail-panel';
@@ -50,7 +51,7 @@ export function OrganizationTabContent({ currentUserId }: OrganizationTabContent
       const data = await api.getOrganization(orgId);
       setSelectedOrg(data);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '加载组织详情失败');
+      toast.error(err instanceof ApiError ? err.message : '加载组织详情失败');
     }
   };
 

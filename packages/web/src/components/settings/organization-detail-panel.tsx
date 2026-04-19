@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { api, ApiError, OrganizationDetail, OrganizationInvitation, OrgRole, OrganizationMember } from '@/lib/api';
 import { OrganizationMemberList } from '@/components/organization-member-list';
 import { InviteMemberDialog } from '@/components/invite-member-dialog';
@@ -108,7 +109,7 @@ export function OrganizationDetailPanel({
       await api.cancelInvitation(organization.id, invId);
       setInvitations(invitations.filter((inv) => inv.id !== invId));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '取消邀请失败');
+      toast.error(err instanceof ApiError ? err.message : '取消邀请失败');
     }
   };
 
@@ -120,7 +121,7 @@ export function OrganizationDetailPanel({
       onClose();
       onRefresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '退出组织失败');
+      toast.error(err instanceof ApiError ? err.message : '退出组织失败');
     }
   };
 

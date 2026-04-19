@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { api, ApiError, OrganizationInvitation, OrgRole } from '@/lib/api';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/constants';
 
@@ -22,7 +23,7 @@ export function InvitationList({ invitations, onRefresh }: InvitationListProps) 
       // 成功后跳转到组织详情
       router.push('/organizations');
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '接受邀请失败');
+      toast.error(err instanceof ApiError ? err.message : '接受邀请失败');
     } finally {
       setProcessingId(null);
     }
@@ -36,7 +37,7 @@ export function InvitationList({ invitations, onRefresh }: InvitationListProps) 
       await api.declineInvitation(invId);
       onRefresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '拒绝邀请失败');
+      toast.error(err instanceof ApiError ? err.message : '拒绝邀请失败');
     } finally {
       setProcessingId(null);
     }

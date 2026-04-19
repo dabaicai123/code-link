@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { api, ApiError, OrganizationMember, OrgRole } from '@/lib/api';
 import { ROLE_LABELS, ROLE_COLORS, ROLE_OPTIONS } from '@/lib/constants';
 
@@ -49,14 +50,14 @@ export function OrganizationMemberList({
 
   const handleRemoveMember = async (userId: number, memberRole: OrgRole) => {
     if (userId === currentUserId) {
-      alert('不能移除自己');
+      toast.error('不能移除自己');
       return;
     }
 
     // 检查是否是最后一个 owner
     const ownerCount = members.filter(m => m.role === 'owner').length;
     if (memberRole === 'owner' && ownerCount <= 1) {
-      alert('不能移除最后一个 owner');
+      toast.error('不能移除最后一个 owner');
       return;
     }
 
@@ -66,7 +67,7 @@ export function OrganizationMemberList({
       await api.removeMember(organizationId, userId);
       onRefresh();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : '移除成员失败');
+      toast.error(err instanceof ApiError ? err.message : '移除成员失败');
     }
   };
 
