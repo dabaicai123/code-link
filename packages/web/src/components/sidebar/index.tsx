@@ -6,6 +6,7 @@ import { ProjectCard } from './project-card';
 import { UserSection } from './user-section';
 import { api, ApiError, Organization } from '@/lib/api';
 import { useOrganization } from '@/lib/organization-context';
+import { Button } from '@/components/ui/button';
 
 interface Project {
   id: number;
@@ -150,32 +151,21 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
 
         {/* 导航入口 */}
         <div style={{ marginBottom: '12px' }}>
-          <button
+          <Button
+            variant="secondary"
             onClick={() => router.push('/settings')}
-            className="btn btn-secondary"
-            style={{ width: '100%', justifyContent: 'space-between' }}
+            className="w-full justify-between"
           >
             <span>组织设置</span>
             <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>→</span>
-          </button>
+          </Button>
 
           {invitationCount && invitationCount > 0 && (
-            <button
+            <Button
+              variant="outline"
               onClick={() => router.push('/invitations')}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                background: 'rgba(217, 119, 87, 0.1)',
-                border: '1px solid var(--accent-primary)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--accent-primary)',
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: '6px',
-              }}
+              className="w-full justify-between mt-1.5"
+              style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
             >
               <span>待处理邀请</span>
               <span style={{
@@ -187,24 +177,15 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
               }}>
                 {invitationCount}
               </span>
-            </button>
+            </Button>
           )}
         </div>
 
-        <button
+        <Button
+          variant="ghost"
           onClick={onCreateProject}
-          style={{
-            width: '100%',
-            padding: '10px',
-            background: 'transparent',
-            border: '1px dashed var(--border-light)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--text-muted)',
-            fontSize: '13px',
-            cursor: 'pointer',
-            marginBottom: '16px',
-            transition: 'all 0.15s ease',
-          }}
+          className="w-full mb-4"
+          style={{ border: '1px dashed var(--border-light)', color: 'var(--text-muted)' }}
         >
           + 新建项目
         </button>
