@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { singleton } from 'tsyringe';
+import { singleton, inject } from 'tsyringe';
 import { eq } from 'drizzle-orm';
 import { users } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
@@ -8,7 +8,7 @@ import type { InsertUser, SelectUser } from '../../db/schema/index.js';
 
 @singleton()
 export class AuthRepository extends BaseRepository {
-  constructor(db: DatabaseConnection) {
+  constructor(@inject(DatabaseConnection) db: DatabaseConnection) {
     super(db);
   }
 
