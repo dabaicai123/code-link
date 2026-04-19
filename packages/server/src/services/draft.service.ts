@@ -1,8 +1,7 @@
 import { DraftRepository } from '../repositories/draft.repository.js';
 import { ProjectRepository } from '../repositories/project.repository.js';
-import { OrganizationRepository } from '../repositories/organization.repository.js';
-import { UserRepository } from '../repositories/user.repository.js';
-import { isSuperAdmin } from '../utils/super-admin.js';
+import { PermissionService } from './permission.service.js';
+import { NotFoundError, ParamError, PermissionError } from '../utils/errors.js';
 import { isAICommand, parseAICommand, executeAICommand } from '../ai/commands.js';
 import { isAIEnabled } from '../ai/client.js';
 import type { SelectDraft } from '../db/schema/index.js';
@@ -17,32 +16,23 @@ export interface CreateDraftInput {
 export class DraftService {
   private draftRepo = new DraftRepository();
   private projectRepo = new ProjectRepository();
-  private orgRepo = new OrganizationRepository();
-  private userRepo = new UserRepository();
+  private permService = new PermissionService();
 
   async create(userId: number, input: CreateDraftInput): Promise<SelectDraft> {
     if (!input.projectId || !input.title) {
-      throw new Error('缺少必填字段：projectId, title');
+      throw new ParamError('缺少必填字段：projectId, title');
     }
 
     if (typeof input.title !== 'string' || input.title.length > 200) {
-      throw new Error('Draft 标题必须是 1-200 字符的字符串');
+      throw new ParamError('Draft 标题必须是 1-200 字符的字符串');
     }
 
     const project = await this.projectRepo.findById(input.projectId);
     if (!project) {
-      throw new Error('项目不存在');
+      throw new NotFoundError('项目');
     }
 
-    const user = await this.userRepo.findById(userId);
-    const isSuper = user && isSuperAdmin(user.email);
-
-    if (!isSuper) {
-      const membership = await this.orgRepo.findUserMembership(project.organizationId, userId);
-      if (!membership || !['owner', 'developer'].includes(membership.role)) {
-        throw new Error('您没有权限在该项目下创建 Draft');
-      }
-    }
+    await this.permService.checkOrgRole(userId, project.organizationId, 'developer');
 
     const draft = await this.draftRepo.createWithOwner({
       projectId: input.projectId,
@@ -53,7 +43,7 @@ export class DraftService {
     if (input.memberIds && input.memberIds.length > 0) {
       for (const memberId of input.memberIds) {
         if (memberId !== userId) {
-          const isOrgMember = await this.orgRepo.findUserMembership(project.organizationId, memberId);
+          const isOrgMember = await this.permService.getOrgRole(memberId, project.organizationId);
           if (isOrgMember) {
             await this.draftRepo.addMember({
               draftId: draft.id,
@@ -75,12 +65,12 @@ export class DraftService {
   async findById(draftId: number, userId: number): Promise<{ draft: SelectDraft; members: DraftMemberWithUser[] }> {
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership) {
-      throw new Error('您不是该 Draft 的成员');
+      throw new PermissionError('您不是该 Draft 的成员');
     }
 
     const draft = await this.draftRepo.findById(draftId);
     if (!draft) {
-      throw new Error('Draft 不存在');
+      throw new NotFoundError('Draft');
     }
 
     const members = await this.draftRepo.findMembers(draftId);
@@ -90,12 +80,12 @@ export class DraftService {
   async updateStatus(draftId: number, userId: number, status: string): Promise<SelectDraft> {
     const validStatuses = ['discussing', 'brainstorming', 'reviewing', 'developing', 'confirmed', 'archived'];
     if (!validStatuses.includes(status)) {
-      throw new Error('无效的状态值');
+      throw new ParamError('无效的状态值');
     }
 
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership) {
-      throw new Error('您不是该 Draft 的成员');
+      throw new PermissionError('您不是该 Draft 的成员');
     }
 
     return this.draftRepo.updateStatus(draftId, status);
@@ -104,7 +94,7 @@ export class DraftService {
   async delete(draftId: number, userId: number): Promise<void> {
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership || membership.role !== 'owner') {
-      throw new Error('只有 Draft owner 可以删除 Draft');
+      throw new PermissionError('只有 Draft owner 可以删除 Draft');
     }
 
     await this.draftRepo.delete(draftId);
@@ -122,12 +112,12 @@ export class DraftService {
 
   async createMessage(draftId: number, userId: number, input: { content: string; messageType?: string; parentId?: number; metadata?: string }): Promise<DraftMessageWithUser> {
     if (!input.content) {
-      throw new Error('参数无效');
+      throw new ParamError('参数无效');
     }
 
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership) {
-      throw new Error('您不是该 Draft 的成员');
+      throw new PermissionError('您不是该 Draft 的成员');
     }
 
     const message = await this.draftRepo.createMessage({
@@ -141,17 +131,16 @@ export class DraftService {
 
     await this.draftRepo.touch(draftId);
 
-    const user = await this.userRepo.findById(userId);
     return {
       ...message,
-      userName: user?.name || 'Unknown',
+      userName: 'User',
     };
   }
 
   async findMessages(draftId: number, userId: number, options?: { parentId?: number | null; before?: string; limit?: number }): Promise<DraftMessageWithUser[]> {
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership) {
-      throw new Error('您不是该 Draft 的成员');
+      throw new PermissionError('您不是该 Draft 的成员');
     }
 
     return this.draftRepo.findMessages(draftId, options || {});
@@ -160,17 +149,17 @@ export class DraftService {
   async confirmMessage(draftId: number, messageId: number, userId: number, input: { type: string; comment?: string }): Promise<{ userId: number; userName: string; type: string }> {
     const validTypes = ['agree', 'disagree', 'suggest'];
     if (!validTypes.includes(input.type)) {
-      throw new Error('type 必须是 agree, disagree 或 suggest');
+      throw new ParamError('type 必须是 agree, disagree 或 suggest');
     }
 
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership) {
-      throw new Error('您不是该 Draft 的成员');
+      throw new PermissionError('您不是该 Draft 的成员');
     }
 
     const message = await this.draftRepo.findMessage(messageId, draftId);
     if (!message) {
-      throw new Error('消息不存在');
+      throw new NotFoundError('消息');
     }
 
     await this.draftRepo.upsertConfirmation({
@@ -180,10 +169,9 @@ export class DraftService {
       comment: input.comment || null,
     });
 
-    const user = await this.userRepo.findById(userId);
     return {
       userId,
-      userName: user?.name || 'Unknown',
+      userName: 'User',
       type: input.type,
     };
   }
@@ -191,7 +179,7 @@ export class DraftService {
   async findConfirmations(draftId: number, messageId: number, userId: number) {
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership) {
-      throw new Error('您不是该 Draft 的成员');
+      throw new PermissionError('您不是该 Draft 的成员');
     }
 
     return this.draftRepo.findConfirmations(messageId);
@@ -200,22 +188,22 @@ export class DraftService {
   async addMember(draftId: number, userId: number, newUserId: number): Promise<void> {
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership || membership.role !== 'owner') {
-      throw new Error('只有 Draft owner 可以添加成员');
+      throw new PermissionError('只有 Draft owner 可以添加成员');
     }
 
     const draft = await this.draftRepo.findById(draftId);
     if (!draft) {
-      throw new Error('Draft 不存在');
+      throw new NotFoundError('Draft');
     }
 
     const project = await this.projectRepo.findById(draft.projectId);
     if (!project) {
-      throw new Error('项目不存在');
+      throw new NotFoundError('项目');
     }
 
-    const isOrgMember = await this.orgRepo.findUserMembership(project.organizationId, newUserId);
+    const isOrgMember = await this.permService.getOrgRole(newUserId, project.organizationId);
     if (!isOrgMember) {
-      throw new Error('用户不是项目所属组织的成员');
+      throw new PermissionError('用户不是项目所属组织的成员');
     }
 
     await this.draftRepo.addMember({
@@ -228,16 +216,16 @@ export class DraftService {
   async removeMember(draftId: number, userId: number, memberId: number): Promise<void> {
     const membership = await this.draftRepo.findMember(draftId, userId);
     if (!membership || membership.role !== 'owner') {
-      throw new Error('只有 Draft owner 可以移除成员');
+      throw new PermissionError('只有 Draft owner 可以移除成员');
     }
 
     const targetMembership = await this.draftRepo.findMember(draftId, memberId);
     if (!targetMembership) {
-      throw new Error('成员不存在');
+      throw new NotFoundError('成员');
     }
 
     if (targetMembership.role === 'owner') {
-      throw new Error('无法移除 Draft owner');
+      throw new PermissionError('无法移除 Draft owner');
     }
 
     await this.draftRepo.removeMember(draftId, memberId);
