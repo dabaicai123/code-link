@@ -6,6 +6,8 @@ import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
 import { MessageItem } from './message-item';
 import { MessageInput } from './message-input';
 import type { Draft, DraftMessage, MessageType } from '../../types/draft';
+import { cn } from '@/lib/utils';
+import { Loading } from '@/components/ui/loading';
 
 interface MessagePanelProps {
   draft: Draft;
@@ -77,37 +79,31 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
   const getReplies = (parentId: number) => messages.filter(m => m.parentId === parentId);
 
   if (loading) {
-    return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-        加载中...
-      </div>
-    );
+    return <Loading className="h-full" />;
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="h-full flex flex-col">
       {/* 连接状态 */}
-      <div style={{ padding: '4px 12px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className="px-3 py-1 border-b border-border flex items-center gap-2">
         <span
-          style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            backgroundColor: isConnected ? 'var(--status-running)' : 'var(--status-stopped)',
-          }}
+          className={cn(
+            'w-1.5 h-1.5 rounded-full',
+            isConnected ? 'bg-status-running' : 'bg-status-stopped'
+          )}
         />
-        <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+        <span className="text-[10px] text-muted-foreground">
           {isConnected ? '已连接' : '断开连接'}
         </span>
-        <span style={{ fontSize: '10px', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
+        <span className="text-[10px] text-muted-foreground ml-auto">
           {onlineUsers.length} 人在线
         </span>
       </div>
 
       {/* 消息列表 */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className="flex-1 overflow-auto">
         {rootMessages.length === 0 ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px' }}>
+          <div className="p-6 text-center text-muted-foreground text-xs">
             暂无消息，发送第一条消息开始讨论
           </div>
         ) : (
@@ -121,7 +117,7 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
               />
               {/* 显示回复 */}
               {getReplies(message.id).map((reply) => (
-                <div key={reply.id} style={{ paddingLeft: '36px' }}>
+                <div key={reply.id} className="pl-9">
                   <MessageItem
                     message={reply}
                     currentUserId={currentUserId}
