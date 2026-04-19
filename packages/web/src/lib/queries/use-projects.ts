@@ -48,19 +48,26 @@ export function useCreateProject() {
 export function useStartContainer() {
   const queryClient = useQueryClient();
   const currentOrg = useOrganizationStore((s) => s.currentOrganization);
+  const queryKey = projectKeys.list(currentOrg?.id || 0);
 
   return useMutation({
     mutationFn: (projectId: number) =>
       api.post(`/projects/${projectId}/container/start`),
-    onSuccess: (_, projectId) => {
-      // 乐观更新项目状态
-      queryClient.setQueryData(
-        projectKeys.list(currentOrg?.id || 0),
-        (old: Project[] | undefined) =>
-          old?.map((p) =>
-            p.id === projectId ? { ...p, status: 'running' as const } : p
-          )
+    onMutate: async (projectId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<Project[]>(queryKey);
+      queryClient.setQueryData<Project[]>(queryKey, (old) =>
+        old?.map((p) =>
+          p.id === projectId ? { ...p, status: 'running' as const } : p
+        )
       );
+      return { previous };
+    },
+    onError: (_err, _projectId, context) => {
+      queryClient.setQueryData(queryKey, context?.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 }
@@ -68,18 +75,26 @@ export function useStartContainer() {
 export function useStopContainer() {
   const queryClient = useQueryClient();
   const currentOrg = useOrganizationStore((s) => s.currentOrganization);
+  const queryKey = projectKeys.list(currentOrg?.id || 0);
 
   return useMutation({
     mutationFn: (projectId: number) =>
       api.post(`/projects/${projectId}/container/stop`),
-    onSuccess: (_, projectId) => {
-      queryClient.setQueryData(
-        projectKeys.list(currentOrg?.id || 0),
-        (old: Project[] | undefined) =>
-          old?.map((p) =>
-            p.id === projectId ? { ...p, status: 'stopped' as const } : p
-          )
+    onMutate: async (projectId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<Project[]>(queryKey);
+      queryClient.setQueryData<Project[]>(queryKey, (old) =>
+        old?.map((p) =>
+          p.id === projectId ? { ...p, status: 'stopped' as const } : p
+        )
       );
+      return { previous };
+    },
+    onError: (_err, _projectId, context) => {
+      queryClient.setQueryData(queryKey, context?.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 }

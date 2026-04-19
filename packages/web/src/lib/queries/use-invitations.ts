@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, OrganizationInvitation, OrgRole } from '@/lib/api';
+import { organizationKeys } from './use-organizations';
 
 export const invitationKeys = {
   all: ['invitations'] as const,
@@ -48,7 +49,7 @@ export function useAcceptInvitation() {
     mutationFn: (invId: number) => api.acceptInvitation(invId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invitationKeys.my() });
-      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({ queryKey: organizationKeys.all });
     },
   });
 }
