@@ -27,3 +27,4 @@ export type Provider = z.infer<typeof providerEnum>;
 export type OAuthCallbackInput = z.infer<typeof oauthCallbackSchema>;
 export type RepoQueryInput = z.infer<typeof repoQuerySchema>;
 export type WebhookCreateInput = z.infer<typeof webhookCreateSchema>;
+export type ProjectQueryInput = z.infer<typeof projectQuerySchema>;
