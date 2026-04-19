@@ -1,5 +1,7 @@
 'use client';
 
+import { cn } from '@/lib/utils';
+
 interface TerminalTab {
   id: string;
   label: string;
@@ -15,40 +17,23 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onNewTab }: TabBarProps) {
   return (
-    <div style={{
-      display: 'flex',
-      borderBottom: '1px solid var(--border-color)',
-      backgroundColor: 'var(--bg-secondary)',
-      padding: '4px 8px 0',
-    }}>
+    <div className="flex items-center h-8 bg-secondary border-b border-border px-2 pt-1">
       {tabs.map((tab) => (
         <div
           key={tab.id}
           onClick={() => onTabSelect(tab.id)}
-          style={{
-            padding: '6px 12px',
-            color: activeTabId === tab.id ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontSize: '12px',
-            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
-            backgroundColor: activeTabId === tab.id ? 'var(--bg-primary)' : 'transparent',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            marginBottom: '-1px',
-            border: activeTabId === tab.id ? '1px solid var(--border-color)' : '1px solid transparent',
-            borderBottom: activeTabId === tab.id ? '1px solid var(--bg-primary)' : '1px solid var(--border-color)',
-          }}
+          className={cn(
+            'px-3 py-1 text-xs cursor-pointer flex items-center gap-1.5 -mb-px border border-b-0',
+            activeTabId === tab.id
+              ? 'bg-primary text-primary-foreground border-border rounded-t-md'
+              : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted'
+          )}
         >
           {tab.label}
           {tabs.length > 1 && (
             <span
               onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
-              style={{
-                fontSize: '10px',
-                color: 'var(--text-muted)',
-                opacity: 0.6,
-              }}
+              className="text-[10px] text-muted-foreground opacity-60 hover:opacity-100"
             >
               ✕
             </span>
@@ -57,12 +42,7 @@ export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onNewTab }:
       ))}
       <div
         onClick={onNewTab}
-        style={{
-          padding: '6px 12px',
-          color: 'var(--text-muted)',
-          fontSize: '12px',
-          cursor: 'pointer',
-        }}
+        className="px-3 py-1 text-muted-foreground text-xs cursor-pointer hover:bg-muted"
       >
         +
       </div>

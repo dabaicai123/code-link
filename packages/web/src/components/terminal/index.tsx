@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import { TabBar } from './tab-bar';
 import { TerminalPanel } from './terminal-panel';
 import { MessageEditor, SelectedElement } from './message-editor';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface Project {
   id: number;
@@ -53,10 +55,10 @@ export function TerminalWorkspace({
 
   if (!project) {
     return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📁</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>选择一个项目开始工作</div>
+      <div className="panel-container items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4 opacity-30">📁</div>
+          <div className="text-muted-foreground text-sm">选择一个项目开始工作</div>
         </div>
       </div>
     );
@@ -65,37 +67,29 @@ export function TerminalWorkspace({
   const isRunning = project.status === 'running';
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
+    <div className="panel-container">
       {/* 头部 */}
-      <div style={{
-        padding: '10px 14px',
-        borderBottom: '1px solid var(--border-color)',
-        backgroundColor: 'var(--bg-secondary)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: isRunning ? 'var(--status-running)' : 'var(--status-stopped)',
-            animation: isRunning ? 'pulse 2s ease-in-out infinite' : 'none',
-          }} />
-          <span style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{project.name}</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>— 终端</span>
+      <div className="panel-header justify-between">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              'w-1.5 h-1.5 rounded-full',
+              isRunning ? 'bg-status-running animate-pulse' : 'bg-status-stopped'
+            )}
+          />
+          <span className="text-primary text-[13px]">{project.name}</span>
+          <span className="text-muted-foreground text-xs">— 终端</span>
         </div>
-        <button onClick={onRestart} className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: '11px' }}>
+        <Button onClick={onRestart} variant="secondary" size="sm" className="h-6 text-[11px] px-2.5">
           重启
-        </button>
+        </Button>
       </div>
 
       <TabBar tabs={tabs} activeTabId={activeTabId} onTabSelect={setActiveTabId} onTabClose={handleCloseTab} onNewTab={handleNewTab} />
 
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div className="flex-1 min-h-0">
         {tabs.map((tab) => (
-          <div key={tab.id} style={{ height: '100%', display: activeTabId === tab.id ? 'block' : 'none' }}>
+          <div key={tab.id} className={cn('h-full', activeTabId === tab.id ? 'block' : 'hidden')}>
             <TerminalPanel projectId={String(project.id)} />
           </div>
         ))}
