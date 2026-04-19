@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { TerminalWebSocket } from '@/lib/terminal-websocket';
+import { TerminalWebSocket } from '@/lib/websocket/terminal';
 import Link from 'next/link';
 import '@xterm/xterm/css/xterm.css';
 
@@ -62,7 +62,6 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
 
-    // 延迟 fit 以确保容器已渲染完成
     setTimeout(() => {
       if (fitAddonRef.current && containerRef.current) {
         fitAddonRef.current.fit();
@@ -79,20 +78,19 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
   useEffect(() => {
     if (!xtermRef.current || !mountedRef.current) return;
 
-    // 清理旧的 WebSocket 连接
     if (wsRef.current) {
       wsRef.current.disconnect();
       wsRef.current = null;
     }
 
-    const ws = new TerminalWebSocket();
+    const terminalUrl = wsUrl.includes('/terminal') ? wsUrl : `${wsUrl}/terminal`;
+    const ws = new TerminalWebSocket(terminalUrl, projectId, userId);
     wsRef.current = ws;
 
-    ws.setOnConnected(() => {
+    ws.on('connected', () => {
       if (!mountedRef.current) return;
       setIsConnected(true);
       isConnectedRef.current = true;
-      // 清空终端，避免显示旧内容
       xtermRef.current?.clear();
       if (fitAddonRef.current) {
         const dims = fitAddonRef.current.proposeDimensions();
@@ -117,21 +115,15 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     ws.setOnError((msg) => {
       if (!mountedRef.current) return;
 
-      // 检查是否是配置缺失错误
       if (msg.includes('请先在「设置')) {
         setShowConfigPrompt(true);
         setErrorMessage(msg);
       } else {
-        // 只在首次连接失败时显示错误，避免重连时重复显示
-        if (!isConnected) {
+        if (!isConnectedRef.current) {
           xtermRef.current?.write(`\r\n\x1b[31m[Error: ${msg}]\x1b[0m\r\n`);
         }
       }
     });
-
-    // 确保 wsUrl 包含 /terminal 路径
-    const terminalUrl = wsUrl ? `${wsUrl}/terminal` : 'ws://localhost:4000/terminal';
-    ws.connect(terminalUrl, projectId, userId);
 
     const disposable = xtermRef.current.onData((data) => {
       if (isConnectedRef.current && mountedRef.current) {
@@ -139,7 +131,7 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
       }
     });
     const pingInterval = setInterval(() => {
-      if (isConnected) ws.ping();
+      if (isConnectedRef.current) ws.ping();
     }, 30000);
 
     return () => {
@@ -157,7 +149,7 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
       if (fitAddonRef.current && xtermRef.current && mountedRef.current) {
         fitAddonRef.current.fit();
         const dims = fitAddonRef.current.proposeDimensions();
-        if (dims && wsRef.current && isConnected) wsRef.current.resize(dims.cols, dims.rows);
+        if (dims && wsRef.current && isConnectedRef.current) wsRef.current.resize(dims.cols, dims.rows);
       }
     };
 
@@ -171,7 +163,6 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
     };
   }, [isConnected]);
 
-  // 显示配置提示
   if (showConfigPrompt) {
     return (
       <div style={{
@@ -185,8 +176,13 @@ export function TerminalPanel({ projectId, userId, wsUrl = 'ws://localhost:4000/
           <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>{errorMessage}</p>
           <Link
             href="/settings"
-            className="btn btn-primary"
-            style={{ textDecoration: 'none' }}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: 'var(--accent-primary)',
+              color: 'white',
+              borderRadius: 'var(--radius-md)',
+              textDecoration: 'none',
+            }}
           >
             前往设置
           </Link>
