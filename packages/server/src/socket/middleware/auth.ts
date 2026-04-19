@@ -2,19 +2,18 @@
 import type { Socket } from 'socket.io';
 import { verify } from 'jsonwebtoken';
 import { createLogger } from '../../logger/index.js';
+import type { SocketData } from '../types.js';
 
 const logger = createLogger('socket-auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
-export interface AuthSocketData {
-  userId: number;
-  userName: string;
-}
+// Re-export for compatibility
+export type AuthSocketData = SocketData;
 
 declare module 'socket.io' {
   interface Socket {
-    data: AuthSocketData;
+    data: SocketData;
   }
 }
 
