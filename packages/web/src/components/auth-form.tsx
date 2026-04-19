@@ -1,11 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from '@/components/ui/form';
+import { toast } from 'sonner';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -14,93 +24,117 @@ interface AuthFormProps {
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const { login, register } = useAuth();
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+  const form = useForm<LoginInput | RegisterInput>({
+    resolver: zodResolver(mode === 'login' ? loginSchema : registerSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      ...(mode === 'register' && { name: '' }),
+    },
+  });
 
+  const onSubmit = async (values: LoginInput | RegisterInput) => {
     try {
       if (mode === 'login') {
-        await login(email, password);
+        await login(values.email, values.password);
       } else {
-        await register(email, name, password);
+        const regValues = values as RegisterInput;
+        await register(regValues.email, regValues.name, regValues.password);
       }
       router.push('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '操作失败');
-    } finally {
-      setLoading(false);
+      toast.error(err instanceof Error ? err.message : '操作失败');
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-80 text-center">
+      <div className="w-[320px] text-center">
         <div className="text-base font-semibold text-primary mb-2">Code Link</div>
-        <div className="text-muted-foreground mb-6 text-[13px]">开发环境管理平台</div>
+        <div className="text-muted-foreground mb-6 text-sm">开发环境管理平台</div>
 
-        <form onSubmit={handleSubmit} className="text-left">
-          {error && (
-            <div className="p-3 mb-4 rounded-md bg-destructive/10 border border-destructive text-destructive text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="mb-3">
-            <Input
-              type="email"
-              placeholder="邮箱地址"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="text-left">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem className="mb-3">
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="邮箱地址"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          {mode === 'register' && (
-            <div className="mb-3">
-              <Input
-                type="text"
-                placeholder="用户名"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+            {mode === 'register' && (
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="mb-3">
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="用户名"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          )}
+            )}
 
-          <div className="mb-4">
-            <Input
-              type="password"
-              placeholder="密码"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem className="mb-4">
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="密码"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <Button type="submit" disabled={loading} className="w-full py-3">
-            {loading ? '处理中...' : mode === 'login' ? '登录' : '注册'}
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              disabled={form.formState.isSubmitting}
+              className="w-full py-3"
+            >
+              {form.formState.isSubmitting
+                ? '处理中...'
+                : mode === 'login'
+                  ? '登录'
+                  : '注册'}
+            </Button>
+          </form>
+        </Form>
 
-        <div className="mt-4 text-secondary-foreground text-[13px]">
+        <div className="mt-4 text-secondary text-sm">
           {mode === 'login' ? (
             <>
               没有账户？{' '}
-              <Link href="/register" className="text-primary hover:underline">
+              <Link href="/register" className="text-primary">
                 注册
               </Link>
             </>
           ) : (
             <>
               已有账户？{' '}
-              <Link href="/login" className="text-primary hover:underline">
+              <Link href="/login" className="text-primary">
                 登录
               </Link>
             </>
