@@ -1,17 +1,13 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { createLogger } from '../logger/index.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
+import { ROLE_HIERARCHY } from '../utils/roles.js';
 import { UserRepository, OrganizationRepository, ProjectRepository } from '../repositories/index.js';
-import { Errors, success } from '../utils/response.js';
+import { Errors } from '../utils/response.js';
 import type { OrgRole } from '../types.js';
-
-// 角色层级定义
-const ROLE_HIERARCHY: Record<OrgRole, number> = {
-  owner: 3,
-  developer: 2,
-  member: 1,
-};
 
 // 扩展 Express Request 类型
 declare global {
@@ -33,10 +29,10 @@ if (!process.env.JWT_SECRET) {
 
 export const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_SECRET;
 
-// 单例 Repository 实例（避免每次请求重新创建）
-const userRepo = new UserRepository();
-const orgRepo = new OrganizationRepository();
-const projectRepo = new ProjectRepository();
+// 单例 Repository 实例通过容器获取
+const userRepo = container.resolve(UserRepository);
+const orgRepo = container.resolve(OrganizationRepository);
+const projectRepo = container.resolve(ProjectRepository);
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
