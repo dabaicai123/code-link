@@ -1,7 +1,23 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+} from '@/components/ui/form';
 import type { DraftMessage, MessageType } from '../../types/draft';
+
+const messageSchema = z.object({
+  content: z.string().min(1, '消息不能为空').max(5000, '消息过长'),
+});
+
+type MessageInput = z.infer<typeof messageSchema>;
 
 interface MessageInputProps {
   draftId: number;
@@ -11,10 +27,15 @@ interface MessageInputProps {
 }
 
 export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: MessageInputProps) {
-  const [content, setContent] = useState('');
-  const [sending, setSending] = useState(false);
-  const [messageType, setMessageType] = useState<MessageType>('text');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messageTypeRef = useRef<MessageType>('text');
+
+  const form = useForm<MessageInput>({
+    resolver: zodResolver(messageSchema),
+    defaultValues: {
+      content: '',
+    },
+  });
 
   useEffect(() => {
     if (replyTo && textareaRef.current) {
@@ -22,153 +43,116 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
     }
   }, [replyTo]);
 
-  const handleSend = async () => {
-    if (!content.trim() || sending) return;
-
-    setSending(true);
+  const onSubmit = async (values: MessageInput) => {
     try {
-      await onSend(content.trim(), messageType, replyTo?.id);
-      setContent('');
-      setMessageType('text');
+      await onSend(values.content.trim(), messageTypeRef.current, replyTo?.id);
+      form.reset();
+      messageTypeRef.current = 'text';
       onCancelReply?.();
     } catch (err) {
       console.error('Failed to send message:', err);
-    } finally {
-      setSending(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      form.handleSubmit(onSubmit)();
     }
   };
 
   const toggleCodeMode = () => {
-    setMessageType(prev => prev === 'code' ? 'text' : 'code');
+    messageTypeRef.current = messageTypeRef.current === 'code' ? 'text' : 'code';
   };
 
   const insertAICommand = () => {
-    setContent(prev => prev + '@AI ');
-    setMessageType('ai_command');
+    const currentContent = form.getValues('content');
+    form.setValue('content', currentContent + '@AI ');
+    messageTypeRef.current = 'ai_command';
     textareaRef.current?.focus();
   };
 
+  const content = form.watch('content');
+  const messageType = messageTypeRef.current;
+  const isSubmitting = form.formState.isSubmitting;
+
   return (
-    <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+    <div className="p-2 border-t border-border bg-secondary">
       {/* 回复提示 */}
       {replyTo && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 8px', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+        <div className="flex items-center gap-2 mb-2 p-1.5 bg-background rounded-md">
+          <span className="text-xs text-muted-foreground">
             回复 {replyTo.userName}:
           </span>
-          <span style={{ fontSize: '11px', color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="text-xs text-foreground flex-1 truncate">
             {replyTo.content.slice(0, 50)}{replyTo.content.length > 50 ? '...' : ''}
           </span>
           <button
+            type="button"
             onClick={onCancelReply}
-            style={{
-              padding: '2px 6px',
-              fontSize: '10px',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: 'var(--bg-hover)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-            }}
+            className="px-1.5 py-0.5 text-[10px] rounded bg-hover text-muted-foreground hover:text-foreground"
           >
             取消
           </button>
         </div>
       )}
 
-      {/* 输入区域 */}
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={messageType === 'code' ? '输入代码...' : messageType === 'ai_command' ? '输入 AI 指令...' : '输入消息...'}
-            style={{
-              width: '100%',
-              minHeight: '60px',
-              maxHeight: '150px',
-              padding: '8px 10px',
-              fontSize: '13px',
-              fontFamily: messageType === 'code' ? 'monospace' : 'inherit',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--bg-primary)',
-              color: 'var(--text-primary)',
-              resize: 'none',
-              outline: 'none',
-            }}
-          />
+      <Form form={form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-2">
+          <div className="flex-1 relative">
+            <FormField
+              name="content"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormControl>
+                    <textarea
+                      {...field}
+                      ref={textareaRef}
+                      onKeyDown={handleKeyDown}
+                      placeholder={
+                        messageType === 'code' ? '输入代码...' :
+                        messageType === 'ai_command' ? '输入 AI 指令...' :
+                        '输入消息...'
+                      }
+                      className="w-full min-h-[60px] max-h-[150px] p-2 text-sm border border-border rounded-md bg-background text-foreground resize-none outline-none focus:ring-1 focus:ring-primary"
+                      style={{
+                        fontFamily: messageType === 'code' ? 'monospace' : 'inherit',
+                      }}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          {/* 类型指示器 */}
-          {messageType !== 'text' && (
-            <div style={{ position: 'absolute', top: '4px', right: '8px' }}>
-              <span
-                style={{
-                  fontSize: '9px',
-                  padding: '1px 4px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: messageType === 'ai_command' ? 'var(--accent-color)' : 'var(--bg-hover)',
-                  color: messageType === 'ai_command' ? 'white' : 'var(--text-secondary)',
-                }}
-              >
-                {messageType === 'ai_command' ? 'AI 指令' : '代码'}
-              </span>
-            </div>
-          )}
-        </div>
+            {/* 类型指示器 */}
+            {messageType !== 'text' && (
+              <div className="absolute top-1 right-2">
+                <span className="text-[9px] px-1 py-0.5 rounded bg-primary text-primary-foreground">
+                  {messageType === 'ai_command' ? 'AI 指令' : '代码'}
+                </span>
+              </div>
+            )}
+          </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <button
-            onClick={handleSend}
-            disabled={!content.trim() || sending}
-            className="btn"
-            style={{
-              padding: '8px 12px',
-              fontSize: '12px',
-              opacity: !content.trim() || sending ? 0.5 : 1,
-            }}
-          >
-            {sending ? '发送中...' : '发送'}
-          </button>
-        </div>
-      </div>
+          <Button type="submit" size="sm" disabled={!content?.trim() || isSubmitting}>
+            {isSubmitting ? '发送中...' : '发送'}
+          </Button>
+        </form>
+      </Form>
 
       {/* 工具栏 */}
-      <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+      <div className="flex gap-2 mt-1.5">
         <button
+          type="button"
           onClick={toggleCodeMode}
-          style={{
-            padding: '4px 8px',
-            fontSize: '10px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            backgroundColor: messageType === 'code' ? 'var(--accent-primary)' : 'var(--bg-hover)',
-            color: messageType === 'code' ? '#fff' : 'var(--text-secondary)',
-            cursor: 'pointer',
-          }}
+          className="px-2 py-1 text-[10px] rounded bg-hover text-muted-foreground hover:text-foreground"
         >
           {'</>'}
         </button>
         <button
+          type="button"
           onClick={insertAICommand}
-          style={{
-            padding: '4px 8px',
-            fontSize: '10px',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            backgroundColor: messageType === 'ai_command' ? 'var(--accent-primary)' : 'var(--bg-hover)',
-            color: messageType === 'ai_command' ? '#fff' : 'var(--text-secondary)',
-            cursor: 'pointer',
-          }}
+          className="px-2 py-1 text-[10px] rounded bg-hover text-muted-foreground hover:text-foreground"
         >
           @AI
         </button>
