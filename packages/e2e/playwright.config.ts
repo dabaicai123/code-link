@@ -3,10 +3,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: false, // 测试服务器共享，不能并行
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1, // 单进程，避免数据库冲突
+  workers: 2, // 有限并行，提高速度
   reporter: [['list'], ['html', { outputFolder: 'playwright-report' }]],
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',
@@ -18,6 +18,13 @@ export default defineConfig({
     launchOptions: {
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
     },
+    // 减少默认超时时间
+    actionTimeout: 5000,
+    navigationTimeout: 10000,
+  },
+  // 限制 expect 超时
+  expect: {
+    timeout: 5000,
   },
 
   projects: [

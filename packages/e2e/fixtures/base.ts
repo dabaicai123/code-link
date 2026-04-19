@@ -17,6 +17,25 @@ export interface E2EFixtures {
 let globalTestServer: TestServer | null = null;
 let globalTestDb: { sqlite: Database.Database; db: any } | null = null;
 
+// 设置 API 路由转发到测试服务器
+async function setupApiRoutes(page: Page, testServer: TestServer) {
+  await page.route('**/api/**', async (route) => {
+    const url = route.request().url();
+    const apiPath = url.replace(/^.*\/api/, `${testServer.baseUrl}/api`);
+    const response = await fetch(apiPath, {
+      method: route.request().method(),
+      headers: route.request().headers(),
+      body: route.request().postData(),
+    });
+    const body = await response.text();
+    await route.fulfill({
+      status: response.status,
+      headers: Object.fromEntries(response.headers.entries()),
+      body,
+    });
+  });
+}
+
 export const test = base.extend<E2EFixtures>({
   // 测试服务器 fixture
   testServer: async ({}, use) => {
@@ -30,12 +49,21 @@ export const test = base.extend<E2EFixtures>({
     await use(globalTestServer);
   },
 
-  // 测试用户 fixture
-  testUser: async ({ testServer }, use) => {
-    // 创建新的测试用户
+  // 测试用户 fixture - 自动设置认证和 API 路由
+  testUser: async ({ page, testServer }, use) => {
     const { drizzle } = await import('drizzle-orm/better-sqlite3');
     const db = drizzle(testServer.db);
     const user = await seedTestUser(db);
+
+    // 设置认证 token
+    const token = generateTestToken(user.id);
+    await page.addInitScript((tokenValue) => {
+      localStorage.setItem('token', tokenValue);
+    }, token);
+
+    // 设置 API 路由转发
+    await setupApiRoutes(page, testServer);
+
     await use(user);
   },
 
@@ -45,7 +73,7 @@ export const test = base.extend<E2EFixtures>({
   },
 });
 
-// 认证测试使用的基础 test（不复用认证状态）
+// 认证测试使用的基础 test（不复用认证状态，但共享服务器）
 export const authTest = base.extend<E2EFixtures>({
   testServer: async ({}, use) => {
     if (!globalTestServer) {

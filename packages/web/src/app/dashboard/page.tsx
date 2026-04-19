@@ -58,7 +58,7 @@ export default function DashboardPage() {
       } catch (err) {
         if (err instanceof ApiError) {
           alert(err.message);
-          if (err.code === 'CLAUDE_CONFIG_MISSING') {
+          if (err.code === 40002) {
             router.push('/settings');
           }
         } else {
@@ -98,7 +98,7 @@ export default function DashboardPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         alert(err.message);
-        if (err.code === 'CLAUDE_CONFIG_MISSING') {
+        if (err.code === 40002) {
           router.push('/settings');
         } else {
           // 恢复原状态
