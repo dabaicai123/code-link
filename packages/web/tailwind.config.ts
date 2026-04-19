@@ -41,6 +41,7 @@ const config: Config = {
           foreground: 'hsl(var(--destructive-foreground))',
         },
         border: 'hsl(var(--border))',
+        'border-light': 'var(--border-light)',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         status: {
