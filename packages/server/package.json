@@ -27,6 +27,8 @@
     "drizzle-orm": "^0.45.2",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
+    "reflect-metadata": "^0.2.2",
+    "tsyringe": "^4.10.0",
     "ws": "^8.20.0"
   },
   "devDependencies": {
