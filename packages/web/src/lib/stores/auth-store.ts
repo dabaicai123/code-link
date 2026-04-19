@@ -1,12 +1,11 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { storage } from '../storage';
 
 export interface User {
   id: number;
   email: string;
   name: string;
-  avatar?: string | null;
+  avatar: string | null;
 }
 
 interface AuthState {
@@ -18,46 +17,41 @@ interface AuthState {
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  setUser: (user) =>
+    set({
+      user,
+      isAuthenticated: !!user,
+    }),
+
+  setToken: (token) => {
+    if (token) {
+      storage.setToken(token);
+    } else {
+      storage.removeToken();
+    }
+    set({ token });
+  },
+
+  logout: () => {
+    storage.removeToken();
+    set({
       user: null,
       token: null,
       isAuthenticated: false,
+    });
+  },
+}));
 
-      setUser: (user) =>
-        set({
-          user,
-          isAuthenticated: !!user,
-        }),
-
-      setToken: (token) => {
-        if (token) {
-          storage.setToken(token);
-        } else {
-          storage.removeToken();
-        }
-        set({ token });
-      },
-
-      logout: () => {
-        storage.removeToken();
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-        });
-      },
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({ token: state.token }),
-    }
-  )
-);
-
-// 初始化时从 storage 恢复 token
-if (typeof window !== 'undefined') {
+// Initialize token from storage on first client-side load
+// Use a flag to ensure this only runs once
+let initialized = false;
+if (typeof window !== 'undefined' && !initialized) {
+  initialized = true;
   const token = storage.getToken();
   if (token) {
     useAuthStore.getState().setToken(token);

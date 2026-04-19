@@ -18,7 +18,7 @@ describe('useAuthStore', () => {
   });
 
   it('sets user correctly', () => {
-    const user = { id: 1, email: 'test@example.com', name: 'Test' };
+    const user = { id: 1, email: 'test@example.com', name: 'Test', avatar: null };
     useAuthStore.getState().setUser(user);
 
     const state = useAuthStore.getState();
@@ -27,7 +27,7 @@ describe('useAuthStore', () => {
   });
 
   it('clears user on logout', () => {
-    const user = { id: 1, email: 'test@example.com', name: 'Test' };
+    const user = { id: 1, email: 'test@example.com', name: 'Test', avatar: null };
     useAuthStore.getState().setUser(user);
     useAuthStore.getState().logout();
 
