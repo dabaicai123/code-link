@@ -49,7 +49,7 @@ export default function InvitationsPage() {
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'var(--bg-primary)',
-        color: 'var(--text-secondary)',
+        color: 'var(--text-muted)',
       }}>
         加载中...
       </div>
@@ -73,7 +73,7 @@ export default function InvitationsPage() {
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-secondary)',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               fontSize: '14px',
               display: 'flex',
@@ -91,12 +91,12 @@ export default function InvitationsPage() {
             style={{
               width: '28px',
               height: '28px',
-              backgroundColor: 'var(--accent-color)',
-              borderRadius: '6px',
+              backgroundColor: 'var(--accent-primary)',
+              borderRadius: 'var(--radius-sm)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'white',
+              color: '#fff',
               fontSize: '12px',
               fontWeight: 500,
             }}
@@ -109,7 +109,7 @@ export default function InvitationsPage() {
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-secondary)',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               fontSize: '13px',
               marginLeft: '8px',

@@ -118,7 +118,7 @@ export default function DashboardPage() {
   const handleLogout = () => { logout(); router.push('/login'); };
 
   if (authLoading || !user) {
-    return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>加载中...</div>;
+    return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)' }}>加载中...</div>;
   }
 
   return (
@@ -136,8 +136,8 @@ export default function DashboardPage() {
         {isStarting ? (
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '16px', color: 'var(--text-primary)', marginBottom: '8px' }}>正在启动容器...</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>请稍候</div>
+              <div style={{ fontSize: '14px', color: 'var(--text-primary)', marginBottom: '8px' }}>正在启动容器...</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>请稍候</div>
             </div>
           </div>
         ) : (
