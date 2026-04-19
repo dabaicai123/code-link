@@ -22,32 +22,27 @@ interface RequestOptions extends RequestInit {
 
 const API_BASE = '/api';
 
+import { storage } from './storage';
+
 /**
  * 从 localStorage 获取 token
  */
 function getToken(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  return localStorage.getItem('token');
+  return storage.getToken();
 }
 
 /**
  * 保存 token 到 localStorage
  */
 export function setToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('token', token);
-  }
+  storage.setToken(token);
 }
 
 /**
  * 移除 token
  */
 export function removeToken(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('token');
-  }
+  storage.removeToken();
 }
 
 /**
