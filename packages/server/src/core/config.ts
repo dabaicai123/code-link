@@ -8,6 +8,7 @@ const configSchema = z.object({
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   anthropicApiKey: z.string().optional(),
   claudeConfigEncryptionKey: z.string().optional(),
+  adminEmails: z.array(z.string()).optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -21,6 +22,7 @@ export function loadConfig(): Config {
     logLevel: process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error' | undefined,
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     claudeConfigEncryptionKey: process.env.CLAUDE_CONFIG_ENCRYPTION_KEY,
+    adminEmails: process.env.ADMIN_EMAIL ? [process.env.ADMIN_EMAIL] : undefined,
   });
 }
 
