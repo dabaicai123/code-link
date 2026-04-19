@@ -9,6 +9,7 @@ import { DisplayPanel, SelectedElement } from './display-panel';
 import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
 import type { DraftOnlineUser } from '@/lib/socket/types';
+import { Button } from '@/components/ui/button';
 
 type OnlineUser = DraftOnlineUser;
 
@@ -113,20 +114,14 @@ export function CollaborationPanel({
       >
         {viewMode === 'draft' ? (
           <>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleBackToList}
-              style={{
-                padding: '4px 8px',
-                fontSize: '11px',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--bg-hover)',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
+              style={{ fontSize: '11px' }}
             >
               ← 返回
-            </button>
+            </Button>
             <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
               {selectedDraft?.title}
             </span>
@@ -137,30 +132,28 @@ export function CollaborationPanel({
               协作面板
             </span>
             <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
-              <button
+              <Button
+                size="sm"
                 onClick={() => setActivePanel('display')}
-                className="btn"
                 style={{
-                  padding: '4px 10px',
                   fontSize: '11px',
                   backgroundColor: activePanel === 'display' ? 'var(--accent-primary)' : 'var(--bg-hover)',
                   color: activePanel === 'display' ? '#fff' : 'var(--text-secondary)',
                 }}
               >
                 展示
-              </button>
-              <button
+              </Button>
+              <Button
+                size="sm"
                 onClick={() => setActivePanel('drafts')}
-                className="btn"
                 style={{
-                  padding: '4px 10px',
                   fontSize: '11px',
                   backgroundColor: activePanel === 'drafts' ? 'var(--accent-primary)' : 'var(--bg-hover)',
                   color: activePanel === 'drafts' ? '#fff' : 'var(--text-secondary)',
                 }}
               >
                 Draft
-              </button>
+              </Button>
             </div>
           </>
         )}
