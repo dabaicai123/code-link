@@ -1,7 +1,6 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
 import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 import { createLogger } from '../logger/index.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
 import { ROLE_HIERARCHY } from '../utils/roles.js';
@@ -21,18 +20,21 @@ declare global {
 
 const logger = createLogger('auth');
 
-const DEFAULT_SECRET = 'code-link-dev-secret';
-
-if (!process.env.JWT_SECRET) {
-  logger.warn('Using default JWT_SECRET. Set JWT_SECRET in production!');
-}
-
-export const JWT_SECRET = process.env.JWT_SECRET || DEFAULT_SECRET;
-
 // 单例 Repository 实例通过容器获取
 const userRepo = container.resolve(UserRepository);
 const orgRepo = container.resolve(OrganizationRepository);
 const projectRepo = container.resolve(ProjectRepository);
+
+// 延迟加载 AuthService 避免循环依赖
+let AuthServiceClass: typeof import('../modules/auth/service.js').AuthService | null = null;
+
+async function verifyToken(token: string): Promise<number> {
+  if (!AuthServiceClass) {
+    AuthServiceClass = (await import('../modules/auth/service.js')).AuthService;
+  }
+  const authService = container.resolve(AuthServiceClass);
+  return authService.verifyToken(token);
+}
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
@@ -49,20 +51,16 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     return;
   }
 
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    if (typeof payload !== 'object' || payload === null || typeof payload.userId !== 'number') {
-      logger.warn('Invalid token payload structure');
+  verifyToken(token)
+    .then(userId => {
+      logger.debug(`Token verified for userId=${userId}`);
+      req.userId = userId;
+      next();
+    })
+    .catch(err => {
+      logger.warn('Token verification failed', err);
       res.status(401).json(Errors.unauthorized());
-      return;
-    }
-    logger.debug(`Token verified for userId=${payload.userId}`);
-    (req as any).userId = payload.userId;
-    next();
-  } catch (err) {
-    logger.warn('Token verification failed', err);
-    res.status(401).json(Errors.unauthorized());
-  }
+    });
 }
 
 /**
