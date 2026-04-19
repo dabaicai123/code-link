@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -47,22 +49,22 @@ export function AuthForm({ mode }: AuthFormProps) {
           {error && <div style={{ padding: '12px', backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--status-error)', borderRadius: 'var(--radius-md)', color: 'var(--status-error)', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
           <div style={{ marginBottom: '12px' }}>
-            <input type="email" placeholder="邮箱地址" value={email} onChange={(e) => setEmail(e.target.value)} className="input" required />
+            <Input type="email" placeholder="邮箱地址" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
 
           {mode === 'register' && (
             <div style={{ marginBottom: '12px' }}>
-              <input type="text" placeholder="用户名" value={name} onChange={(e) => setName(e.target.value)} className="input" required />
+              <Input type="text" placeholder="用户名" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
           )}
 
           <div style={{ marginBottom: '16px' }}>
-            <input type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} className="input" required />
+            <Input type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
 
-          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', padding: '12px' }}>
+          <Button type="submit" disabled={loading} className="w-full" style={{ padding: '12px' }}>
             {loading ? '处理中...' : mode === 'login' ? '登录' : '注册'}
-          </button>
+          </Button>
         </form>
 
         <div style={{ marginTop: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
