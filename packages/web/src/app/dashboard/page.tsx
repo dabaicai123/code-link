@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/sidebar';
 import { Workspace } from '@/components/workspace';
@@ -57,13 +58,13 @@ export default function DashboardPage() {
         setProjectRefreshKey(k => k + 1);
       } catch (err) {
         if (err instanceof ApiError) {
-          alert(err.message);
+          toast.error(err.message);
           if (err.code === 40002) {
             router.push('/settings');
           }
         } else {
           console.error('启动容器失败:', err);
-          alert('启动容器失败');
+          toast.error('启动容器失败');
         }
       } finally {
         setIsStarting(false);
@@ -97,7 +98,7 @@ export default function DashboardPage() {
       setProjectRefreshKey(k => k + 1);
     } catch (err) {
       if (err instanceof ApiError) {
-        alert(err.message);
+        toast.error(err.message);
         if (err.code === 40002) {
           router.push('/settings');
         } else {
@@ -106,7 +107,7 @@ export default function DashboardPage() {
         }
       } else {
         console.error('重启容器失败:', err);
-        alert('重启容器失败');
+        toast.error('重启容器失败');
         // 恢复原状态
         setActiveProject(activeProject);
       }
