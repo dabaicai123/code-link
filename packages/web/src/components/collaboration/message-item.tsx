@@ -8,6 +8,7 @@ import {
   AI_COMMAND_TYPE_LABELS,
   type AICommandType,
 } from '../../lib/ai-commands';
+import { cn } from '@/lib/utils';
 
 interface MessageItemProps {
   message: DraftMessage;
@@ -76,16 +77,8 @@ export const MessageItem = memo(function MessageItem({ message, currentUserId, o
 
   if (isSystem) {
     return (
-      <div style={{ padding: '8px 12px', textAlign: 'center' }}>
-        <span
-          style={{
-            fontSize: '11px',
-            color: 'var(--text-secondary)',
-            backgroundColor: 'var(--bg-secondary)',
-            padding: '4px 12px',
-            borderRadius: 'var(--radius-md)',
-          }}
-        >
+      <div className="py-2 px-3 text-center">
+        <span className="text-[11px] text-muted-foreground bg-secondary px-3 py-1 rounded-md">
           {message.content}
         </span>
       </div>
@@ -95,100 +88,40 @@ export const MessageItem = memo(function MessageItem({ message, currentUserId, o
   // AI 响应特殊样式
   if (isAIResponse) {
     return (
-      <div style={{ padding: '12px', backgroundColor: 'rgba(124, 58, 237, 0.05)', borderRadius: 'var(--radius-md)', margin: '4px 8px' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {/* AI 头像 - 使用渐变色 */}
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '11px',
-              fontWeight: 600,
-              color: 'white',
-              flexShrink: 0,
-              boxShadow: '0 2px 4px rgba(124, 58, 237, 0.3)',
-            }}
-          >
+      <div className="p-3 bg-primary/5 rounded-md m-1">
+        <div className="flex gap-2">
+          {/* AI 头像 */}
+          <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-[11px] font-semibold text-white shrink-0">
             AI
           </div>
 
           {/* AI 响应内容 */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-color)' }}>
-                AI 助手
-              </span>
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                {formatTime(message.createdAt)}
-              </span>
-              {/* AI 命令类型标签 */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-medium text-primary">AI 助手</span>
+              <span className="text-[10px] text-muted-foreground">{formatTime(message.createdAt)}</span>
               {aiMetadata?.commandType && (
-                <span
-                  style={{
-                    fontSize: '9px',
-                    padding: '2px 6px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'rgba(124, 58, 237, 0.15)',
-                    color: 'var(--accent-light)',
-                    border: '1px solid var(--accent-color)',
-                  }}
-                >
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-accent-light border border-primary">
                   {getAICommandTypeLabel(aiMetadata.commandType)}
                 </span>
               )}
             </div>
 
-            {/* AI 响应内容 */}
-            <div
-              style={{
-                fontSize: '13px',
-                color: 'var(--text-primary)',
-                lineHeight: 1.6,
-                wordBreak: 'break-word',
-                whiteSpace: 'pre-wrap',
-              }}
-            >
+            <div className="text-[13px] text-foreground leading-relaxed whitespace-pre-wrap break-words">
               {message.content}
             </div>
 
-            {/* AI 元数据信息 */}
+            {/* AI 元数据 */}
             {aiMetadata && (aiMetadata.model || aiMetadata.inputTokens || aiMetadata.outputTokens) && (
-              <div style={{ marginTop: '8px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {aiMetadata.model && (
-                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                    模型: {aiMetadata.model}
-                  </span>
-                )}
-                {aiMetadata.inputTokens && (
-                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                    输入: {aiMetadata.inputTokens} tokens
-                  </span>
-                )}
-                {aiMetadata.outputTokens && (
-                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                    输出: {aiMetadata.outputTokens} tokens
-                  </span>
-                )}
+              <div className="mt-2 flex gap-3 flex-wrap text-[10px] text-muted-foreground">
+                {aiMetadata.model && <span>模型: {aiMetadata.model}</span>}
+                {aiMetadata.inputTokens && <span>输入: {aiMetadata.inputTokens} tokens</span>}
+                {aiMetadata.outputTokens && <span>输出: {aiMetadata.outputTokens} tokens</span>}
               </div>
             )}
 
-            {/* 错误信息 */}
             {aiMetadata?.error && (
-              <div
-                style={{
-                  marginTop: '8px',
-                  padding: '6px 8px',
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '11px',
-                  color: 'var(--status-error)',
-                }}
-              >
+              <div className="mt-2 p-1.5 bg-destructive/10 rounded text-[11px] text-destructive">
                 错误: {aiMetadata.error}
               </div>
             )}
@@ -199,156 +132,84 @@ export const MessageItem = memo(function MessageItem({ message, currentUserId, o
   }
 
   return (
-    <div style={{ padding: '8px 12px' }}>
-      <div style={{ display: 'flex', gap: '8px' }}>
+    <div className="px-3 py-2">
+      <div className="flex gap-2">
         {/* 头像 */}
         <div
-          style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            backgroundColor: isAICommand ? 'var(--accent-primary)' : 'var(--bg-hover)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '11px',
-            fontWeight: 600,
-            color: isAICommand ? 'white' : 'var(--text-primary)',
-            flexShrink: 0,
-          }}
+          className={cn(
+            'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium shrink-0',
+            isAICommand ? 'bg-primary text-white' : 'bg-hover text-foreground'
+          )}
         >
           {isAICommand ? 'AI' : (message.userName?.[0] || '?').toUpperCase()}
         </div>
 
         {/* 消息内容 */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '2px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-primary)' }}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-1.5 mb-0.5">
+            <span className="text-xs font-medium text-foreground">
               {isAICommand ? 'AI 助手' : message.userName || '未知用户'}
             </span>
-            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-              {formatTime(message.createdAt)}
-            </span>
+            <span className="text-[10px] text-muted-foreground">{formatTime(message.createdAt)}</span>
           </div>
-
-          {/* 消息文本/代码 */}
-          {isCode ? (
-            <pre
-              style={{
-                margin: 0,
-                padding: '8px 10px',
-                backgroundColor: 'var(--bg-secondary)',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                overflow: 'auto',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all',
-              }}
-            >
-              {message.content}
-            </pre>
-          ) : (
-            <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.5, wordBreak: 'break-word' }}>
-              {message.content}
-            </div>
-          )}
 
           {/* AI 指令标签 */}
           {isAICommand && (
-            <div style={{ marginTop: '4px' }}>
-              <span
-                style={{
-                  fontSize: '10px',
-                  padding: '2px 6px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'rgba(124, 58, 237, 0.15)',
-                  color: 'var(--accent-light)',
-                  border: '1px solid var(--accent-color)',
-                }}
-              >
+            <div className="mb-1">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-accent-light border border-primary">
                 @AI 指令
               </span>
             </div>
           )}
 
+          {isCode ? (
+            <pre className="m-0 p-2 bg-secondary rounded text-[11px] font-mono overflow-auto whitespace-pre-wrap break-all">
+              {message.content}
+            </pre>
+          ) : (
+            <div className="text-[13px] text-foreground leading-relaxed break-words">
+              {message.content}
+            </div>
+          )}
+
           {/* 操作按钮 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-            {/* 确认按钮 */}
+          <div className="flex items-center gap-2 mt-1.5">
             <button
               onClick={() => handleConfirm('agree')}
-              style={{
-                padding: '2px 6px',
-                fontSize: '10px',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: userConfirm === 'agree' ? 'var(--status-running)' : 'var(--bg-hover)',
-                color: userConfirm === 'agree' ? '#fff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
-              title="赞同"
+              className={cn(
+                'px-1.5 py-0.5 text-[10px] border-none rounded',
+                userConfirm === 'agree' ? 'bg-status-running text-white' : 'bg-hover text-muted-foreground'
+              )}
             >
               + 赞同
             </button>
             <button
               onClick={() => handleConfirm('disagree')}
-              style={{
-                padding: '2px 6px',
-                fontSize: '10px',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: userConfirm === 'disagree' ? 'var(--status-stopped)' : 'var(--bg-hover)',
-                color: userConfirm === 'disagree' ? '#fff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
-              title="反对"
+              className={cn(
+                'px-1.5 py-0.5 text-[10px] border-none rounded',
+                userConfirm === 'disagree' ? 'bg-status-stopped text-white' : 'bg-hover text-muted-foreground'
+              )}
             >
               - 反对
             </button>
             <button
               onClick={() => handleConfirm('suggest')}
-              style={{
-                padding: '2px 6px',
-                fontSize: '10px',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: userConfirm === 'suggest' ? 'var(--status-warning)' : 'var(--bg-hover)',
-                color: userConfirm === 'suggest' ? '#fff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
-              title="建议"
+              className={cn(
+                'px-1.5 py-0.5 text-[10px] border-none rounded',
+                userConfirm === 'suggest' ? 'bg-status-warning text-white' : 'bg-hover text-muted-foreground'
+              )}
             >
               * 建议
             </button>
-
-            {/* 回复按钮 */}
             <button
               onClick={() => onReply?.(message)}
-              style={{
-                padding: '2px 6px',
-                fontSize: '10px',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--bg-hover)',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
+              className="px-1.5 py-0.5 text-[10px] border-none rounded bg-hover text-muted-foreground"
             >
               回复
             </button>
-
-            {/* 查看确认 */}
             <button
               onClick={handleShowConfirmations}
-              style={{
-                padding: '2px 6px',
-                fontSize: '10px',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'transparent',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
+              className="px-1.5 py-0.5 text-[10px] border-none rounded bg-transparent text-muted-foreground"
             >
               {showConfirmations ? '隐藏' : '详情'}
             </button>
@@ -356,25 +217,21 @@ export const MessageItem = memo(function MessageItem({ message, currentUserId, o
 
           {/* 确认详情 */}
           {showConfirmations && confirmations.length > 0 && (
-            <div style={{ marginTop: '8px', padding: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
+            <div className="mt-2 p-2 bg-secondary rounded">
               {confirmations.map((conf) => (
-                <div key={conf.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', fontSize: '11px' }}>
-                  <span style={{ color: 'var(--text-primary)' }}>{conf.userName}</span>
+                <div key={conf.id} className="flex items-center gap-1.5 mb-1 text-[11px]">
+                  <span className="text-foreground">{conf.userName}</span>
                   <span
-                    style={{
-                      padding: '1px 4px',
-                      borderRadius: 'var(--radius-sm)',
-                      backgroundColor:
-                        conf.type === 'agree' ? 'var(--status-running)' :
-                        conf.type === 'disagree' ? 'var(--status-stopped)' : 'var(--status-warning)',
-                      color: 'white',
-                      fontSize: '9px',
-                    }}
+                    className={cn(
+                      'px-1 py-0.5 rounded text-[9px] text-white',
+                      conf.type === 'agree' ? 'bg-status-running' :
+                      conf.type === 'disagree' ? 'bg-status-stopped' : 'bg-status-warning'
+                    )}
                   >
                     {conf.type === 'agree' ? '赞同' : conf.type === 'disagree' ? '反对' : '建议'}
                   </span>
                   {conf.comment && (
-                    <span style={{ color: 'var(--text-secondary)' }}>: {conf.comment}</span>
+                    <span className="text-muted-foreground">: {conf.comment}</span>
                   )}
                 </div>
               ))}

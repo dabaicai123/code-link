@@ -63,7 +63,7 @@ export function DraftHeader({
     <div className="p-3 border-b border-border bg-secondary">
       {/* 标题和状态 */}
       <div className="flex items-center gap-2 mb-2">
-        <h3 className="m-0 text-sm font-semibold text-foreground flex-1">
+        <h3 className="m-0 text-sm font-medium text-foreground flex-1">
           {draft.title}
         </h3>
 
@@ -75,7 +75,7 @@ export function DraftHeader({
             onClick={() => setShowStatusMenu(!showStatusMenu)}
             disabled={updating}
             className={cn(
-              'text-xs',
+              'text-xs h-6',
               updating && 'opacity-70'
             )}
             style={{ backgroundColor: DRAFT_STATUS_COLORS[draft.status], color: 'white', borderColor: 'transparent' }}
@@ -135,7 +135,7 @@ export function DraftHeader({
 
       {/* 成员列表弹出 */}
       {showMemberMenu && (
-        <div className="mt-2 p-2 bg-card rounded-sm border border-border">
+        <div className="mt-2 p-2 bg-card rounded border border-border">
           {members.map((member) => (
             <div
               key={member.id}
