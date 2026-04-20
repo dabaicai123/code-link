@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 interface ResizableSplitProps {
   left: ReactNode;
@@ -44,25 +45,20 @@ export function ResizableSplit({ left, right, defaultLeftWidth = 55, minLeftWidt
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
   return (
-    <div ref={containerRef} style={{ display: 'flex', height: '100%' }}>
-      <div style={{ width: `${leftWidth}%`, overflow: 'hidden' }}>{left}</div>
+    <div ref={containerRef} className="flex h-full">
+      <div style={{ width: `${leftWidth}%` }} className="overflow-hidden">{left}</div>
 
       <div
         onMouseDown={handleMouseDown}
-        style={{
-          width: '4px',
-          backgroundColor: isDragging ? 'var(--accent-color)' : 'var(--border-color)',
-          cursor: 'col-resize',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: isDragging ? 'none' : 'background-color 0.15s',
-        }}
+        className={cn(
+          'w-1 cursor-col-resize flex items-center justify-center transition-colors',
+          isDragging ? 'bg-primary' : 'bg-border'
+        )}
       >
-        <div style={{ width: '2px', height: '32px', backgroundColor: 'var(--border-light)', borderRadius: '1px' }} />
+        <div className="w-0.5 h-8 bg-border-light rounded-sm" />
       </div>
 
-      <div style={{ flex: 1, overflow: 'hidden' }}>{right}</div>
+      <div className="flex-1 overflow-hidden">{right}</div>
     </div>
   );
 }
