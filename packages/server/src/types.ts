@@ -62,8 +62,6 @@ export interface OrganizationInvitation {
   created_at: string;
 }
 
-export type OrgRole = 'owner' | 'developer' | 'member';
-
 export interface Message {
   id: number;
   project_id: number;
