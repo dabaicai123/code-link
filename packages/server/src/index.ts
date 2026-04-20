@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { container } from 'tsyringe';
+import { getConfig } from './core/config.js';
 
 // 数据库初始化
 import { getSqliteDb, initSchema, initDefaultAdmin } from './db/index.js';
@@ -47,8 +48,18 @@ export function createApp(): express.Express {
   registerClaudeConfigModule();
   registerContainerModule();
 
+  // 获取配置
+  const config = getConfig();
+
   // 中间件
-  app.use(cors());
+  // Configure CORS with origin whitelist
+  const corsOptions = {
+    origin: config.corsOrigins || config.corsOrigin,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  };
+  app.use(cors(corsOptions));
   app.use(express.json());
 
   // 健康检查
