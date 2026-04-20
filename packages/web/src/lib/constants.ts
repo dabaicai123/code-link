@@ -1,6 +1,6 @@
 // packages/web/src/lib/constants.ts
 
-import type { OrgRole } from './api';
+import type { OrgRole } from '@/types/user';
 
 // 角色标签
 export const ROLE_LABELS: Record<OrgRole, string> = {
