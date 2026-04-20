@@ -10,6 +10,7 @@ import { decrypt, isEncryptionKeySet } from '../../crypto/aes.js';
 import { ProjectRepository } from '../../modules/project/repository.js';
 import { ClaudeConfigRepository } from '../../modules/claude-config/repository.js';
 import { OrganizationRepository } from '../../modules/organization/repository.js';
+import { sanitizeErrorMessage } from '../utils/error-sanitize.js';
 
 const logger = createLogger('socket-terminal');
 
@@ -61,7 +62,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
           return;
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : '获取容器状态失败';
+        const message = sanitizeErrorMessage(error);
         socket.emit('error', { message });
         return;
       }
@@ -108,7 +109,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
         currentSessionId = sessionId;
         socket.emit('started', { sessionId });
       } catch (error) {
-        const message = error instanceof Error ? error.message : '创建终端会话失败';
+        const message = sanitizeErrorMessage(error);
         socket.emit('error', { message });
       }
     });

@@ -5,6 +5,7 @@ import { createAuthMiddleware } from './middleware/auth.js';
 import { setupProjectNamespace } from './namespaces/project.js';
 import { setupDraftNamespace } from './namespaces/draft.js';
 import { setupTerminalNamespace } from './namespaces/terminal.js';
+import { setupCleanupInterval, stopCleanupInterval, resetRoomUsers } from './utils/room-manager.js';
 import { createLogger } from '../logger/index.js';
 
 const logger = createLogger('socket-server');
@@ -80,6 +81,9 @@ export function createSocketServer(httpServer: HttpServer): Server {
   setupDraftNamespace(ioInstance.of('/draft'));
   setupTerminalNamespace(ioInstance.of('/terminal'));
 
+  // Start TTL cleanup for empty rooms
+  setupCleanupInterval();
+
   logger.info('Socket.IO server initialized');
 
   return ioInstance;
@@ -90,6 +94,7 @@ export function getSocketServer(): Server | null {
 }
 
 export function closeSocketServer(): void {
+  stopCleanupInterval();
   if (ioInstance) {
     ioInstance.close();
     ioInstance = null;
