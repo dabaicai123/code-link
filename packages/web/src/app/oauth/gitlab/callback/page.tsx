@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/auth-context';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { useCurrentUser } from '@/lib/queries';
 
 const spinnerStyle = { animation: 'spin 1s linear infinite', height: '32px', width: '32px', color: 'var(--accent-color)', margin: '0 auto' };
 
@@ -27,7 +28,8 @@ function PageContainer({ children }: { children: React.ReactNode }) {
 function GitLabCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading: authLoading } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const { isLoading: authLoading } = useCurrentUser();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
 

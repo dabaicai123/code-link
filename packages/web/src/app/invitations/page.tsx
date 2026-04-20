@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { useLogout, useCurrentUser } from '@/lib/queries';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import { api, ApiError, OrganizationInvitation } from '@/lib/api';
 import { InvitationList } from '@/components/invitation-list';
 
 export default function InvitationsPage() {
   const router = useRouter();
-  const { user, loading: authLoading, logout } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const logout = useLogout();
+  const { isLoading: authLoading } = useCurrentUser();
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

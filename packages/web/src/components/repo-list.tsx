@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api, ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/auth-context';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 interface ProjectRepo {
   id: number;
@@ -25,7 +25,7 @@ interface RepoListProps {
 }
 
 export function RepoList({ projectId, containerId }: RepoListProps) {
-  const { user } = useAuth();
+  const user = useAuthStore((s) => s.user);
   const [repos, setRepos] = useState<ProjectRepo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

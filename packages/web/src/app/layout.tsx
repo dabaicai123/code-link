@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { QueryProvider } from '@/components/providers/query-provider';
-import { AuthProvider } from '@/lib/auth-context';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/globals.css';
 
@@ -21,9 +20,7 @@ export default function RootLayout({
       </head>
       <body>
         <QueryProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          {children}
           <Toaster position="top-right" richColors />
         </QueryProvider>
       </body>

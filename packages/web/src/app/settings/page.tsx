@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { useLogout, useCurrentUser } from '@/lib/queries';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import { SettingsTabs, SettingsTab } from '@/components/settings/settings-tabs';
 import { OrganizationTabContent } from '@/components/settings/organization-tab-content';
 import { api } from '@/lib/api';
@@ -26,7 +27,9 @@ interface ClaudeConfigResponse {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, loading: authLoading, logout } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const logout = useLogout();
+  const { isLoading: authLoading } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<SettingsTab>('organization');
   const [configText, setConfigText] = useState('');
   const [hasConfig, setHasConfig] = useState(false);

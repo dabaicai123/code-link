@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/lib/auth-context';
+import { useLogin, useRegister } from '@/lib/queries';
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,8 @@ interface AuthFormProps {
 
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
-  const { login, register } = useAuth();
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
 
   const form = useForm<LoginInput | RegisterInput>({
     resolver: zodResolver(mode === 'login' ? loginSchema : registerSchema),
@@ -37,10 +38,10 @@ export function AuthForm({ mode }: AuthFormProps) {
   const onSubmit = async (values: LoginInput | RegisterInput) => {
     try {
       if (mode === 'login') {
-        await login(values.email, values.password);
+        await loginMutation.mutateAsync(values);
       } else {
         const regValues = values as RegisterInput;
-        await register(regValues.email, regValues.name, regValues.password);
+        await registerMutation.mutateAsync(regValues);
       }
       router.push('/dashboard');
     } catch (err) {

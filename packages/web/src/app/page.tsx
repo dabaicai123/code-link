@@ -2,19 +2,21 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { useCurrentUser } from '@/lib/queries';
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const { isLoading } = useCurrentUser();
 
   useEffect(() => {
-    if (!loading) {
+    if (!isLoading) {
       router.replace(user ? '/dashboard' : '/login');
     }
-  }, [user, loading, router]);
+  }, [user, isLoading, router]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)' }}>
         加载中...

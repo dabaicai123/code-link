@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api, ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/auth-context';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 /**
  * 仓库提供商
@@ -52,7 +52,7 @@ export function RepoImportDialog({
   onClose,
   onSuccess,
 }: RepoImportDialogProps) {
-  const { user } = useAuth();
+  const user = useAuthStore((s) => s.user);
   const [provider, setProvider] = useState<Provider>('github');
   const [repos, setRepos] = useState<Repo[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);

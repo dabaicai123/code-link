@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useAuth } from '@/lib/auth-context';
-import { useProjects, useStartContainer, useMyInvitations, Project } from '@/lib/queries';
+import { useLogout, useCurrentUser, useProjects, useStartContainer, useMyInvitations, Project } from '@/lib/queries';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import { useOrganizationStore } from '@/lib/stores';
 import { Sidebar } from '@/components/sidebar';
 import { Workspace } from '@/components/workspace';
@@ -14,7 +14,9 @@ import { ApiError } from '@/lib/api';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading, logout } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const logout = useLogout();
+  const { isLoading: authLoading } = useCurrentUser();
   const currentOrg = useOrganizationStore((s) => s.currentOrganization);
 
   // 使用 TanStack Query
