@@ -5,6 +5,8 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { container } from 'tsyringe';
 
+import { getConfig } from './core/config.js';
+
 // 数据库初始化
 import { getSqliteDb, initSchema, initDefaultAdmin } from './db/index.js';
 
@@ -48,7 +50,25 @@ export function createApp(): express.Express {
   registerContainerModule();
 
   // 中间件
-  app.use(cors());
+  const config = getConfig();
+
+  // Configure CORS with origin whitelist
+  const corsOptions: cors.CorsOptions = {
+    origin: (origin, callback) => {
+      const allowedOrigins = config.corsOrigins || [config.corsOrigin];
+      // Allow requests with no origin (e.g., mobile apps, curl)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  };
+
+  app.use(cors(corsOptions));
   app.use(express.json());
 
   // 健康检查

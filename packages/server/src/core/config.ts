@@ -5,6 +5,7 @@ const configSchema = z.object({
   dbPath: z.string().default('data/code-link.db'),
   jwtSecret: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   corsOrigin: z.string().default('http://localhost:3000'),
+  corsOrigins: z.array(z.string()).optional(),
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   anthropicApiKey: z.string().optional(),
   claudeConfigEncryptionKey: z.string().optional(),
@@ -14,11 +15,16 @@ const configSchema = z.object({
 export type Config = z.infer<typeof configSchema>;
 
 export function loadConfig(): Config {
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+    : undefined;
+
   return configSchema.parse({
     port: process.env.PORT ? parseInt(process.env.PORT, 10) : undefined,
     dbPath: process.env.DB_PATH,
     jwtSecret: process.env.JWT_SECRET || 'code-link-dev-secret-key-min-32-chars',
     corsOrigin: process.env.CORS_ORIGIN,
+    corsOrigins,
     logLevel: process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error' | undefined,
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     claudeConfigEncryptionKey: process.env.CLAUDE_CONFIG_ENCRYPTION_KEY,
