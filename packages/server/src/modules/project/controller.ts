@@ -35,7 +35,7 @@ export class ProjectController {
 
   async listRepos(req: Request, res: Response): Promise<void> {
     const userId = req.userId!;
-    const projectId = Number(req.params.id);
+    const projectId = parseInt(req.params.id, 10);
 
     const repos = await this.service.findRepos(projectId, userId);
     res.json(success(repos));
@@ -43,7 +43,7 @@ export class ProjectController {
 
   async addRepo(req: Request, res: Response): Promise<void> {
     const userId = req.userId!;
-    const projectId = Number(req.params.id);
+    const projectId = parseInt(req.params.id, 10);
     const input = req.body; // AddRepoInput
 
     const repo = await this.service.addRepo(projectId, userId, input);
@@ -52,8 +52,8 @@ export class ProjectController {
 
   async deleteRepo(req: Request, res: Response): Promise<void> {
     const userId = req.userId!;
-    const projectId = Number(req.params.projectId);
-    const repoId = Number(req.params.repoId);
+    const projectId = parseInt(req.params.id, 10);
+    const repoId = parseInt(req.params.repoId, 10);
 
     await this.service.deleteRepo(projectId, userId, repoId);
     res.status(204).send();

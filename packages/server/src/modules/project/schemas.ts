@@ -30,7 +30,7 @@ export const projectIdParamsSchema = z.object({
 });
 
 export const repoIdParamsSchema = z.object({
-  projectId: z.string().regex(/^\d+$/, '项目ID必须是数字').transform(Number),
+  id: z.string().regex(/^\d+$/, '项目ID必须是数字').transform(Number),
   repoId: z.string().regex(/^\d+$/, '仓库ID必须是数字').transform(Number),
 });
 
