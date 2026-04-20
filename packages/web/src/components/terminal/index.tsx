@@ -90,11 +90,11 @@ export function TerminalWorkspace({
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              'w-1.5 h-1.5 rounded-full',
-              isRunning ? 'bg-status-running animate-pulse' : 'bg-status-stopped'
+              'status-dot',
+              isRunning ? 'status-dot-running animate-pulse' : 'status-dot-stopped'
             )}
           />
-          <span className="text-primary text-[13px]">{project.name}</span>
+          <span className="text-foreground text-[13px]">{project.name}</span>
           <span className="text-muted-foreground text-xs">— 终端</span>
         </div>
         <Button onClick={onRestart} variant="secondary" size="sm" className="h-6 text-[11px] px-2.5">

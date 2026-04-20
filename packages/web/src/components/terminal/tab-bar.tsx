@@ -17,23 +17,23 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onNewTab }: TabBarProps) {
   return (
-    <div className="flex items-center h-8 bg-secondary border-b border-border px-2 pt-1">
+    <div className="flex bg-background border-b border-border">
       {tabs.map((tab) => (
         <div
           key={tab.id}
           onClick={() => onTabSelect(tab.id)}
           className={cn(
-            'px-3 py-1 text-xs cursor-pointer flex items-center gap-1.5 -mb-px border border-b-0',
+            'px-3 py-1.5 text-xs cursor-pointer flex items-center gap-1.5 border-b-2 -mb-px',
             activeTabId === tab.id
-              ? 'bg-primary text-primary-foreground border-border rounded-t-md'
-              : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted'
+              ? 'text-foreground bg-secondary border-primary'
+              : 'text-muted-foreground border-transparent hover:bg-muted/50'
           )}
         >
           {tab.label}
           {tabs.length > 1 && (
             <span
               onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
-              className="text-[10px] text-muted-foreground opacity-60 hover:opacity-100"
+              className="text-[10px] opacity-60 hover:opacity-100"
             >
               ✕
             </span>
@@ -42,7 +42,7 @@ export function TabBar({ tabs, activeTabId, onTabSelect, onTabClose, onNewTab }:
       ))}
       <div
         onClick={onNewTab}
-        className="px-3 py-1 text-muted-foreground text-xs cursor-pointer hover:bg-muted"
+        className="px-3 py-1.5 text-muted-foreground text-xs cursor-pointer hover:bg-muted/50"
       >
         +
       </div>

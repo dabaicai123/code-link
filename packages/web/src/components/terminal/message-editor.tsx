@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, KeyboardEvent } from 'react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export interface SelectedElement {
   id: string;
@@ -38,43 +40,40 @@ export function MessageEditor({ elements, onRemoveElement, onSend }: MessageEdit
     }
   };
 
-  return (
-    <div style={{ borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-      {elements.length > 0 && (
-        <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-color)', minHeight: '36px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', lineHeight: 1.8 }}>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '11px', marginRight: '4px' }}>
-              📌 已选元素:
-            </span>
-            {elements.map((el) => (
-              <span key={el.id} className="element-tag">
-                &lt;{el.tagName}&gt;
-                <span className="remove" onClick={() => onRemoveElement(el.id)}>✕</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+  const handleContainerClick = () => {
+    inputRef.current?.focus();
+  };
 
-      <div style={{ padding: '8px 12px', display: 'flex', gap: '8px' }}>
+  return (
+    <div className="border-t border-border bg-secondary p-2 flex gap-2">
+      <div
+        onClick={handleContainerClick}
+        className="inline-input-container flex-1"
+      >
+        {elements.map((el) => (
+          <span key={el.id} className="element-tag">
+            &lt;{el.tagName}&gt;
+            <span className="remove" onClick={(e) => { e.stopPropagation(); onRemoveElement(el.id); }}>✕</span>
+          </span>
+        ))}
         <input
           ref={inputRef}
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={elements.length > 0 ? "描述修改需求，回车发送到 Claude Code..." : "输入需求，回车发送..."}
-          className="input"
-          style={{ flex: 1 }}
+          placeholder={elements.length > 0 ? "描述修改..." : "输入需求，回车发送..."}
+          className="flex-1 min-w-[60px] bg-transparent border-none outline-none text-foreground text-[13px] placeholder:text-muted-foreground"
         />
-        <button
-          onClick={handleSend}
-          className="btn btn-primary"
-          disabled={!text.trim() && elements.length === 0}
-        >
-          发送
-        </button>
       </div>
+      <Button
+        onClick={handleSend}
+        disabled={!text.trim() && elements.length === 0}
+        size="sm"
+        className="h-9"
+      >
+        发送
+      </Button>
     </div>
   );
 }
