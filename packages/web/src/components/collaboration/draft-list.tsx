@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { draftsApi } from '../../lib/drafts-api';
+import { api } from '@/lib/api';
 import type { Draft } from '../../types/draft';
 import { DRAFT_STATUS_LABELS, DRAFT_STATUS_COLORS } from '../../types/draft';
 import { formatShortDate } from '@/lib/date-utils';
@@ -29,7 +29,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
   const loadDrafts = async () => {
     try {
       setLoading(true);
-      const result = await draftsApi.list(projectId);
+      const result = await api.getDrafts(projectId);
       setDrafts(result.drafts);
       setError(null);
     } catch (err) {
@@ -43,7 +43,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
     if (!newTitle.trim() || !projectId) return;
 
     try {
-      const result = await draftsApi.create({
+      const result = await api.createDraft({
         projectId,
         title: newTitle.trim(),
       });

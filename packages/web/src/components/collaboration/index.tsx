@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { draftsApi } from '../../lib/drafts-api';
+import { api } from '@/lib/api';
 import { DraftList } from './draft-list';
 import { MessagePanel } from './message-panel';
 import { DraftHeader } from './draft-header';
@@ -71,7 +71,7 @@ export function CollaborationPanel({
 
   const loadDraftDetails = async (draftId: number) => {
     try {
-      const result = await draftsApi.get(draftId);
+      const result = await api.getDraft(draftId);
       setMembers(result.members);
     } catch (err) {
       console.error('Failed to load draft details:', err);

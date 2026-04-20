@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { draftsApi } from '../../lib/drafts-api';
+import { api } from '@/lib/api';
 import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
 import { MessageItem } from './message-item';
 import { MessageInput } from './message-input';
@@ -51,7 +51,7 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
   const loadMessages = async () => {
     try {
       setLoading(true);
-      const result = await draftsApi.getMessages(draft.id, { limit: 100 });
+      const result = await api.getDraftMessages(draft.id, { limit: 100 });
       setMessages(result.messages);
       setTimeout(scrollToBottom, 50);
     } catch (err) {
@@ -62,7 +62,7 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
   };
 
   const handleSend = async (content: string, messageType: MessageType, parentId?: number) => {
-    const result = await draftsApi.sendMessage(draft.id, {
+    const result = await api.sendDraftMessage(draft.id, {
       content,
       messageType,
       parentId,

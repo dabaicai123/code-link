@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { Draft, DraftStatus, DraftMember } from '../../types/draft';
 import { DRAFT_STATUS_LABELS, DRAFT_STATUS_COLORS } from '../../types/draft';
-import { draftsApi } from '../../lib/drafts-api';
+import { api } from '@/lib/api';
 import { OnlineUsers } from './online-users';
 import type { DraftOnlineUser } from '@/lib/socket/types';
 import { cn } from '@/lib/utils';
@@ -36,7 +36,7 @@ export function DraftHeader({
   const handleStatusChange = async (status: DraftStatus) => {
     try {
       setUpdating(true);
-      await draftsApi.updateStatus(draft.id, status);
+      await api.updateDraftStatus(draft.id, status);
       onStatusChange?.(status);
       setShowStatusMenu(false);
     } catch (err) {
@@ -50,7 +50,7 @@ export function DraftHeader({
     if (!confirm('确定要删除这个 Draft 吗？')) return;
 
     try {
-      await draftsApi.delete(draft.id);
+      await api.deleteDraft(draft.id);
       onDelete?.();
     } catch (err) {
       console.error('Failed to delete draft:', err);

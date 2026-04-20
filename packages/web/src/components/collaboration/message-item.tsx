@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { DraftMessage, MessageConfirmation } from '../../types/draft';
-import { draftsApi } from '../../lib/drafts-api';
+import { api } from '@/lib/api';
 import {
   parseAIResponseMetadata,
   AI_COMMAND_TYPE_LABELS,
@@ -30,7 +30,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
 
   const handleConfirm = async (type: 'agree' | 'disagree' | 'suggest') => {
     try {
-      await draftsApi.confirmMessage(message.draftId, message.id, type);
+      await api.confirmDraftMessage(message.draftId, message.id, type);
       setUserConfirm(type);
       onConfirm?.(message.id, type);
     } catch (err) {
@@ -40,7 +40,7 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
 
   const loadConfirmations = async () => {
     try {
-      const result = await draftsApi.getConfirmations(message.draftId, message.id);
+      const result = await api.getDraftMessageConfirmations(message.draftId, message.id);
       setConfirmations(result.confirmations as MessageConfirmation[]);
       const userConf = result.confirmations.find((c) => c.userId === currentUserId);
       if (userConf) {

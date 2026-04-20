@@ -23,6 +23,15 @@ interface RequestOptions extends RequestInit {
 const API_BASE = '/api';
 
 import { storage } from './storage';
+import type {
+  Draft,
+  DraftMember,
+  DraftMessage,
+  CreateDraftInput,
+  SendMessageInput,
+  DraftStatus,
+  ConfirmationType,
+} from '@/types/draft';
 
 /**
  * 从 localStorage 获取 token
@@ -258,4 +267,75 @@ export const api = {
 
   declineInvitation: (invId: number): Promise<void> =>
     apiClient<void>(`/invitations/${invId}`, { method: 'DELETE' }),
+
+  // Draft 相关 API
+  createDraft: (input: CreateDraftInput): Promise<{ draft: Draft }> =>
+    apiClient<{ draft: Draft }>('/drafts', { method: 'POST', body: JSON.stringify(input) }),
+
+  getDrafts: (projectId?: number): Promise<{ drafts: Draft[] }> => {
+    const url = projectId ? `/drafts?projectId=${projectId}` : '/drafts';
+    return apiClient<{ drafts: Draft[] }>(url, { method: 'GET' });
+  },
+
+  getDraft: (draftId: number): Promise<{ draft: Draft; members: DraftMember[] }> =>
+    apiClient<{ draft: Draft; members: DraftMember[] }>(`/drafts/${draftId}`, { method: 'GET' }),
+
+  updateDraftStatus: (draftId: number, status: DraftStatus): Promise<{ draft: Draft }> =>
+    apiClient<{ draft: Draft }>(`/drafts/${draftId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+
+  deleteDraft: (draftId: number): Promise<{ success: boolean }> =>
+    apiClient<{ success: boolean }>(`/drafts/${draftId}`, { method: 'DELETE' }),
+
+  addDraftMember: (draftId: number, userId: number): Promise<{ success: boolean }> =>
+    apiClient<{ success: boolean }>(`/drafts/${draftId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+
+  removeDraftMember: (draftId: number, userId: number): Promise<{ success: boolean }> =>
+    apiClient<{ success: boolean }>(`/drafts/${draftId}/members/${userId}`, { method: 'DELETE' }),
+
+  getDraftMessages: (
+    draftId: number,
+    options?: { parentId?: number; limit?: number; before?: string }
+  ): Promise<{ messages: DraftMessage[] }> => {
+    const params = new URLSearchParams();
+    if (options?.parentId !== undefined) {
+      params.set('parentId', String(options.parentId));
+    }
+    if (options?.limit) {
+      params.set('limit', String(options.limit));
+    }
+    if (options?.before) {
+      params.set('before', options.before);
+    }
+    const query = params.toString();
+    return apiClient<{ messages: DraftMessage[] }>(`/drafts/${draftId}/messages${query ? `?${query}` : ''}`);
+  },
+
+  sendDraftMessage: (draftId: number, input: SendMessageInput): Promise<{ message: DraftMessage }> =>
+    apiClient<{ message: DraftMessage }>(`/drafts/${draftId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  confirmDraftMessage: (
+    draftId: number,
+    messageId: number,
+    type: ConfirmationType,
+    comment?: string
+  ): Promise<{ success: boolean }> =>
+    apiClient<{ success: boolean }>(`/drafts/${draftId}/messages/${messageId}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ type, comment }),
+    }),
+
+  getDraftMessageConfirmations: (
+    draftId: number,
+    messageId: number
+  ): Promise<{ confirmations: Array<{ userId: number; userName: string; type: string; comment: string | null }> }> =>
+    apiClient(`/drafts/${draftId}/messages/${messageId}/confirmations`),
 };
