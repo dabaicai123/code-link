@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
 import { BuildManager, resetBuildManagerInstance } from '../src/build/build-manager.js';
-import { resetWebSocketServerInstance } from '../src/websocket/server.js';
+import { resetWebSocketServerInstance } from '../src/socket/index.js';
 import {
   createTestUser,
   createTestOrganization,
@@ -31,7 +31,7 @@ vi.mock('../src/build/preview-container.js', () => ({
   })),
 }));
 
-vi.mock('../src/websocket/server.js', () => ({
+vi.mock('../src/socket/index.js', () => ({
   getWebSocketServer: vi.fn(() => null),
   resetWebSocketServerInstance: vi.fn(),
 }));
