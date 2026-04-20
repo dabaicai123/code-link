@@ -3,6 +3,7 @@ import { container } from "tsyringe";
 import { execInContainer } from '../docker/container-manager.js';
 import { TokenManager } from './token-manager.js';
 import { ProjectRepository } from '../modules/project/repository.js';
+import { getErrorMessage } from '../core/errors/errors.js';
 import type { SelectProjectRepo } from '../db/schema/index.js';
 
 interface CloneResult {
@@ -63,8 +64,8 @@ export class RepoManager {
       }
 
       return { success: true, path: clonePath };
-    } catch (error: any) {
-      return { success: false, path: '', error: error.message };
+    } catch (error: unknown) {
+      return { success: false, path: '', error: getErrorMessage(error) };
     }
   }
 
@@ -112,8 +113,8 @@ export class RepoManager {
       }
 
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: getErrorMessage(error) };
     }
   }
 

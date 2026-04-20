@@ -5,6 +5,7 @@ import { getDockerClient } from '../docker/client.js';
 import { getVolumePath } from '../docker/volume-manager.js';
 import { getPreviewContainerManager } from './preview-container.js';
 import { BuildRepository } from '../modules/build/repository.js';
+import { getErrorMessage } from '../core/errors/errors.js';
 import type { SelectBuild } from '../db/schema/index.js';
 
 export class BuildManager {
@@ -51,7 +52,7 @@ export class BuildManager {
 
       // 更新状态为 success
       await this.updateBuildStatus(buildId, 'success', previewPort);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 更新状态为 failed
       await this.updateBuildStatus(buildId, 'failed');
       throw error;

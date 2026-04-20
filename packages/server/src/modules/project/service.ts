@@ -107,8 +107,9 @@ export class ProjectService {
         repoUrl: input.url,
         repoName: parsed.repoName,
       });
-    } catch (error: any) {
-      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'SQLITE_CONSTRAINT') {
+    } catch (error: unknown) {
+      const sqliteError = error as { code?: string };
+      if (sqliteError.code === 'SQLITE_CONSTRAINT_UNIQUE' || sqliteError.code === 'SQLITE_CONSTRAINT') {
         throw new ParamError('该仓库已添加到项目中');
       }
       throw error;

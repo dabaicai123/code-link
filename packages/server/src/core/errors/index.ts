@@ -10,6 +10,9 @@ export {
   isNotFoundError,
   isPermissionError,
   isValidationError,
+  isError,
+  getErrorMessage,
+  getErrorStack,
 } from './errors.js';
 
 export {
