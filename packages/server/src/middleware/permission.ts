@@ -74,7 +74,7 @@ export function createProjectAccessMiddleware(minRole: OrgRole = 'member') {
   };
 
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const userId = (req as any).userId;
+    const userId = req.userId;
     const projectId = requireProjectId(req);
 
     if (!userId) {
@@ -101,8 +101,8 @@ export function createProjectAccessMiddleware(minRole: OrgRole = 'member') {
     }
 
     // 将信息附加到请求对象
-    (req as any).project = result.data.project;
-    (req as any).membership = result.data.membership;
+    req.project = result.data.project;
+    req.membership = result.data.membership;
     next();
   };
 }
@@ -118,7 +118,7 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
   };
 
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const userId = (req as any).userId;
+    const userId = req.userId;
     const orgId = parseIdParam(req.params.orgId || req.params.id || req.body.organization_id);
 
     if (!userId) {
@@ -134,7 +134,7 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
     // 检查超级管理员
     const userEmail = await authRepo.findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
-      (req as any).orgRole = 'owner';
+      req.orgRole = 'owner';
       next();
       return;
     }
@@ -151,7 +151,7 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
       return;
     }
 
-    (req as any).orgRole = membership.role;
+    req.orgRole = membership.role;
     next();
   };
 }

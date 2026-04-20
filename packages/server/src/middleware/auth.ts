@@ -12,16 +12,6 @@ import { Errors } from '../core/errors/index.js';
 import { getConfig } from '../core/config.js';
 import type { OrgRole } from '../db/schema/index.js';
 
-// 扩展 Express Request 类型
-declare global {
-  namespace Express {
-    interface Request {
-      userId?: number;
-      orgRole?: OrgRole;
-    }
-  }
-}
-
 const logger = createLogger('auth');
 
 // 单例 Repository 实例通过容器获取
@@ -67,7 +57,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
  */
 export function createOrgMemberMiddleware(minRole: OrgRole) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const userId = (req as any).userId;
+    const userId = req.userId;
     const orgIdParam = req.params.orgId || req.params.id || req.body.organization_id;
     const orgId = parseInt(Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam || '', 10);
 
@@ -84,7 +74,7 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
     // 获取用户邮箱检查是否为超级管理员
     const userEmail = await authRepo.findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
-      (req as any).orgRole = 'owner';
+      req.orgRole = 'owner';
       next();
       return;
     }
@@ -102,7 +92,7 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
       return;
     }
 
-    (req as any).orgRole = membership.role;
+    req.orgRole = membership.role;
     next();
   };
 }
@@ -115,7 +105,7 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
  */
 export function createProjectMemberMiddleware(minRole: OrgRole) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const userId = (req as any).userId;
+    const userId = req.userId;
     const projectIdParam = req.params.id || req.params.projectId;
     const projectId = parseInt(Array.isArray(projectIdParam) ? projectIdParam[0] : projectIdParam || '', 10);
 
@@ -166,7 +156,7 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
  */
 export function createCanCreateOrgMiddleware() {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const userId = (req as any).userId;
+    const userId = req.userId;
 
     if (!userId) {
       res.status(401).json(Errors.unauthorized());
