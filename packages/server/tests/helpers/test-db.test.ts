@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getSqliteDb, closeDb } from '../../src/db/index.js';
-import { initSchema } from '../../src/db/schema.js';
-import type Database from 'better-sqlite3';
+import { createSqliteDb, initSchema } from '../../src/db/index.js';
+import { setupTestDb, teardownTestDb } from './test-db.js';
 
 // Import all helpers to verify they are exported correctly
 import {
@@ -46,16 +45,12 @@ import {
 } from './test-db.js';
 
 describe('Test Helpers Module', () => {
-  let db: Database.Database;
-
   beforeEach(() => {
-    closeDb();
-    db = getSqliteDb(':memory:');
-    initSchema(db);
+    setupTestDb();
   });
 
   afterEach(() => {
-    closeDb();
+    teardownTestDb();
   });
 
   describe('User Helpers', () => {

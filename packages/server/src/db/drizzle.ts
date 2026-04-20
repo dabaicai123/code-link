@@ -5,74 +5,30 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
+const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 
-let defaultSqliteDb: Database.Database | null = null;
-let defaultDb: ReturnType<typeof drizzle> | null = null;
-
 /**
- * 获取 SQLite 数据库连接
- * 当提供 dbPath 时，会重置单例并创建新的数据库连接
+ * 获取默认数据库路径
  */
-export function getSqliteDb(dbPath?: string): Database.Database {
-  if (dbPath) {
-    // 如果有新路径，关闭旧连接并重置单例
-    if (defaultSqliteDb) {
-      defaultSqliteDb.close();
-      defaultSqliteDb = null;
-      defaultDb = null;
-    }
-    defaultSqliteDb = new Database(dbPath);
-    defaultSqliteDb.pragma('journal_mode = WAL');
-    defaultSqliteDb.pragma('foreign_keys = ON');
-    return defaultSqliteDb;
-  }
-  if (!defaultSqliteDb) {
-    const dbPath = process.env.DB_PATH || path.join(DATA_DIR, 'code-link.db');
-    defaultSqliteDb = new Database(dbPath);
-    defaultSqliteDb.pragma('journal_mode = WAL');
-    defaultSqliteDb.pragma('foreign_keys = ON');
-  }
-  return defaultSqliteDb;
+export function getDefaultDbPath(): string {
+  return process.env.DB_PATH || path.join(DATA_DIR, 'code-link.db');
 }
 
 /**
- * 获取 Drizzle 数据库实例
- * 当提供 dbPath 时，会重置单例并创建新的 Drizzle 实例
+ * 创建 SQLite 数据库连接（用于 DI 容器外部场景）
  */
-export function getDb(dbPath?: string): ReturnType<typeof drizzle> {
-  if (dbPath) {
-    // 重置现有单例
-    if (defaultSqliteDb) {
-      defaultSqliteDb.close();
-      defaultSqliteDb = null;
-      defaultDb = null;
-    }
-    const sqliteDb = new Database(dbPath);
-    sqliteDb.pragma('journal_mode = WAL');
-    sqliteDb.pragma('foreign_keys = ON');
-    defaultSqliteDb = sqliteDb;
-    defaultDb = drizzle(sqliteDb, { schema });
-    return defaultDb;
-  }
-  if (!defaultDb) {
-    const sqliteDb = getSqliteDb();
-    defaultDb = drizzle(sqliteDb, { schema });
-  }
-  return defaultDb;
+export function createSqliteDb(dbPath?: string): Database.Database {
+  const path = dbPath || getDefaultDbPath();
+  const db = new Database(path);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+  return db;
 }
 
 /**
- * 关闭数据库连接
+ * 创建 Drizzle 数据库实例（用于 DI 容器外部场景）
  */
-export function closeDb(): void {
-  if (defaultSqliteDb) {
-    defaultSqliteDb.close();
-    defaultSqliteDb = null;
-    defaultDb = null;
-  }
+export function createDrizzleDb(sqlite: Database.Database): ReturnType<typeof drizzle> {
+  return drizzle(sqlite, { schema });
 }
-
-// 导出 SQLite 原生实例（用于需要原生 SQL 的场景，如迁移）
-export { getSqliteDb as getNativeDb };

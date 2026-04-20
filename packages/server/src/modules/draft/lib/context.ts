@@ -1,11 +1,12 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
 import { createLogger } from '../../../core/logger/index.js';
-import { getContainerStatus } from '../../../docker/container-manager.js';
+import { DockerService } from '../../container/lib/docker.service.js';
 import { DraftRepository } from '../repository.js';
 
 const logger = createLogger('ai-context');
 const draftRepo = container.resolve(DraftRepository);
+const dockerService = container.resolve(DockerService);
 
 export interface DraftContext {
   draftId: number;
@@ -50,7 +51,7 @@ export async function buildContextForDraft(draftId: number): Promise<DraftContex
   let container: { id: string; status: string } | undefined;
   if (contextData.draft.containerId) {
     try {
-      const status = await getContainerStatus(contextData.draft.containerId);
+      const status = await dockerService.getContainerStatus(contextData.draft.containerId);
       container = { id: contextData.draft.containerId, status };
     } catch (error) {
       logger.warn('获取容器状态失败', { containerId: contextData.draft.containerId, error });

@@ -1,8 +1,8 @@
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import * as schema from '../../db/schema/index.js';
+import * as schema from './schema/index.js';
 import { singleton } from 'tsyringe';
-import { getConfig } from '../config.js';
+import { getConfig } from '../core/config.js';
 
 @singleton()
 export class DatabaseConnection {

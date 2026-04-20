@@ -1,5 +1,5 @@
 import { inject } from 'tsyringe';
-import { DatabaseConnection } from './connection.js';
+import { DatabaseConnection } from '../../db/connection.js';
 
 export abstract class BaseRepository {
   constructor(

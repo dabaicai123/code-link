@@ -1,5 +1,5 @@
 import path from 'path';
-import { getDockerClient } from './client.js';
+import Docker from 'dockerode';
 
 export const TEMPLATE_TYPES = ['node', 'node+java', 'node+python'] as const;
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
@@ -36,8 +36,7 @@ export function isValidTemplate(type: string): type is TemplateType {
   return TEMPLATE_TYPES.includes(type as TemplateType);
 }
 
-export async function ensureTemplateImage(type: TemplateType): Promise<void> {
-  const docker = getDockerClient();
+export async function ensureTemplateImage(docker: Docker, type: TemplateType): Promise<void> {
   const config = getTemplateConfig(type);
 
   // 检查镜像是否已存在

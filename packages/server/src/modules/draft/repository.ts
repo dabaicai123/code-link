@@ -10,7 +10,7 @@ import {
   projects,
 } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
-import { DatabaseConnection } from '../../core/database/connection.js';
+import { DatabaseConnection } from '../../db/connection.js';
 import { PAGINATION_LIMITS } from '../../core/database/constants.js';
 import type {
   InsertDraft,

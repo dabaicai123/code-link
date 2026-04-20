@@ -4,7 +4,7 @@ import { singleton, inject } from 'tsyringe';
 import { eq, and } from 'drizzle-orm';
 import { projectTokens } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
-import { DatabaseConnection } from '../../core/database/connection.js';
+import { DatabaseConnection } from '../../db/connection.js';
 import type { InsertProjectToken, SelectProjectToken } from '../../db/schema/index.js';
 import type { GitProvider } from './types.js';
 

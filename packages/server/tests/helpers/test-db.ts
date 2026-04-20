@@ -7,9 +7,7 @@ import "reflect-metadata";
 import { eq, and } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 import { container } from 'tsyringe';
-import { getDb, getSqliteDb, closeDb } from '../../src/db/index.js';
-import { initSchema } from '../../src/db/schema.js';
-import { DatabaseConnection } from '../../src/core/database/connection.js';
+import { DatabaseConnection, createSqliteDb, initSchema } from '../../src/db/index.js';
 import {
   users,
   organizations,
@@ -55,20 +53,41 @@ import type {
 // Database Setup Helpers
 // ============================================================================
 
+let currentDbConnection: DatabaseConnection | null = null;
+
 export function setupTestDb(): Database.Database {
-  closeDb();
-  const db = getSqliteDb(':memory:');
-  initSchema(db);
+  // 清理之前的连接
+  if (currentDbConnection) {
+    currentDbConnection.close();
+    currentDbConnection = null;
+  }
+
+  const sqlite = createSqliteDb(':memory:');
+  initSchema(sqlite);
 
   container.reset();
-  container.register(DatabaseConnection, { useValue: DatabaseConnection.fromSqlite(db) });
+  currentDbConnection = DatabaseConnection.fromSqlite(sqlite);
+  container.registerInstance(DatabaseConnection, currentDbConnection);
 
-  return db;
+  return sqlite;
 }
 
 export function teardownTestDb(): void {
   container.reset();
-  closeDb();
+  if (currentDbConnection) {
+    currentDbConnection.close();
+    currentDbConnection = null;
+  }
+}
+
+/**
+ * 获取当前测试数据库的 Drizzle 实例
+ */
+function getTestDb() {
+  if (!currentDbConnection) {
+    throw new Error('Test database not initialized. Call setupTestDb() first.');
+  }
+  return currentDbConnection.getDb();
 }
 
 // ============================================================================
@@ -83,7 +102,7 @@ export interface CreateTestUserOptions {
 }
 
 export function createTestUser(options: CreateTestUserOptions = {}): SelectUser {
-  const db = getDb();
+  const db = getTestDb();
   const email = options.email || `test-${Date.now()}-${Math.random().toString(36).slice(2)}@test.com`;
   const result = db
     .insert(users)
@@ -99,17 +118,17 @@ export function createTestUser(options: CreateTestUserOptions = {}): SelectUser 
 }
 
 export function findUserByEmail(email: string): SelectUser | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(users).where(eq(users.email, email)).get();
 }
 
 export function findUserById(id: number): SelectUser | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(users).where(eq(users.id, id)).get();
 }
 
 export function deleteTestUser(id: number): void {
-  const db = getDb();
+  const db = getTestDb();
   db.delete(users).where(eq(users.id, id)).run();
 }
 
@@ -125,7 +144,7 @@ export function createTestOrganization(
   userId: number,
   options: CreateTestOrganizationOptions = {}
 ): SelectOrganization {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(organizations)
     .values({
@@ -138,7 +157,7 @@ export function createTestOrganization(
 }
 
 export function findOrganizationById(id: number): SelectOrganization | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(organizations).where(eq(organizations.id, id)).get();
 }
 
@@ -148,7 +167,7 @@ export function createTestOrganizationMember(
   role: 'owner' | 'developer' | 'member' = 'member',
   invitedBy: number
 ): SelectOrganizationMember {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(organizationMembers)
     .values({
@@ -178,7 +197,7 @@ export function createTestProject(
   orgId: number,
   options: CreateTestProjectOptions = {}
 ): SelectProject {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(projects)
     .values({
@@ -195,17 +214,17 @@ export function createTestProject(
 }
 
 export function findProjectById(id: number): SelectProject | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(projects).where(eq(projects.id, id)).get();
 }
 
 export function findProjectsByOrganizationId(orgId: number): SelectProject[] {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(projects).where(eq(projects.organizationId, orgId)).all();
 }
 
 export function deleteTestProject(id: number): void {
-  const db = getDb();
+  const db = getTestDb();
   db.delete(projects).where(eq(projects.id, id)).run();
 }
 
@@ -214,7 +233,7 @@ export function updateTestProjectStatus(
   status: 'created' | 'running' | 'stopped',
   containerId?: string
 ): SelectProject | undefined {
-  const db = getDb();
+  const db = getTestDb();
   const updateData: Partial<InsertProject> = { status };
   if (containerId !== undefined) {
     updateData.containerId = containerId;
@@ -236,7 +255,7 @@ export function createTestDraft(
   projectId: number,
   options: CreateTestDraftOptions = {}
 ): SelectDraft {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(drafts)
     .values({
@@ -251,12 +270,12 @@ export function createTestDraft(
 }
 
 export function findDraftById(id: number): SelectDraft | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(drafts).where(eq(drafts.id, id)).get();
 }
 
 export function deleteTestDraft(id: number): void {
-  const db = getDb();
+  const db = getTestDb();
   db.delete(drafts).where(eq(drafts.id, id)).run();
 }
 
@@ -264,7 +283,7 @@ export function updateTestDraftStatus(
   id: number,
   status: 'discussing' | 'brainstorming' | 'reviewing' | 'developing' | 'confirmed' | 'archived'
 ): SelectDraft | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.update(drafts).set({ status }).where(eq(drafts.id, id)).returning().get();
 }
 
@@ -277,7 +296,7 @@ export function createTestDraftMember(
   userId: number,
   role: 'owner' | 'participant' = 'participant'
 ): SelectDraftMember {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(draftMembers)
     .values({
@@ -291,7 +310,7 @@ export function createTestDraftMember(
 }
 
 export function findDraftMembers(draftId: number): SelectDraftMember[] {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(draftMembers).where(eq(draftMembers.draftId, draftId)).all();
 }
 
@@ -311,7 +330,7 @@ export function createTestDraftMessage(
   userId: number,
   options: CreateTestDraftMessageOptions = {}
 ): SelectDraftMessage {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(draftMessages)
     .values({
@@ -328,7 +347,7 @@ export function createTestDraftMessage(
 }
 
 export function findDraftMessages(draftId: number): SelectDraftMessage[] {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(draftMessages).where(eq(draftMessages.draftId, draftId)).all();
 }
 
@@ -342,7 +361,7 @@ export function createTestMessageConfirmation(
   type: 'agree' | 'disagree' | 'suggest' = 'agree',
   comment?: string
 ): SelectMessageConfirmation {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(messageConfirmations)
     .values({
@@ -357,7 +376,7 @@ export function createTestMessageConfirmation(
 }
 
 export function findMessageConfirmations(messageId: number): SelectMessageConfirmation[] {
-  const db = getDb();
+  const db = getTestDb();
   return db
     .select()
     .from(messageConfirmations)
@@ -380,7 +399,7 @@ export function createTestToken(
   provider: 'github' | 'gitlab',
   options: CreateTestTokenOptions = {}
 ): SelectProjectToken {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(projectTokens)
     .values({
@@ -396,7 +415,7 @@ export function createTestToken(
 }
 
 export function findTokensByUserId(userId: number): SelectProjectToken[] {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(projectTokens).where(eq(projectTokens.userId, userId)).all();
 }
 
@@ -404,7 +423,7 @@ export function findTokenByUserIdAndProvider(
   userId: number,
   provider: 'github' | 'gitlab'
 ): SelectProjectToken | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db
     .select()
     .from(projectTokens)
@@ -413,7 +432,7 @@ export function findTokenByUserIdAndProvider(
 }
 
 export function deleteTestToken(userId: number, provider: 'github' | 'gitlab'): void {
-  const db = getDb();
+  const db = getTestDb();
   db.delete(projectTokens)
     .where(and(eq(projectTokens.userId, userId), eq(projectTokens.provider, provider)))
     .run();
@@ -435,7 +454,7 @@ export function createTestRepo(
   projectId: number,
   options: CreateTestRepoOptions = {}
 ): SelectProjectRepo {
-  const db = getDb();
+  const db = getTestDb();
   const uniqueSuffix = `-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const result = db
     .insert(projectRepos)
@@ -453,17 +472,17 @@ export function createTestRepo(
 }
 
 export function findReposByProjectId(projectId: number): SelectProjectRepo[] {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(projectRepos).where(eq(projectRepos.projectId, projectId)).all();
 }
 
 export function findRepoById(id: number): SelectProjectRepo | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(projectRepos).where(eq(projectRepos.id, id)).get();
 }
 
 export function deleteTestRepo(id: number): void {
-  const db = getDb();
+  const db = getTestDb();
   db.delete(projectRepos).where(eq(projectRepos.id, id)).run();
 }
 
@@ -472,7 +491,7 @@ export function deleteTestRepo(id: number): void {
 // ============================================================================
 
 export function createTestClaudeConfig(userId: number, config: string): SelectUserClaudeConfig {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(userClaudeConfigs)
     .values({
@@ -485,12 +504,12 @@ export function createTestClaudeConfig(userId: number, config: string): SelectUs
 }
 
 export function findClaudeConfigByUserId(userId: number): SelectUserClaudeConfig | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(userClaudeConfigs).where(eq(userClaudeConfigs.userId, userId)).get();
 }
 
 export function deleteTestClaudeConfig(userId: number): void {
-  const db = getDb();
+  const db = getTestDb();
   db.delete(userClaudeConfigs).where(eq(userClaudeConfigs.userId, userId)).run();
 }
 
@@ -507,7 +526,7 @@ export function createTestBuild(
   projectId: number,
   options: CreateTestBuildOptions = {}
 ): SelectBuild {
-  const db = getDb();
+  const db = getTestDb();
   const result = db
     .insert(builds)
     .values({
@@ -521,17 +540,17 @@ export function createTestBuild(
 }
 
 export function findBuildById(id: number): SelectBuild | undefined {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(builds).where(eq(builds.id, id)).get();
 }
 
 export function findBuildsByProjectId(projectId: number): SelectBuild[] {
-  const db = getDb();
+  const db = getTestDb();
   return db.select().from(builds).where(eq(builds.projectId, projectId)).all();
 }
 
 export function deleteTestBuild(id: number): void {
-  const db = getDb();
+  const db = getTestDb();
   db.delete(builds).where(eq(builds.id, id)).run();
 }
 
@@ -540,7 +559,7 @@ export function updateTestBuildStatus(
   status: 'pending' | 'running' | 'success' | 'failed',
   previewPort?: number
 ): SelectBuild | undefined {
-  const db = getDb();
+  const db = getTestDb();
   const updateData: Partial<InsertBuild> = { status };
   if (previewPort !== undefined) {
     updateData.previewPort = previewPort;

@@ -3,9 +3,9 @@ import { singleton, inject } from 'tsyringe';
 import { BuildRepository } from './repository.js';
 import { ProjectRepository } from '../project/repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
+import { BuildManager } from './lib/build-manager.js';
+import { PreviewContainerManager } from './lib/preview-container.js';
 import { NotFoundError } from '../../core/errors/index.js';
-import { getBuildManager } from './lib/build-manager.js';
-import { getPreviewContainerManager } from './lib/preview-container.js';
 import { createLogger } from '../../core/logger/index.js';
 import type { SelectBuild } from '../../db/schema/index.js';
 import type { CreateBuildInput } from './schemas.js';
@@ -18,16 +18,17 @@ export class BuildService {
   constructor(
     @inject(BuildRepository) private readonly repo: BuildRepository,
     @inject(ProjectRepository) private readonly projectRepo: ProjectRepository,
-    @inject(PermissionService) private readonly permService: PermissionService
+    @inject(PermissionService) private readonly permService: PermissionService,
+    @inject(BuildManager) private readonly buildManager: BuildManager,
+    @inject(PreviewContainerManager) private readonly previewManager: PreviewContainerManager
   ) {}
 
   async create(userId: number, input: CreateBuildInput): Promise<SelectBuild> {
     const project = await this.permService.checkProjectAccess(userId, input.projectId);
 
-    const buildManager = getBuildManager();
-    const build = await buildManager.createBuild(input.projectId);
+    const build = await this.buildManager.createBuild(input.projectId);
 
-    buildManager.startBuild(input.projectId, build.id).catch((error) => {
+    this.buildManager.startBuild(input.projectId, build.id).catch((error: unknown) => {
       logger.error('Build failed', error instanceof Error ? error : new Error(String(error)), { projectId: input.projectId, buildId: build.id });
     });
 
@@ -37,13 +38,11 @@ export class BuildService {
   async findByProjectId(userId: number, projectId: number): Promise<SelectBuild[]> {
     await this.permService.checkProjectAccess(userId, projectId);
 
-    const buildManager = getBuildManager();
-    return buildManager.getProjectBuilds(projectId);
+    return this.buildManager.getProjectBuilds(projectId);
   }
 
   async findById(userId: number, buildId: number): Promise<SelectBuild> {
-    const buildManager = getBuildManager();
-    const build = await buildManager.getBuild(buildId);
+    const build = await this.buildManager.getBuild(buildId);
 
     if (!build) {
       throw new NotFoundError('构建');
@@ -57,15 +56,14 @@ export class BuildService {
   async getPreview(userId: number, projectId: number): Promise<PreviewInfo> {
     await this.permService.checkProjectAccess(userId, projectId);
 
-    const previewManager = getPreviewContainerManager();
-    const containerInfo = previewManager.getContainerInfo(projectId.toString());
+    const containerInfo = this.previewManager.getContainerInfo(projectId.toString());
 
     if (!containerInfo) {
       throw new NotFoundError('预览容器');
     }
 
     return {
-      url: previewManager.getPreviewUrl(containerInfo.port),
+      url: this.previewManager.getPreviewUrl(containerInfo.port),
       port: containerInfo.port,
     };
   }
@@ -73,7 +71,6 @@ export class BuildService {
   async stopPreview(userId: number, projectId: number): Promise<void> {
     await this.permService.checkProjectAccess(userId, projectId);
 
-    const previewManager = getPreviewContainerManager();
-    await previewManager.stopPreviewContainer(projectId.toString());
+    await this.previewManager.stopPreviewContainer(projectId.toString());
   }
 }

@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { DatabaseConnection } from '../../src/core/database/connection.js';
+import { DatabaseConnection } from '../../src/db/connection.js';
 import { BaseRepository } from '../../src/core/database/base.repository.js';
 import { resetConfig } from '../../src/core/config.js';
 import path from 'path';

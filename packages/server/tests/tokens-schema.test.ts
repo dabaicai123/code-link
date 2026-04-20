@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { initSchema } from '../src/db/schema.js';
-import { getDb } from '../src/db/index.js';
 import { projectTokens, projectRepos, projects } from '../src/db/schema/index.js';
 import {
   createTestUser,
@@ -14,27 +11,34 @@ import {
   findReposByProjectId,
   deleteTestUser,
   deleteTestProject,
+  setupTestDb,
+  teardownTestDb,
 } from './helpers/test-db.js';
+import { container } from 'tsyringe';
+import { DatabaseConnection } from '../src/db/index.js';
+
+function getTestDb() {
+  return container.resolve(DatabaseConnection).getDb();
+}
 
 describe('Project Tokens Schema', () => {
-  let db: Database.Database;
-
   beforeEach(() => {
-    db = new Database(':memory:');
-    initSchema(db);
+    setupTestDb();
   });
 
   afterEach(() => {
-    db.close();
+    teardownTestDb();
   });
 
   it('should have project_tokens table', () => {
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[];
+    const sqlite = container.resolve(DatabaseConnection).getSqlite();
+    const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[];
     expect(tables.some(t => t.name === 'project_tokens')).toBe(true);
   });
 
   it('should have project_repos table', () => {
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[];
+    const sqlite = container.resolve(DatabaseConnection).getSqlite();
+    const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[];
     expect(tables.some(t => t.name === 'project_repos')).toBe(true);
   });
 
@@ -82,7 +86,7 @@ describe('Project Tokens Schema', () => {
     deleteTestUser(user.id);
 
     // Token should be deleted
-    const drizzleDb = getDb();
+    const drizzleDb = getTestDb();
     const token = drizzleDb
       .select()
       .from(projectTokens)
@@ -159,7 +163,7 @@ describe('Project Tokens Schema', () => {
 
     // Invalid provider should fail - using direct ORM with type assertion to bypass TypeScript
     expect(() => {
-      const drizzleDb = getDb();
+      const drizzleDb = getTestDb();
       drizzleDb.insert(projectTokens).values({
         userId: user.id,
         provider: 'invalid_provider' as 'github' | 'gitlab',
@@ -177,7 +181,7 @@ describe('Project Tokens Schema', () => {
 
     // Invalid provider should fail - using direct ORM with type assertion to bypass TypeScript
     expect(() => {
-      const drizzleDb = getDb();
+      const drizzleDb = getTestDb();
       drizzleDb.insert(projectRepos).values({
         projectId: project.id,
         provider: 'invalid_provider' as 'github' | 'gitlab',

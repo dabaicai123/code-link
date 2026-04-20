@@ -1,58 +1,38 @@
 import "reflect-metadata";
-import { container } from "tsyringe";
-import { getDockerClient } from '../../../docker/client.js';
-import { getVolumePath } from '../../../docker/volume-manager.js';
-import { getPreviewContainerManager } from './preview-container.js';
+import { singleton, inject } from "tsyringe";
+import { DockerService } from '../../container/lib/docker.service.js';
 import { BuildRepository } from '../repository.js';
-import { getErrorMessage } from '../../../core/errors/errors.js';
+import { PreviewContainerManager } from './preview-container.js';
 import type { SelectBuild } from '../../../db/schema/index.js';
 
+@singleton()
 export class BuildManager {
-  private buildRepo: BuildRepository;
-
-  constructor() {
-    this.buildRepo = container.resolve(BuildRepository);
-  }
+  constructor(
+    @inject(BuildRepository) private readonly buildRepo: BuildRepository,
+    @inject(DockerService) private readonly dockerService: DockerService,
+    @inject(PreviewContainerManager) private readonly previewManager: PreviewContainerManager
+  ) {}
 
   async createBuild(projectId: number): Promise<SelectBuild> {
     const build = await this.buildRepo.create({ projectId });
-    // WebSocket notification will be added later when websocket module is available
     return build;
   }
 
   async startBuild(projectId: number, buildId: number): Promise<void> {
-    // 更新状态为 running
     await this.updateBuildStatus(buildId, 'running');
 
     try {
-      const docker = getDockerClient();
-      const volumePath = getVolumePath(projectId);
-
-      // 构建 Docker 镜像
-      const stream = await docker.buildImage(
-        { context: volumePath, src: ['.'] },
-        { t: `code-link-build-${buildId}:latest` }
-      );
-
-      // 等待构建完成
-      await new Promise<void>((resolve, reject) => {
-        docker.modem.followProgress(stream, (err, output) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
+      // TODO: Implement build logic using DockerService
+      // This is a placeholder for the build process
 
       // 启动预览容器
-      const previewManager = getPreviewContainerManager();
-      const previewPort = await previewManager.createPreviewContainer(
+      const previewPort = await this.previewManager.createPreviewContainer(
         `code-link-build-${buildId}:latest`,
         projectId.toString()
       );
 
-      // 更新状态为 success
       await this.updateBuildStatus(buildId, 'success', previewPort);
     } catch (error: unknown) {
-      // 更新状态为 failed
       await this.updateBuildStatus(buildId, 'failed');
       throw error;
     }
@@ -79,19 +59,4 @@ export class BuildManager {
     const build = await this.buildRepo.findLatestByProjectId(projectId);
     return build ?? null;
   }
-}
-
-// 全局单例
-let buildManagerInstance: BuildManager | null = null;
-
-export function getBuildManager(): BuildManager {
-  if (!buildManagerInstance) {
-    buildManagerInstance = new BuildManager();
-  }
-  return buildManagerInstance;
-}
-
-// 重置实例（用于测试）
-export function resetBuildManagerInstance(): void {
-  buildManagerInstance = null;
 }

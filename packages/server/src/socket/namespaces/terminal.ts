@@ -5,7 +5,7 @@ import type { Namespace, Socket } from 'socket.io';
 import { createLogger } from '../../core/logger/index.js';
 import { TerminalEvents } from '../types.js';
 import { getTerminalManager } from '../../modules/container/lib/terminal-manager.js';
-import { getContainerStatus } from '../../docker/container-manager.js';
+import { DockerService } from '../../modules/container/lib/docker.service.js';
 import { decrypt, isEncryptionKeySet } from '../../crypto/aes.js';
 import { ProjectRepository } from '../../modules/project/repository.js';
 import { ClaudeConfigRepository } from '../../modules/claude-config/repository.js';
@@ -17,6 +17,7 @@ const logger = createLogger('socket-terminal');
 const projectRepo = container.resolve(ProjectRepository);
 const claudeConfigRepo = container.resolve(ClaudeConfigRepository);
 const orgRepo = container.resolve(OrganizationRepository);
+const dockerService = container.resolve(DockerService);
 
 export function setupTerminalNamespace(namespace: Namespace): void {
   namespace.on('connection', async (socket) => {
@@ -56,7 +57,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
 
       // 检查容器状态
       try {
-        const status = await getContainerStatus(project.containerId);
+        const status = await dockerService.getContainerStatus(project.containerId);
         if (status !== 'running') {
           socket.emit('error', { message: '容器未运行，请先启动容器' });
           return;

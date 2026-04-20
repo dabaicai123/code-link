@@ -1,13 +1,16 @@
-// Drizzle ORM 客户端
-export { getDb, getSqliteDb, getNativeDb, closeDb } from './drizzle.js';
+// Database Connection (DI)
+export { DatabaseConnection, sql } from './connection.js';
 
-// Schema 定义
+// Database utilities (for scripts outside DI container)
+export { createSqliteDb, createDrizzleDb, getDefaultDbPath } from './drizzle.js';
+
+// Schema definitions
 export * from './schema/index.js';
 
-// 初始化
+// Initialization
 export { initSchema, initDefaultAdmin } from './init.js';
 
-// 迁移函数（保持兼容）
+// Migration functions (kept for compatibility)
 export {
   runOrganizationMigration,
   runProjectOrganizationMigration,

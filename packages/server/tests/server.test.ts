@@ -2,18 +2,26 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/index.js';
-import { getSqliteDb, closeDb } from '../src/db/index.js';
-import { initSchema } from '../src/db/schema.js';
+import { DatabaseConnection, createSqliteDb, initSchema } from '../src/db/index.js';
+import { container } from 'tsyringe';
 
 describe('Express 服务器', () => {
+  let dbConnection: DatabaseConnection | null = null;
+
   afterEach(() => {
-    closeDb();
+    container.reset();
+    if (dbConnection) {
+      dbConnection.close();
+      dbConnection = null;
+    }
   });
 
   it('GET /api/health 应返回 200', async () => {
-    closeDb();
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
+    const sqlite = createSqliteDb(':memory:');
+    initSchema(sqlite);
+    dbConnection = DatabaseConnection.fromSqlite(sqlite);
+    container.registerInstance(DatabaseConnection, dbConnection);
+
     const app = createApp();
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
@@ -21,8 +29,11 @@ describe('Express 服务器', () => {
   });
 
   it('未知路由应返回 404', async () => {
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
+    const sqlite = createSqliteDb(':memory:');
+    initSchema(sqlite);
+    dbConnection = DatabaseConnection.fromSqlite(sqlite);
+    container.registerInstance(DatabaseConnection, dbConnection);
+
     const app = createApp();
     const res = await request(app).get('/api/nonexistent');
     expect(res.status).toBe(404);

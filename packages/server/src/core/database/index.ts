@@ -1,2 +1,2 @@
-export { DatabaseConnection, sql } from './connection.js';
+export { DatabaseConnection, sql } from '../../db/connection.js';
 export { BaseRepository } from './base.repository.js';

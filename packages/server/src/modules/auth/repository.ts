@@ -3,7 +3,7 @@ import { singleton, inject } from 'tsyringe';
 import { eq } from 'drizzle-orm';
 import { users } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
-import { DatabaseConnection } from '../../core/database/connection.js';
+import { DatabaseConnection } from '../../db/connection.js';
 import type { InsertUser, SelectUser } from '../../db/schema/index.js';
 
 @singleton()

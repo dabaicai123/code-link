@@ -1,22 +1,32 @@
-import { describe, it, expect } from 'vitest';
-import { getSqliteDb, closeDb, getDb } from '../src/db/index.js';
-import { initSchema } from '../src/db/schema.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { setupTestDb, teardownTestDb } from './helpers/test-db.js';
 import {
   createTestUser,
   createTestOrganization,
   createTestProject,
-  deleteTestProject,
-  deleteTestUser,
   findUserByEmail,
 } from './helpers/test-db.js';
 import { eq, and } from 'drizzle-orm';
 import { users, projects, organizationMembers, organizations } from '../src/db/schema/index.js';
+import { container } from 'tsyringe';
+import { DatabaseConnection } from '../src/db/index.js';
+
+function getTestDb() {
+  return container.resolve(DatabaseConnection).getDb();
+}
 
 describe('数据库 Schema', () => {
+  beforeEach(() => {
+    setupTestDb();
+  });
+
+  afterEach(() => {
+    teardownTestDb();
+  });
+
   it('应创建所有必要的表', () => {
-    const db = getSqliteDb(':memory:');
-    initSchema(db);
-    const tables = db
+    const sqlite = container.resolve(DatabaseConnection).getSqlite();
+    const tables = sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all() as { name: string }[];
     const names = tables.map((t) => t.name);
@@ -29,14 +39,9 @@ describe('数据库 Schema', () => {
     expect(names).toContain('draft_messages');
     expect(names).toContain('organizations');
     expect(names).toContain('organization_members');
-    closeDb();
   });
 
   it('应能插入用户', () => {
-    closeDb();
-    getDb(':memory:');
-    initSchema(getSqliteDb());
-
     const user = createTestUser({
       name: '测试用户',
       email: 'test@test.com',
@@ -49,14 +54,9 @@ describe('数据库 Schema', () => {
     const foundUser = findUserByEmail('test@test.com');
     expect(foundUser).toBeDefined();
     expect(foundUser!.name).toBe('测试用户');
-    closeDb();
   });
 
   it('不允许重复邮箱', () => {
-    closeDb();
-    getDb(':memory:');
-    initSchema(getSqliteDb());
-
     createTestUser({
       name: '用户1',
       email: 'dup@test.com',
@@ -70,15 +70,9 @@ describe('数据库 Schema', () => {
         passwordHash: 'hash',
       });
     }).toThrow();
-
-    closeDb();
   });
 
   it('应能创建项目并关联成员', () => {
-    closeDb();
-    getDb(':memory:');
-    initSchema(getSqliteDb());
-
     const user = createTestUser({
       name: '创建者',
       email: 'owner@test.com',
@@ -93,7 +87,7 @@ describe('数据库 Schema', () => {
       status: 'created',
     });
 
-    const db = getDb();
+    const db = getTestDb();
     // 创建组织成员（项目成员关系现在通过组织管理）
     db.insert(organizationMembers)
       .values({
@@ -117,14 +111,9 @@ describe('数据库 Schema', () => {
 
     expect(member).toBeDefined();
     expect(member!.role).toBe('owner');
-    closeDb();
   });
 
   it('外键约束应阻止插入无效的用户引用', () => {
-    closeDb();
-    getDb(':memory:');
-    initSchema(getSqliteDb());
-
     const user = createTestUser({
       name: 'temp',
       email: 'temp@test.com',
@@ -133,7 +122,7 @@ describe('数据库 Schema', () => {
 
     const org = createTestOrganization(user.id, { name: 'temp-org' });
 
-    const db = getDb();
+    const db = getTestDb();
     expect(() => {
       db.insert(projects)
         .values({
@@ -145,15 +134,9 @@ describe('数据库 Schema', () => {
         })
         .run();
     }).toThrow();
-
-    closeDb();
   });
 
   it('CHECK 约束应拒绝无效的模板类型', () => {
-    closeDb();
-    getDb(':memory:');
-    initSchema(getSqliteDb());
-
     const user = createTestUser({
       name: '用户',
       email: 'check@test.com',
@@ -162,7 +145,7 @@ describe('数据库 Schema', () => {
 
     const org = createTestOrganization(user.id, { name: '测试组织' });
 
-    const db = getDb();
+    const db = getTestDb();
     expect(() => {
       db.insert(projects)
         .values({
@@ -174,15 +157,9 @@ describe('数据库 Schema', () => {
         })
         .run();
     }).toThrow();
-
-    closeDb();
   });
 
   it('ON DELETE CASCADE 应删除相关组织成员', () => {
-    closeDb();
-    getDb(':memory:');
-    initSchema(getSqliteDb());
-
     const user = createTestUser({
       name: '用户',
       email: 'cascade@test.com',
@@ -191,7 +168,7 @@ describe('数据库 Schema', () => {
 
     const org = createTestOrganization(user.id, { name: '测试组织' });
 
-    const db = getDb();
+    const db = getTestDb();
     // 创建组织成员
     db.insert(organizationMembers)
       .values({
@@ -213,6 +190,5 @@ describe('数据库 Schema', () => {
       .all();
 
     expect(members).toHaveLength(0);
-    closeDb();
   });
 });

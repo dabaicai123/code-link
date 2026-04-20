@@ -1,10 +1,10 @@
 import type Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
-import { getDb } from './drizzle.js';
 import { users } from './schema/index.js';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '../core/logger/index.js';
 import { getConfig } from '../core/config.js';
+import { DatabaseConnection } from './connection.js';
 
 const logger = createLogger('db-init');
 
@@ -174,7 +174,7 @@ export function initSchema(db: Database.Database): void {
  * 初始化默认超级管理员账号
  * ADMIN_PASSWORD 必须通过环境变量配置（生产环境强制要求）
  */
-export async function initDefaultAdmin(): Promise<void> {
+export async function initDefaultAdmin(dbConnection?: DatabaseConnection): Promise<void> {
   const config = getConfig();
   const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
 
@@ -185,7 +185,11 @@ export async function initDefaultAdmin(): Promise<void> {
     return;
   }
 
-  const db = getDb();
+  // 使用传入的 dbConnection 或从 DI 容器获取
+  const { container } = await import('tsyringe');
+  const conn = dbConnection || container.resolve(DatabaseConnection);
+  const db = conn.getDb();
+
   const existingAdmin = await db.select().from(users).where(eq(users.email, adminEmail)).get();
 
   if (!existingAdmin) {
