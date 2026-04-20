@@ -1,4 +1,4 @@
-import type { OrgRole } from "../types.js";
+import type { OrgRole } from "../db/schema/index.js";
 
 /**
  * 角色层级定义
