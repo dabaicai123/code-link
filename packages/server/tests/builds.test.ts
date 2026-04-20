@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { createApp } from '../src/index.js';
 import { getSqliteDb, closeDb } from '../src/db/index.js';
 import { initSchema } from '../src/db/schema.js';
-import { JWT_SECRET } from '../src/middleware/auth.js';
+import { getConfig } from '../src/core/config.js';
 import { resetBuildManagerInstance } from '../src/build/build-manager.js';
 import {
   createTestUser,
@@ -38,7 +38,7 @@ vi.mock('../src/build/preview-container.js', () => ({
   })),
 }));
 
-vi.mock('../src/websocket/server.js', () => ({
+vi.mock('../src/socket/index.js', () => ({
   getWebSocketServer: vi.fn(() => null),
   resetWebSocketServerInstance: vi.fn(),
 }));
@@ -82,7 +82,7 @@ describe('Builds API', () => {
   describe('POST /api/builds', () => {
     it('应成功创建构建', async () => {
       // 生成测试 token
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .post('/api/builds')
@@ -96,7 +96,7 @@ describe('Builds API', () => {
     });
 
     it('缺少 projectId 应返回 400', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .post('/api/builds')
@@ -136,7 +136,7 @@ describe('Builds API', () => {
 
   describe('GET /api/builds/project/:projectId', () => {
     it('应返回项目的构建列表', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       // 先创建构建
       await request(app)
@@ -155,7 +155,7 @@ describe('Builds API', () => {
     });
 
     it('无效的项目 ID 应返回 400', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .get('/api/builds/project/invalid')
@@ -182,7 +182,7 @@ describe('Builds API', () => {
 
   describe('GET /api/builds/:id', () => {
     it('应返回构建详情', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const createRes = await request(app)
         .post('/api/builds')
@@ -200,7 +200,7 @@ describe('Builds API', () => {
     });
 
     it('无效的构建 ID 应返回 400', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .get('/api/builds/invalid')
@@ -210,7 +210,7 @@ describe('Builds API', () => {
     });
 
     it('构建不存在应返回 404', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .get('/api/builds/999')
@@ -220,7 +220,7 @@ describe('Builds API', () => {
     });
 
     it('无权限应返回 403', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const createRes = await request(app)
         .post('/api/builds')
@@ -244,7 +244,7 @@ describe('Builds API', () => {
 
   describe('GET /api/builds/preview/:projectId', () => {
     it('预览容器未运行应返回 404', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .get('/api/builds/preview/1')
@@ -256,7 +256,7 @@ describe('Builds API', () => {
     });
 
     it('无效的项目 ID 应返回 400', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .get('/api/builds/preview/invalid')
@@ -283,7 +283,7 @@ describe('Builds API', () => {
 
   describe('DELETE /api/builds/preview/:projectId', () => {
     it('应成功停止预览容器', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .delete('/api/builds/preview/1')
@@ -293,7 +293,7 @@ describe('Builds API', () => {
     });
 
     it('无效的项目 ID 应返回 400', async () => {
-      const authToken = jwt.sign({ userId: 1 }, JWT_SECRET, { expiresIn: '24h' });
+      const authToken = jwt.sign({ userId: 1 }, getConfig().jwtSecret, { expiresIn: '24h' });
 
       const res = await request(app)
         .delete('/api/builds/preview/invalid')
