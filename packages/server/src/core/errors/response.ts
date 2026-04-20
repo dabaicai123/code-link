@@ -69,6 +69,12 @@ export const Errors = {
   conflict: (message: string): ErrorResponse =>
     errorResponse(ErrorCode.CONFLICT, message),
 
+  claudeConfigMissing: (): ErrorResponse =>
+    errorResponse(ErrorCode.CLAUDE_CONFIG_MISSING, '请先在「设置 → Claude Code 配置」中完成配置'),
+
+  alreadyExists: (resource: string): ErrorResponse =>
+    errorResponse(ErrorCode.ALREADY_EXISTS, `${resource}已存在`),
+
   internal: (message: string = '服务器内部错误'): ErrorResponse =>
     errorResponse(ErrorCode.INTERNAL_ERROR, message),
 };
