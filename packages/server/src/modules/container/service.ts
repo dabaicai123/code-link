@@ -2,7 +2,6 @@ import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
 import { ProjectRepository } from '../project/repository.js';
 import { ClaudeConfigRepository } from '../claude-config/repository.js';
-import { OrganizationRepository } from '../organization/repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { NotFoundError, ParamError } from '../../core/errors/index.js';
 import {
@@ -25,7 +24,6 @@ export class ContainerService {
   constructor(
     @inject(ProjectRepository) private readonly projectRepo: ProjectRepository,
     @inject(ClaudeConfigRepository) private readonly claudeConfigRepo: ClaudeConfigRepository,
-    @inject(OrganizationRepository) private readonly orgRepo: OrganizationRepository,
     @inject(PermissionService) private readonly permService: PermissionService
   ) {}
 
