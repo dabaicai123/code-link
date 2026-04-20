@@ -5,7 +5,9 @@ import type { Request, Response, NextFunction } from 'express';
 import { createLogger } from '../logger/index.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
 import { ROLE_HIERARCHY } from '../utils/roles.js';
-import { UserRepository, OrganizationRepository, ProjectRepository } from '../repositories/index.js';
+import { AuthRepository } from '../modules/auth/repository.js';
+import { OrganizationRepository } from '../modules/organization/repository.js';
+import { ProjectRepository } from '../modules/project/repository.js';
 import { Errors } from '../utils/response.js';
 import { getConfig } from '../core/config.js';
 import type { OrgRole } from '../types.js';
@@ -23,7 +25,7 @@ declare global {
 const logger = createLogger('auth');
 
 // 单例 Repository 实例通过容器获取
-const userRepo = container.resolve(UserRepository);
+const authRepo = container.resolve(AuthRepository);
 const orgRepo = container.resolve(OrganizationRepository);
 const projectRepo = container.resolve(ProjectRepository);
 
@@ -80,7 +82,7 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
     }
 
     // 获取用户邮箱检查是否为超级管理员
-    const userEmail = await userRepo.findEmailById(userId);
+    const userEmail = await authRepo.findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
       (req as any).orgRole = 'owner';
       next();
@@ -128,7 +130,7 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
     }
 
     // 获取用户邮箱检查是否为超级管理员
-    const userEmail = await userRepo.findEmailById(userId);
+    const userEmail = await authRepo.findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
       next();
       return;
@@ -172,7 +174,7 @@ export function createCanCreateOrgMiddleware() {
     }
 
     // 获取用户邮箱检查是否为超级管理员
-    const userEmail = await userRepo.findEmailById(userId);
+    const userEmail = await authRepo.findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
       next();
       return;

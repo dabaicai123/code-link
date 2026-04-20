@@ -1,8 +1,11 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { createLogger } from '../logger/index.js';
 import { getContainerStatus } from '../docker/container-manager.js';
-import { DraftRepository } from '../repositories/index.js';
+import { DraftRepository } from '../modules/draft/repository.js';
 
 const logger = createLogger('ai-context');
+const draftRepo = container.resolve(DraftRepository);
 
 export interface DraftContext {
   draftId: number;
@@ -37,7 +40,6 @@ export interface DraftContext {
  * 为 Draft 构建 AI 上下文
  */
 export async function buildContextForDraft(draftId: number): Promise<DraftContext> {
-  const draftRepo = new DraftRepository();
 
   const contextData = await draftRepo.findDraftContext(draftId);
   if (!contextData) {

@@ -1,17 +1,21 @@
 // packages/server/src/socket/namespaces/terminal.ts
+import "reflect-metadata";
+import { container } from "tsyringe";
 import type { Namespace, Socket } from 'socket.io';
 import { createLogger } from '../../logger/index.js';
 import { TerminalEvents } from '../types.js';
 import { getTerminalManager } from '../../terminal/terminal-manager.js';
 import { getContainerStatus } from '../../docker/container-manager.js';
 import { decrypt, isEncryptionKeySet } from '../../crypto/aes.js';
-import { ProjectRepository, ClaudeConfigRepository, OrganizationRepository } from '../../repositories/index.js';
+import { ProjectRepository } from '../../modules/project/repository.js';
+import { ClaudeConfigRepository } from '../../modules/claude-config/repository.js';
+import { OrganizationRepository } from '../../modules/organization/repository.js';
 
 const logger = createLogger('socket-terminal');
 
-const projectRepo = new ProjectRepository();
-const claudeConfigRepo = new ClaudeConfigRepository();
-const orgRepo = new OrganizationRepository();
+const projectRepo = container.resolve(ProjectRepository);
+const claudeConfigRepo = container.resolve(ClaudeConfigRepository);
+const orgRepo = container.resolve(OrganizationRepository);
 
 export function setupTerminalNamespace(namespace: Namespace): void {
   namespace.on('connection', async (socket) => {

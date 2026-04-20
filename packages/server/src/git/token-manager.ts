@@ -1,11 +1,13 @@
-import { TokenRepository } from '../repositories/index.js';
+import "reflect-metadata";
+import { container } from "tsyringe";
+import { GitProviderRepository } from '../modules/gitprovider/repository.js';
 import type { SelectProjectToken } from '../db/schema/index.js';
 
 export class TokenManager {
-  private tokenRepo: TokenRepository;
+  private tokenRepo: GitProviderRepository;
 
   constructor() {
-    this.tokenRepo = new TokenRepository();
+    this.tokenRepo = container.resolve(GitProviderRepository);
   }
 
   async saveToken(

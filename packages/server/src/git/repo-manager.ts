@@ -1,6 +1,8 @@
+import "reflect-metadata";
+import { container } from "tsyringe";
 import { execInContainer } from '../docker/container-manager.js';
 import { TokenManager } from './token-manager.js';
-import { ProjectRepository } from '../repositories/index.js';
+import { ProjectRepository } from '../modules/project/repository.js';
 import type { SelectProjectRepo } from '../db/schema/index.js';
 
 interface CloneResult {
@@ -20,7 +22,7 @@ export class RepoManager {
 
   constructor() {
     this.tokenManager = new TokenManager();
-    this.projectRepo = new ProjectRepository();
+    this.projectRepo = container.resolve(ProjectRepository);
   }
 
   // 转义 shell 命令参数，防止命令注入

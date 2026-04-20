@@ -1,21 +1,24 @@
 // packages/server/src/middleware/permission.ts
+import "reflect-metadata";
+import { container } from "tsyringe";
 import type { Request, Response, NextFunction } from 'express';
-import { UserRepository, OrganizationRepository, ProjectRepository } from '../repositories/index.js';
+import { AuthRepository } from '../modules/auth/repository.js';
+import { OrganizationRepository } from '../modules/organization/repository.js';
+import { ProjectRepository } from '../modules/project/repository.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
 import { Errors } from '../utils/response.js';
 import { parseIdParam } from '../utils/params.js';
 import type { OrgRole } from '../types.js';
-import type { SelectOrganizationMember } from '../db/schema/index.js';
 
-const userRepo = new UserRepository();
-const orgRepo = new OrganizationRepository();
-const projectRepo = new ProjectRepository();
+const authRepo = container.resolve(AuthRepository);
+const orgRepo = container.resolve(OrganizationRepository);
+const projectRepo = container.resolve(ProjectRepository);
 
 interface ProjectAccessResult {
   projectId: number;
   userId: number;
   project: NonNullable<Awaited<ReturnType<typeof projectRepo.findById>>>;
-  membership: SelectOrganizationMember;
+  membership: { role: OrgRole };
 }
 
 /**
@@ -40,17 +43,10 @@ export async function getProjectAccess(
   }
 
   // 检查用户邮箱判断超级管理员
-  const userEmail = await userRepo.findEmailById(userId);
+  const userEmail = await authRepo.findEmailById(userId);
   if (userEmail && isSuperAdmin(userEmail)) {
     // Create a synthetic membership for super admin
-    const syntheticMembership: SelectOrganizationMember = {
-      id: 0, // Synthetic ID
-      userId,
-      organizationId: project.organizationId,
-      role: 'owner',
-      invitedBy: userId, // Self-invited as super admin
-      joinedAt: new Date().toISOString(),
-    };
+    const syntheticMembership: { role: OrgRole } = { role: 'owner' };
     return {
       success: true,
       data: { projectId, userId, project, membership: syntheticMembership }
@@ -136,7 +132,7 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
     }
 
     // 检查超级管理员
-    const userEmail = await userRepo.findEmailById(userId);
+    const userEmail = await authRepo.findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
       (req as any).orgRole = 'owner';
       next();
