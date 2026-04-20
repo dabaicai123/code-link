@@ -1,12 +1,6 @@
 import { create } from 'zustand';
 import { storage } from '../storage';
-
-export interface User {
-  id: number;
-  email: string;
-  name: string;
-  avatar: string | null;
-}
+import type { User } from '@/types';
 
 interface AuthState {
   user: User | null;
