@@ -1,11 +1,17 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { TerminalWorkspace } from '@/components/terminal';
+import dynamic from 'next/dynamic';
 import { CollaborationPanel } from '@/components/collaboration';
 import { ResizableSplit } from './resizable-split';
 import { SelectedElement } from '@/components/collaboration/display-panel';
+import { Loading } from '@/components/ui/loading';
 import type { Project } from '@/types';
+
+const TerminalWorkspace = dynamic(
+  () => import('@/components/terminal').then((m) => ({ default: m.TerminalWorkspace })),
+  { loading: () => <Loading text="加载终端..." /> }
+);
 
 interface WorkspaceProps {
   project: Project | null;

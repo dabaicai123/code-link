@@ -28,6 +28,7 @@ export function TerminalPanel({ projectId }: TerminalPanelProps) {
     };
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- xterm instance init: runs once on mount
   useEffect(() => {
     if (!containerRef.current) return;
 

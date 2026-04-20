@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, ApiError, Organization, OrgRole } from '@/lib/api';
+import { useOrganizations } from '@/lib/queries';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/constants';
 
 interface OrganizationListProps {
@@ -11,32 +10,13 @@ interface OrganizationListProps {
 
 export function OrganizationList({ onCreateOrganization }: OrganizationListProps) {
   const router = useRouter();
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchOrganizations();
-  }, []);
-
-  const fetchOrganizations = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.getOrganizations();
-      setOrganizations(data);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : '加载组织列表失败');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: organizations = [], isLoading, error, refetch } = useOrganizations();
 
   const handleClick = (orgId: number) => {
     router.push(`/organizations/${orgId}`);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
         加载中...
@@ -47,8 +27,8 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
   if (error) {
     return (
       <div style={{ padding: '20px', backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--status-error)', borderRadius: 'var(--radius-md)', color: 'var(--status-error)' }}>
-        {error}
-        <button onClick={fetchOrganizations} className="btn btn-secondary" style={{ marginLeft: '12px' }}>
+        {error.message}
+        <button onClick={() => refetch()} className="btn btn-secondary" style={{ marginLeft: '12px' }}>
           重试
         </button>
       </div>

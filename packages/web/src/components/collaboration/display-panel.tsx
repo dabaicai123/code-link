@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useReducer, useRef, useCallback } from 'react';
 
 export interface SelectedElement {
   id: string;
@@ -14,37 +14,111 @@ interface DisplayPanelProps {
   onAddElement: (element: SelectedElement) => void;
 }
 
+interface DisplayState {
+  url: string;
+  selectMode: boolean;
+  selectedElement: SelectedElement | null;
+  selectedElementRect: { x: number; y: number; width: number; height: number } | null;
+  hoveredElement: SelectedElement | null;
+  hoveredElementRect: { x: number; y: number; width: number; height: number } | null;
+  clickPosition: { x: number; y: number } | null;
+}
+
+type DisplayAction =
+  | { type: 'SET_URL'; url: string }
+  | { type: 'TOGGLE_SELECT_MODE' }
+  | { type: 'CLEAR_SELECTION_STATE' }
+  | { type: 'SET_SELECTED'; element: SelectedElement; rect: DisplayState['selectedElementRect']; click: { x: number; y: number } }
+  | { type: 'CLEAR_SELECTED' }
+  | { type: 'SET_HOVERED'; element: SelectedElement; rect: DisplayState['hoveredElementRect'] }
+  | { type: 'CLEAR_HOVERED' };
+
+const initialState: DisplayState = {
+  url: 'http://localhost:3000',
+  selectMode: false,
+  selectedElement: null,
+  selectedElementRect: null,
+  hoveredElement: null,
+  hoveredElementRect: null,
+  clickPosition: null,
+};
+
+function displayReducer(state: DisplayState, action: DisplayAction): DisplayState {
+  switch (action.type) {
+    case 'SET_URL':
+      return { ...state, url: action.url };
+    case 'TOGGLE_SELECT_MODE':
+      return {
+        ...state,
+        selectMode: !state.selectMode,
+        ...(!state.selectMode ? {
+          selectedElement: null,
+          selectedElementRect: null,
+          clickPosition: null,
+          hoveredElement: null,
+          hoveredElementRect: null,
+        } : {}),
+      };
+    case 'CLEAR_SELECTION_STATE':
+      return {
+        ...state,
+        selectedElement: null,
+        selectedElementRect: null,
+        clickPosition: null,
+      };
+    case 'SET_SELECTED':
+      return {
+        ...state,
+        selectedElement: action.element,
+        selectedElementRect: action.rect,
+        clickPosition: action.click,
+        hoveredElement: null,
+        hoveredElementRect: null,
+      };
+    case 'CLEAR_SELECTED':
+      return {
+        ...state,
+        selectedElement: null,
+        selectedElementRect: null,
+        clickPosition: null,
+      };
+    case 'SET_HOVERED':
+      return {
+        ...state,
+        hoveredElement: action.element,
+        hoveredElementRect: action.rect,
+      };
+    case 'CLEAR_HOVERED':
+      return {
+        ...state,
+        hoveredElement: null,
+        hoveredElementRect: null,
+      };
+    default:
+      return state;
+  }
+}
+
 export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
-  const [url, setUrl] = useState('http://localhost:3000');
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
-  const [selectedElementRect, setSelectedElementRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [hoveredElement, setHoveredElement] = useState<SelectedElement | null>(null);
-  const [hoveredElementRect, setHoveredElementRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
+  const [state, dispatch] = useReducer(displayReducer, initialState);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = () => {
     if (iframeRef.current) {
-      iframeRef.current.src = url;
+      iframeRef.current.src = state.url;
     }
   };
 
   const handleAddElement = () => {
-    if (selectedElement) {
-      onAddElement(selectedElement);
-      // 清除选中状态，但保持选择模式
-      setSelectedElement(null);
-      setSelectedElementRect(null);
-      setClickPosition(null);
+    if (state.selectedElement) {
+      onAddElement(state.selectedElement);
+      dispatch({ type: 'CLEAR_SELECTED' });
     }
   };
 
   const handleCancelSelection = () => {
-    setSelectedElement(null);
-    setSelectedElementRect(null);
-    setClickPosition(null);
+    dispatch({ type: 'CLEAR_SELECTION_STATE' });
   };
 
   // 计算元素的 CSS 选择器
@@ -109,7 +183,7 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
 
   // 处理 iframe 内的点击（通过 overlay 捕获坐标）
   const handleOverlayClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!selectMode || !iframeRef.current) return;
+    if (!state.selectMode || !iframeRef.current) return;
 
     const iframe = iframeRef.current;
     const iframeRect = iframe.getBoundingClientRect();
@@ -129,32 +203,29 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
       // 提取元素及其子元素信息
       const elementInfo = extractElementInfo(element);
 
-      setSelectedElement(elementInfo);
-
       // 获取元素在 iframe 内的位置
       const elementRect = element.getBoundingClientRect();
-      setSelectedElementRect({
-        x: elementRect.left,
-        y: elementRect.top,
-        width: elementRect.width,
-        height: elementRect.height,
+
+      dispatch({
+        type: 'SET_SELECTED',
+        element: elementInfo,
+        rect: {
+          x: elementRect.left,
+          y: elementRect.top,
+          width: elementRect.width,
+          height: elementRect.height,
+        },
+        click: { x, y },
       });
-
-      // 存储点击位置（相对于 overlay）
-      setClickPosition({ x, y });
-
-      // 清除 hover 状态
-      setHoveredElement(null);
-      setHoveredElementRect(null);
     } catch (err) {
       console.error('无法访问 iframe 内容（可能是跨域限制）:', err);
     }
-  }, [selectMode, extractElementInfo]);
+  }, [state.selectMode, extractElementInfo]);
 
   // 处理 hover 显示预览（只在没有选中元素时生效）
   const handleOverlayMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     // 如果已经有选中元素，不更新 hover
-    if (!selectMode || !iframeRef.current || selectedElement) return;
+    if (!state.selectMode || !iframeRef.current || state.selectedElement) return;
 
     const iframe = iframeRef.current;
     const iframeRect = iframe.getBoundingClientRect();
@@ -164,69 +235,68 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
     try {
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc) {
-        setHoveredElement(null);
-        setHoveredElementRect(null);
+        dispatch({ type: 'CLEAR_HOVERED' });
         return;
       }
 
       const element = iframeDoc.elementFromPoint(x, y);
       if (!element || element.tagName === 'HTML' || element.tagName === 'BODY') {
-        setHoveredElement(null);
-        setHoveredElementRect(null);
+        dispatch({ type: 'CLEAR_HOVERED' });
         return;
       }
 
       const selector = getSelector(element);
       const content = element.textContent?.trim().slice(0, 50) || undefined;
 
-      setHoveredElement({
-        id: 'preview',
-        tagName: element.tagName.toLowerCase(),
-        selector,
-        content,
-      });
-
       const elementRect = element.getBoundingClientRect();
-      setHoveredElementRect({
-        x: elementRect.left,
-        y: elementRect.top,
-        width: elementRect.width,
-        height: elementRect.height,
+
+      dispatch({
+        type: 'SET_HOVERED',
+        element: {
+          id: 'preview',
+          tagName: element.tagName.toLowerCase(),
+          selector,
+          content,
+        },
+        rect: {
+          x: elementRect.left,
+          y: elementRect.top,
+          width: elementRect.width,
+          height: elementRect.height,
+        },
       });
     } catch {
-      setHoveredElement(null);
-      setHoveredElementRect(null);
+      dispatch({ type: 'CLEAR_HOVERED' });
     }
-  }, [selectMode, selectedElement, getSelector]);
+  }, [state.selectMode, state.selectedElement, getSelector]);
 
   const handleOverlayMouseLeave = useCallback(() => {
     // 只在没有选中元素时清除 hover
-    if (!selectedElement) {
-      setHoveredElement(null);
-      setHoveredElementRect(null);
+    if (!state.selectedElement) {
+      dispatch({ type: 'CLEAR_HOVERED' });
     }
-  }, [selectedElement]);
+  }, [state.selectedElement]);
 
   // 计算添加按钮的位置
   const getAddButtonPosition = () => {
-    if (!clickPosition) return { top: 0, left: 0 };
+    if (!state.clickPosition) return { top: 0, left: 0 };
     const overlay = overlayRef.current;
-    if (!overlay) return { top: clickPosition.y + 10, left: clickPosition.x };
+    if (!overlay) return { top: state.clickPosition.y + 10, left: state.clickPosition.x };
 
     const overlayRect = overlay.getBoundingClientRect();
     const buttonWidth = 100;
     const buttonHeight = 32;
     const padding = 10;
 
-    let top = clickPosition.y + padding;
-    let left = clickPosition.x;
+    let top = state.clickPosition.y + padding;
+    let left = state.clickPosition.x;
 
     if (left + buttonWidth > overlayRect.width) {
       left = overlayRect.width - buttonWidth - padding;
     }
 
     if (top + buttonHeight > overlayRect.height) {
-      top = clickPosition.y - buttonHeight - padding;
+      top = state.clickPosition.y - buttonHeight - padding;
     }
 
     return { top, left: Math.max(padding, left) };
@@ -238,37 +308,28 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '4px 8px' }}>
           <input
             type="text"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            value={state.url}
+            onChange={(e) => dispatch({ type: 'SET_URL', url: e.target.value })}
             style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}
           />
         </div>
         <button onClick={handleRefresh} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '11px' }}>刷新</button>
         <button
-          onClick={() => {
-            setSelectMode(!selectMode);
-            if (!selectMode) {
-              setSelectedElement(null);
-              setSelectedElementRect(null);
-              setClickPosition(null);
-              setHoveredElement(null);
-              setHoveredElementRect(null);
-            }
-          }}
+          onClick={() => dispatch({ type: 'TOGGLE_SELECT_MODE' })}
           className="btn"
           style={{
             padding: '4px 8px',
             fontSize: '11px',
-            backgroundColor: selectMode ? 'rgba(248, 113, 113, 0.2)' : 'var(--accent-color)',
-            border: selectMode ? '1px solid var(--status-error)' : 'none',
-            color: selectMode ? 'var(--status-error)' : 'white',
+            backgroundColor: state.selectMode ? 'rgba(248, 113, 113, 0.2)' : 'var(--accent-color)',
+            border: state.selectMode ? '1px solid var(--status-error)' : 'none',
+            color: state.selectMode ? 'var(--status-error)' : 'white',
           }}
         >
-          {selectMode ? '✕ 取消选择' : '🎯 选择'}
+          {state.selectMode ? '✕ 取消选择' : '🎯 选择'}
         </button>
       </div>
 
-      {selectMode && (
+      {state.selectMode && (
         <div style={{ padding: '4px 12px', backgroundColor: 'rgba(124, 58, 237, 0.1)', borderBottom: '1px solid var(--accent-color)', fontSize: '11px', color: 'var(--accent-light)' }}>
           选择模式已开启，点击页面元素可添加到消息中
         </div>
@@ -277,11 +338,11 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
       <div style={{ flex: 1, position: 'relative' }}>
         <iframe
           ref={iframeRef}
-          src={url}
+          src={state.url}
           style={{ width: '100%', height: '100%', border: 'none', backgroundColor: 'white' }}
         />
         {/* 选择模式覆盖层 */}
-        {selectMode && (
+        {state.selectMode && (
           <div
             ref={overlayRef}
             onClick={handleOverlayClick}
@@ -293,20 +354,20 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
               left: 0,
               right: 0,
               bottom: 0,
-              cursor: selectedElement ? 'default' : 'crosshair',
+              cursor: state.selectedElement ? 'default' : 'crosshair',
               zIndex: 10,
               backgroundColor: 'transparent',
             }}
           >
             {/* hover 时的高亮框（只在未选中时显示） */}
-            {hoveredElementRect && !selectedElement && (
+            {state.hoveredElementRect && !state.selectedElement && (
               <div
                 style={{
                   position: 'absolute',
-                  top: hoveredElementRect.y,
-                  left: hoveredElementRect.x,
-                  width: hoveredElementRect.width,
-                  height: hoveredElementRect.height,
+                  top: state.hoveredElementRect.y,
+                  left: state.hoveredElementRect.x,
+                  width: state.hoveredElementRect.width,
+                  height: state.hoveredElementRect.height,
                   border: '2px solid var(--accent-color)',
                   backgroundColor: 'rgba(124, 58, 237, 0.1)',
                   pointerEvents: 'none',
@@ -316,14 +377,14 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
             )}
 
             {/* 选中元素的高亮框 */}
-            {selectedElementRect && (
+            {state.selectedElementRect && (
               <div
                 style={{
                   position: 'absolute',
-                  top: selectedElementRect.y,
-                  left: selectedElementRect.x,
-                  width: selectedElementRect.width,
-                  height: selectedElementRect.height,
+                  top: state.selectedElementRect.y,
+                  left: state.selectedElementRect.x,
+                  width: state.selectedElementRect.width,
+                  height: state.selectedElementRect.height,
                   border: '2px solid var(--status-success)',
                   backgroundColor: 'rgba(34, 197, 94, 0.15)',
                   pointerEvents: 'none',
@@ -333,7 +394,7 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
             )}
 
             {/* 点击后出现在鼠标附近的添加按钮 */}
-            {selectedElement && clickPosition && (
+            {state.selectedElement && state.clickPosition && (
               <div
                 style={{
                   position: 'absolute',
@@ -356,7 +417,7 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                   }}
                 >
-                  + 添加 &lt;{selectedElement.tagName}&gt;
+                  + 添加 &lt;{state.selectedElement.tagName}&gt;
                 </button>
                 <button
                   onClick={(e) => {

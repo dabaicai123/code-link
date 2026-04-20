@@ -61,11 +61,11 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
     }
   };
 
-  const toggleCodeMode = () => {
+  const onToggleCodeMode = () => {
     messageTypeRef.current = messageTypeRef.current === 'code' ? 'text' : 'code';
   };
 
-  const insertAICommand = () => {
+  const onInsertAICommand = () => {
     const currentContent = form.getValues('content');
     form.setValue('content', currentContent + '@AI ');
     messageTypeRef.current = 'ai_command';
@@ -144,14 +144,14 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
       <div className="flex gap-2 mt-1.5">
         <button
           type="button"
-          onClick={toggleCodeMode}
+          onClick={onToggleCodeMode}
           className="px-2 py-1 text-[10px] rounded bg-hover text-muted-foreground hover:text-foreground"
         >
           {'</>'}
         </button>
         <button
           type="button"
-          onClick={insertAICommand}
+          onClick={onInsertAICommand}
           className="px-2 py-1 text-[10px] rounded bg-hover text-muted-foreground hover:text-foreground"
         >
           @AI

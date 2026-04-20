@@ -101,7 +101,7 @@ export function RepoImportDialog({
     if (selectedRepo && user) {
       loadBranches();
     }
-  }, [selectedRepo]);
+  }, [selectedRepo, user]);
 
   const checkAuthorization = async () => {
     try {

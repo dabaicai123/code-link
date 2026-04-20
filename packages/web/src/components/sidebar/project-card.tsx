@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, memo } from 'react';
+import { useState, memo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { RepoItem } from './repo-item';
 import { AddRepoDialog } from './add-repo-dialog';
-import { api, ApiError, Repo } from '@/lib/api';
+import { useRepos, useCloneRepo, useDeleteRepo } from '@/lib/queries';
+import { ApiError } from '@/lib/api';
 import type { Project } from '@/types';
 import { TEMPLATE_LABELS } from '@/types';
 
@@ -27,38 +28,20 @@ export const ProjectCard = memo(function ProjectCard({
   onClick,
   onRefresh
 }: ProjectCardProps) {
-  const [repos, setRepos] = useState<Repo[]>([]);
-  const [loadingRepos, setLoadingRepos] = useState(false);
   const [showAddRepo, setShowAddRepo] = useState(false);
   const [cloningRepoId, setCloningRepoId] = useState<number | null>(null);
 
+  const { data: repos = [], isLoading: loadingRepos, refetch: refetchRepos } = useRepos(project.id);
+  const cloneRepo = useCloneRepo();
+  const deleteRepo = useDeleteRepo();
+
   const isRunning = project.status === 'running';
-
-  // 加载仓库列表
-  useEffect(() => {
-    if (isExpanded) {
-      fetchRepos();
-    }
-  }, [isExpanded]);
-
-  const fetchRepos = async () => {
-    setLoadingRepos(true);
-    try {
-      const data = await api.getRepos(project.id);
-      setRepos(data);
-    } catch (err) {
-      console.error('Failed to fetch repos:', err);
-    } finally {
-      setLoadingRepos(false);
-    }
-  };
 
   const handleClone = async (repoId: number) => {
     setCloningRepoId(repoId);
     try {
-      await api.cloneRepo(project.id, repoId);
+      await cloneRepo.mutateAsync({ projectId: project.id, repoId });
     } catch (err) {
-      console.error('Clone failed:', err);
       if (err instanceof ApiError) {
         toast.error(err.message);
       }
@@ -70,10 +53,8 @@ export const ProjectCard = memo(function ProjectCard({
   const handleDeleteRepo = async (repoId: number) => {
     if (!confirm('确定要删除这个仓库吗？')) return;
     try {
-      await api.deleteRepo(project.id, repoId);
-      setRepos(repos.filter(r => r.id !== repoId));
+      await deleteRepo.mutateAsync({ projectId: project.id, repoId });
     } catch (err) {
-      console.error('Delete failed:', err);
       if (err instanceof ApiError) {
         toast.error(err.message);
       }
@@ -82,7 +63,7 @@ export const ProjectCard = memo(function ProjectCard({
 
   const handleAddRepoSuccess = () => {
     setShowAddRepo(false);
-    fetchRepos();
+    refetchRepos();
     onRefresh?.();
   };
 
