@@ -6,9 +6,9 @@ import { AuthRepository } from '../modules/auth/repository.js';
 import { OrganizationRepository } from '../modules/organization/repository.js';
 import { ProjectRepository } from '../modules/project/repository.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
-import { Errors } from '../utils/response.js';
+import { Errors } from '../core/errors/index.js';
 import { parseIdParam } from '../utils/params.js';
-import type { OrgRole } from '../types.js';
+import type { OrgRole } from '../db/schema/index.js';
 
 const authRepo = container.resolve(AuthRepository);
 const orgRepo = container.resolve(OrganizationRepository);
