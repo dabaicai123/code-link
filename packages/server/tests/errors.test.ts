@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BusinessError, PermissionError, NotFoundError, ParamError, ConflictError, AuthError } from '../src/utils/errors.js';
+import { NotFoundError, PermissionError, ParamError, ConflictError, AuthError } from '../src/core/errors/index.js';
 
 describe('BusinessError', () => {
   it('should have correct code and httpStatus', () => {
@@ -26,7 +26,7 @@ describe('BusinessError', () => {
     const error = new ConflictError('名称已被使用');
     expect(error.message).toBe('名称已被使用');
     expect(error.code).toBe('CONFLICT');
-    expect(error.httpStatus).toBe(400);
+    expect(error.httpStatus).toBe(409);
   });
 
   it('AuthError should have default message', () => {

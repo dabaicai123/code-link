@@ -3,8 +3,13 @@
  * Provides functions for creating, finding, updating, and deleting test data
  */
 
+import "reflect-metadata";
 import { eq, and } from 'drizzle-orm';
-import { getDb } from '../../src/db/index.js';
+import Database from 'better-sqlite3';
+import { container } from 'tsyringe';
+import { getDb, getSqliteDb, closeDb } from '../../src/db/index.js';
+import { initSchema } from '../../src/db/schema.js';
+import { DatabaseConnection } from '../../src/core/database/connection.js';
 import {
   users,
   organizations,
@@ -45,6 +50,26 @@ import type {
   InsertBuild,
   SelectBuild,
 } from '../../src/db/schema/index.js';
+
+// ============================================================================
+// Database Setup Helpers
+// ============================================================================
+
+export function setupTestDb(): Database.Database {
+  closeDb();
+  const db = getSqliteDb(':memory:');
+  initSchema(db);
+
+  container.reset();
+  container.register(DatabaseConnection, { useValue: DatabaseConnection.fromSqlite(db) });
+
+  return db;
+}
+
+export function teardownTestDb(): void {
+  container.reset();
+  closeDb();
+}
 
 // ============================================================================
 // User Helpers

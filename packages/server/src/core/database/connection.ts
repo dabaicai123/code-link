@@ -17,6 +17,13 @@ export class DatabaseConnection {
     this.db = drizzle(this.sqlite, { schema });
   }
 
+  static fromSqlite(sqlite: Database.Database): DatabaseConnection {
+    const conn = Object.create(DatabaseConnection.prototype) as DatabaseConnection;
+    conn.sqlite = sqlite;
+    conn.db = drizzle(sqlite, { schema });
+    return conn;
+  }
+
   getDb(): ReturnType<typeof drizzle> {
     return this.db;
   }
