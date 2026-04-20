@@ -13,8 +13,8 @@ const TEST_DB_PATH = path.join(process.cwd(), 'test-auth-service.db');
 
 vi.mock('bcryptjs', () => ({
   default: {
-    hashSync: vi.fn((password: string) => `hashed_${password}`),
-    compareSync: vi.fn((password: string, hash: string) => hash === `hashed_${password}`),
+    hash: vi.fn(async (password: string, rounds: number) => `hashed_${password}`),
+    compare: vi.fn(async (password: string, hash: string) => hash === `hashed_${password}`),
   },
 }));
 
