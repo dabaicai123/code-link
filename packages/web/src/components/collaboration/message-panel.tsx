@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '@/lib/api';
-import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
+import { useDraftSocket } from '@/lib/socket/draft';
 import { MessageItem } from './message-item';
 import { MessageInput } from './message-input';
 import type { Draft, DraftMessage, MessageType } from '../../types/draft';
@@ -26,8 +26,8 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
   };
 
   // WebSocket 回调
-  const handleMessageReceived = useCallback((message: unknown) => {
-    const draftMessage = message as DraftMessage;
+  const handleMessageReceived = useCallback((msg: { message: DraftMessage }) => {
+    const draftMessage = msg.message;
     setMessages(prev => {
       // 避免重复添加
       if (prev.some(m => m.id === draftMessage.id)) return prev;
@@ -36,11 +36,9 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
     setTimeout(scrollToBottom, 50);
   }, []);
 
-  const { isConnected, onlineUsers } = useDraftWebSocket({
+  const { isConnected, onlineUsers } = useDraftSocket({
     draftId: draft.id,
-    userId: currentUserId || 0,
-    userName: currentUserName || 'Unknown',
-    onMessageReceived: handleMessageReceived,
+    onMessage: handleMessageReceived,
   });
 
   // 加载历史消息

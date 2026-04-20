@@ -6,7 +6,7 @@ import { DraftList } from './draft-list';
 import { MessagePanel } from './message-panel';
 import { DraftHeader } from './draft-header';
 import { DisplayPanel, SelectedElement } from './display-panel';
-import { useDraftWebSocket } from '../../hooks/use-draft-websocket';
+import { useDraftSocket } from '@/lib/socket/draft';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
 import type { DraftOnlineUser } from '@/lib/socket/types';
 import { Button } from '@/components/ui/button';
@@ -37,23 +37,16 @@ export function CollaborationPanel({
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
 
   // WebSocket 用于在线用户
-  const { onlineUsers: wsOnlineUsers } = useDraftWebSocket({
+  const { onlineUsers: wsOnlineUsers } = useDraftSocket({
     draftId: selectedDraft?.id ?? null,
-    userId: currentUserId || 0,
-    userName: currentUserName || 'Unknown',
-    onMemberJoined: (userId, userName) => {
+    onMemberJoined: (user) => {
       setOnlineUsers(prev => {
-        if (prev.some(u => u.userId === userId)) return prev;
-        return [...prev, { userId, userName }];
+        if (prev.some(u => u.userId === user.userId)) return prev;
+        return [...prev, user];
       });
     },
-    onMemberLeft: (userId) => {
-      setOnlineUsers(prev => prev.filter(u => u.userId !== userId));
-    },
-    onStatusChanged: (status) => {
-      if (selectedDraft) {
-        setSelectedDraft({ ...selectedDraft, status: status as DraftStatus });
-      }
+    onMemberLeft: (user) => {
+      setOnlineUsers(prev => prev.filter(u => u.userId !== user.userId));
     },
   });
 
