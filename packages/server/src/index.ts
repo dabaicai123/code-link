@@ -30,7 +30,7 @@ import { createSocketServer } from './socket/index.js';
 // 其他初始化
 import { setEncryptionKey } from './crypto/aes.js';
 import { initAIClient } from './ai/client.js';
-import { success, Errors } from './utils/response.js';
+import { success, Errors } from './core/errors/index.js';
 
 const logger = new LoggerService();
 
