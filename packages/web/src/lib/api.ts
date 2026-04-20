@@ -33,6 +33,18 @@ import type {
   ConfirmationType,
 } from '@/types/draft';
 
+// 导入统一类型
+import type { OrgRole } from '@/types/user';
+import type { Organization, OrganizationDetail, OrganizationMember } from '@/types/organization';
+import type { Repo } from '@/types/repo';
+import type { OrganizationInvitation } from '@/types/invitation';
+
+// 重新导出类型以保持向后兼容
+export type { OrgRole } from '@/types/user';
+export type { Organization, OrganizationDetail, OrganizationMember } from '@/types/organization';
+export type { Repo } from '@/types/repo';
+export type { OrganizationInvitation } from '@/types/invitation';
+
 /**
  * 从 localStorage 获取 token
  */
@@ -114,69 +126,6 @@ export async function apiClient<T = unknown>(
   }
 
   return result as T;
-}
-
-/**
- * 仓库信息
- */
-export interface Repo {
-  id: number;
-  provider: 'github' | 'gitlab';
-  repoUrl: string;
-  repoName: string;
-  branch: string;
-  cloned: boolean;
-  createdAt: string;
-}
-
-/**
- * 组织信息
- */
-export interface Organization {
-  id: number;
-  name: string;
-  createdBy: number;
-  createdAt: string;
-  role?: OrgRole;
-}
-
-/**
- * 组织角色
- */
-export type OrgRole = 'owner' | 'developer' | 'member';
-
-/**
- * 组织成员
- */
-export interface OrganizationMember {
-  id: number;
-  name: string;
-  email: string;
-  avatar: string | null;
-  role: OrgRole;
-  joinedAt: string;
-}
-
-/**
- * 组织邀请
- */
-export interface OrganizationInvitation {
-  id: number;
-  organizationId: number;
-  organizationName?: string;
-  email: string;
-  role: OrgRole;
-  invitedBy: number;
-  invitedByName?: string;
-  status: 'pending' | 'accepted' | 'declined';
-  createdAt: string;
-}
-
-/**
- * 组织详情（包含成员列表）
- */
-export interface OrganizationDetail extends Organization {
-  members: OrganizationMember[];
 }
 
 // 便捷方法
