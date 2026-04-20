@@ -4,6 +4,7 @@ import { getDb } from './drizzle.js';
 import { users } from './schema/index.js';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '../logger/index.js';
+import { getConfig } from '../core/config.js';
 
 const logger = createLogger('db-init');
 
@@ -165,17 +166,25 @@ export function initSchema(db: Database.Database): void {
 
 /**
  * 初始化默认超级管理员账号
- * 密码通过环境变量 ADMIN_PASSWORD 配置，默认为 test_123
+ * ADMIN_PASSWORD 必须通过环境变量配置（生产环境强制要求）
  */
 export async function initDefaultAdmin(): Promise<void> {
+  const config = getConfig();
   const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD || 'test_123';
+
+  // Require password from config or environment - no default fallback
+  const adminPassword = config.adminPassword || process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    logger.warn('No ADMIN_PASSWORD set. Skipping default admin creation.');
+    return;
+  }
 
   const db = getDb();
   const existingAdmin = await db.select().from(users).where(eq(users.email, adminEmail)).get();
 
   if (!existingAdmin) {
-    const passwordHash = bcrypt.hashSync(adminPassword, 10);
+    // Use async bcrypt.hash for better performance
+    const passwordHash = await bcrypt.hash(adminPassword, 10);
     await db.insert(users).values({
       name: 'Admin',
       email: adminEmail,
