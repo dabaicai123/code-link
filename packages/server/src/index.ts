@@ -3,53 +3,96 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
+import { container } from 'tsyringe';
+
+// 数据库初始化
 import { getSqliteDb, initSchema, initDefaultAdmin } from './db/index.js';
-import { createAuthRouter } from './routes/auth.js';
-import { createProjectsRouter } from './routes/projects.js';
-import { createContainersRouter } from './routes/containers.js';
-import { createGitHubRouter } from './routes/github.js';
-import { createGitLabRouter } from './routes/gitlab.js';
-import { createReposRouter } from './routes/repos.js';
-import { createBuildsRouter } from './routes/builds.js';
-import { createClaudeConfigRouter } from './routes/claude-config.js';
-import { createDraftsRouter } from './routes/drafts.js';
-import { createOrganizationsRouter } from './routes/organizations.js';
-import { createInvitationsRouter } from './routes/invitations.js';
+
+// 模块注册
+import { registerAuthModule, createAuthRoutes, AuthController } from './modules/auth/auth.module.js';
+import { registerOrganizationModule, createOrganizationRoutes, OrganizationController } from './modules/organization/organization.module.js';
+import { registerProjectModule, createProjectRoutes, ProjectController } from './modules/project/project.module.js';
+import { registerDraftModule, createDraftRoutes, DraftController } from './modules/draft/draft.module.js';
+import { registerBuildModule, createBuildRoutes, BuildController } from './modules/build/build.module.js';
+import { registerGitProviderModule, createGitProviderRoutes, GitProviderController } from './modules/gitprovider/gitprovider.module.js';
+import { registerClaudeConfigModule, createClaudeConfigRoutes, ClaudeConfigController } from './modules/claude-config/claude-config.module.js';
+import { registerContainerModule, createContainerRoutes, ContainerController } from './modules/container/container.module.js';
+
+// 核心服务
+import { DatabaseConnection } from './core/database/connection.js';
+import { LoggerService } from './core/logger/logger.js';
+import { PermissionService } from './shared/permission.service.js';
+import { createErrorHandler } from './core/errors/handler.js';
+
+// WebSocket
 import { createSocketServer } from './socket/index.js';
-import { requestLoggingMiddleware, createLogger } from './logger/index.js';
+
+// 其他初始化
 import { setEncryptionKey } from './crypto/aes.js';
 import { initAIClient } from './ai/client.js';
 import { success, Errors } from './utils/response.js';
-import type Database from 'better-sqlite3';
 
-const logger = createLogger('server');
+const logger = new LoggerService();
 
 export function createApp(): express.Express {
   const app = express();
 
+  // 注册核心服务
+  container.registerSingleton(DatabaseConnection);
+  container.registerSingleton(LoggerService);
+  container.registerSingleton(PermissionService);
+
+  // 注册所有模块
+  registerAuthModule();
+  registerOrganizationModule();
+  registerProjectModule();
+  registerDraftModule();
+  registerBuildModule();
+  registerGitProviderModule();
+  registerClaudeConfigModule();
+  registerContainerModule();
+
+  // 中间件
   app.use(cors());
   app.use(express.json());
-  app.use(requestLoggingMiddleware);
 
+  // 健康检查
   app.get('/api/health', (_req, res) => {
     res.json(success({ status: 'ok' }));
   });
 
-  app.use('/api/auth', createAuthRouter());
-  app.use('/api/projects', createProjectsRouter());
-  app.use('/api/projects', createContainersRouter());
-  app.use('/api/github', createGitHubRouter());
-  app.use('/api/gitlab', createGitLabRouter());
-  app.use('/api/projects/:projectId/repos', createReposRouter());
-  app.use('/api/builds', createBuildsRouter());
-  app.use('/api/claude-config', createClaudeConfigRouter());
-  app.use('/api/organizations', createOrganizationsRouter());
-  app.use('/api/invitations', createInvitationsRouter());
-  app.use('/api/drafts', createDraftsRouter());
+  // 获取 Controller 实例
+  const authController = container.resolve(AuthController);
+  const orgController = container.resolve(OrganizationController);
+  const projectController = container.resolve(ProjectController);
+  const draftController = container.resolve(DraftController);
+  const buildController = container.resolve(BuildController);
+  const gitProviderController = container.resolve(GitProviderController);
+  const claudeConfigController = container.resolve(ClaudeConfigController);
+  const containerController = container.resolve(ContainerController);
 
+  // 注册路由
+  app.use('/api/auth', createAuthRoutes(authController));
+  app.use('/api/organizations', createOrganizationRoutes(orgController));
+  app.use('/api/projects', createProjectRoutes(projectController));
+  app.use('/api/projects', createContainerRoutes(containerController));
+  app.use('/api/drafts', createDraftRoutes(draftController));
+  app.use('/api/builds', createBuildRoutes(buildController));
+
+  // GitProvider 返回两个路由器
+  const { githubRouter, gitlabRouter } = createGitProviderRoutes(gitProviderController);
+  app.use('/api/github', githubRouter);
+  app.use('/api/gitlab', gitlabRouter);
+
+  app.use('/api/claude-config', createClaudeConfigRoutes(claudeConfigController));
+
+  // 404 处理
   app.use((_req, res) => {
     res.status(404).json(Errors.notFound('接口'));
   });
+
+  // 错误处理
+  app.use(createErrorHandler(logger));
 
   return app;
 }
