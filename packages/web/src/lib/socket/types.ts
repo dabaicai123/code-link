@@ -3,6 +3,38 @@ import { z } from 'zod';
 
 // 与服务端保持一致的类型定义
 
+// WebSocket 事件类型
+export type WebSocketEventType =
+  | 'connected'
+  | 'disconnected'
+  | 'error'
+  | 'message'
+  | 'user_joined'
+  | 'user_left'
+  | 'chat'
+  | 'file_change'
+  | 'build_status';
+
+export interface BaseWSMessage {
+  type: string;
+  timestamp: string;
+}
+
+export interface ChatWSMessage extends BaseWSMessage {
+  type: 'chat';
+  projectId: number;
+  userId: number;
+  userName: string;
+  content: string;
+}
+
+export interface UserEventWSMessage extends BaseWSMessage {
+  type: 'user_joined' | 'user_left';
+  projectId: number;
+  userId: number;
+  userName: string;
+}
+
 export const ProjectEvents = {
   subscribe: z.object({ projectId: z.number() }),
   unsubscribe: z.object({ projectId: z.number() }),
