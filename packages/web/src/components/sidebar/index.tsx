@@ -9,23 +9,7 @@ import { useOrganizationStore } from '@/lib/stores';
 import { useOrganizations } from '@/lib/queries';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-interface Project {
-  id: number;
-  name: string;
-  templateType: 'node' | 'node+java' | 'node+python';
-  organizationId: number;
-  containerId: string | null;
-  status: 'created' | 'running' | 'stopped';
-  createdBy: number;
-  createdAt: string;
-}
-
-interface User {
-  id: number;
-  email: string;
-  name: string;
-}
+import type { Project, User } from '@/types';
 
 interface SidebarProps {
   user: User;

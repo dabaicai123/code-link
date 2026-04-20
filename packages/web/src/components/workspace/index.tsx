@@ -5,13 +5,7 @@ import { TerminalWorkspace } from '@/components/terminal';
 import { CollaborationPanel } from '@/components/collaboration';
 import { ResizableSplit } from './resizable-split';
 import { SelectedElement } from '@/components/collaboration/display-panel';
-
-interface Project {
-  id: number;
-  name: string;
-  templateType: 'node' | 'node+java' | 'node+python';
-  status: 'created' | 'running' | 'stopped';
-}
+import type { Project } from '@/types';
 
 interface WorkspaceProps {
   project: Project | null;

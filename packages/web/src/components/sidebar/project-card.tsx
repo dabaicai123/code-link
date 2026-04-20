@@ -7,13 +7,8 @@ import { Button } from '@/components/ui/button';
 import { RepoItem } from './repo-item';
 import { AddRepoDialog } from './add-repo-dialog';
 import { api, ApiError, Repo } from '@/lib/api';
-
-interface Project {
-  id: number;
-  name: string;
-  templateType: 'node' | 'node+java' | 'node+python';
-  status: 'created' | 'running' | 'stopped';
-}
+import type { Project } from '@/types';
+import { TEMPLATE_LABELS } from '@/types';
 
 interface ProjectCardProps {
   project: Project;
@@ -23,12 +18,6 @@ interface ProjectCardProps {
   onClick?: () => void;
   onRefresh?: () => void;
 }
-
-const TEMPLATE_LABELS: Record<Project['templateType'], string> = {
-  node: 'Node.js',
-  'node+java': 'Java',
-  'node+python': 'Python',
-};
 
 export function ProjectCard({
   project,

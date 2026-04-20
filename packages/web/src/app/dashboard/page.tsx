@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useLogout, useCurrentUser, useProjects, useStartContainer, useMyInvitations, Project } from '@/lib/queries';
+import { useLogout, useCurrentUser, useProjects, useStartContainer, useMyInvitations } from '@/lib/queries';
+import type { Project } from '@/types';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useOrganizationStore } from '@/lib/stores';
 import { Sidebar } from '@/components/sidebar';

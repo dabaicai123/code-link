@@ -4,7 +4,8 @@ import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useOrganizationStore } from '@/lib/stores';
-import { useCreateProject, type Project } from '@/lib/queries/use-projects';
+import { useCreateProject } from '@/lib/queries/use-projects';
+import type { Project } from '@/types';
 import {
   createProjectSchema,
   type CreateProjectInput,

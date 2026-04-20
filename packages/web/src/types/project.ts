@@ -1,13 +1,16 @@
 export interface Project {
   id: number;
   name: string;
-  templateType: 'node' | 'node+java' | 'node+python';
-  status: 'created' | 'running' | 'stopped';
+  templateType: TemplateType;
+  organizationId: number;
+  containerId: string | null;
+  status: ProjectStatus;
+  createdBy: number;
   createdAt: string;
 }
 
-export type TemplateType = Project['templateType'];
-export type ProjectStatus = Project['status'];
+export type TemplateType = 'node' | 'node+java' | 'node+python';
+export type ProjectStatus = 'created' | 'running' | 'stopped';
 
 export const TEMPLATE_LABELS: Record<TemplateType, string> = {
   node: 'Node.js',

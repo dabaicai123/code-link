@@ -7,12 +7,7 @@ import { MessageEditor, SelectedElement } from './message-editor';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useTerminalSocket } from '@/lib/socket/terminal';
-
-interface Project {
-  id: number;
-  name: string;
-  status: 'created' | 'running' | 'stopped';
-}
+import type { Project } from '@/types';
 
 interface TerminalWorkspaceProps {
   project: Project | null;

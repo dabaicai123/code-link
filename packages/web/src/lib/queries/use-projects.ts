@@ -1,17 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useOrganizationStore } from '@/lib/stores';
-
-export interface Project {
-  id: number;
-  name: string;
-  templateType: 'node' | 'node+java' | 'node+python';
-  organizationId: number;
-  containerId: string | null;
-  status: 'created' | 'running' | 'stopped';
-  createdBy: number;
-  createdAt: string;
-}
+import type { Project } from '@/types';
 
 export const projectKeys = {
   all: ['projects'] as const,
