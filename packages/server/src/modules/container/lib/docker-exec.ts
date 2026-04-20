@@ -1,6 +1,6 @@
 import Docker from 'dockerode';
 import { PassThrough, Transform, TransformCallback } from 'stream';
-import { getDockerClient } from '../docker/client.js';
+import { getDockerClient } from '../../../docker/client.js';
 
 export interface ExecSession {
   exec: Docker.Exec;

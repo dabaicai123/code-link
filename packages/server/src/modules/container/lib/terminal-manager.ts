@@ -1,4 +1,3 @@
-// src/terminal/terminal-manager.ts
 // 通用 WebSocket 接口
 export interface WebSocketLike {
   readyState: number;
@@ -14,7 +13,7 @@ import {
   execWithUserEnv,
   type ExecSession,
 } from './docker-exec.js';
-import { createLogger } from '../core/logger/index.js';
+import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('terminal-mgr');
 

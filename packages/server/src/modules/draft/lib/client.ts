@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createLogger } from '../core/logger/index.js';
+import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('ai-client');
 

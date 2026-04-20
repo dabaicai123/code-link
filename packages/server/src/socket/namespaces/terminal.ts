@@ -4,7 +4,7 @@ import { container } from "tsyringe";
 import type { Namespace, Socket } from 'socket.io';
 import { createLogger } from '../../core/logger/index.js';
 import { TerminalEvents } from '../types.js';
-import { getTerminalManager } from '../../terminal/terminal-manager.js';
+import { getTerminalManager } from '../../modules/container/lib/terminal-manager.js';
 import { getContainerStatus } from '../../docker/container-manager.js';
 import { decrypt, isEncryptionKeySet } from '../../crypto/aes.js';
 import { ProjectRepository } from '../../modules/project/repository.js';

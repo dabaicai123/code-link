@@ -1,6 +1,6 @@
-import { getDockerClient } from '../docker/client.js';
+import { getDockerClient } from '../../../docker/client.js';
 import { getPortManager } from './port-manager.js';
-import { createLogger } from '../core/logger/index.js';
+import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('preview');
 const PREVIEW_CONTAINER_PREFIX = 'code-link-preview-';

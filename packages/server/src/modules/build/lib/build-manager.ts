@@ -1,12 +1,11 @@
-// src/build/build-manager.ts
 import "reflect-metadata";
 import { container } from "tsyringe";
-import { getDockerClient } from '../docker/client.js';
-import { getVolumePath } from '../docker/volume-manager.js';
+import { getDockerClient } from '../../../docker/client.js';
+import { getVolumePath } from '../../../docker/volume-manager.js';
 import { getPreviewContainerManager } from './preview-container.js';
-import { BuildRepository } from '../modules/build/repository.js';
-import { getErrorMessage } from '../core/errors/errors.js';
-import type { SelectBuild } from '../db/schema/index.js';
+import { BuildRepository } from '../repository.js';
+import { getErrorMessage } from '../../../core/errors/errors.js';
+import type { SelectBuild } from '../../../db/schema/index.js';
 
 export class BuildManager {
   private buildRepo: BuildRepository;

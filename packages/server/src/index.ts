@@ -7,7 +7,7 @@ import { container } from 'tsyringe';
 import { getConfig } from './core/config.js';
 
 // 数据库初始化
-import { getSqliteDb, initSchema, initDefaultAdmin, closeDb } from './db/index.js';
+import { DatabaseConnection, initSchema, initDefaultAdmin, createSqliteDb } from './db/index.js';
 
 // 模块注册
 import { registerAuthModule, createAuthRoutes, AuthController } from './modules/auth/auth.module.js';
@@ -20,7 +20,6 @@ import { registerClaudeConfigModule, createClaudeConfigRoutes, ClaudeConfigContr
 import { registerContainerModule, createContainerRoutes, ContainerController } from './modules/container/container.module.js';
 
 // 核心服务
-import { DatabaseConnection } from './core/database/connection.js';
 import { LoggerService } from './core/logger/logger.js';
 import { PermissionService } from './shared/permission.service.js';
 import { createErrorHandler } from './core/errors/handler.js';
@@ -30,7 +29,7 @@ import { createSocketServer } from './socket/index.js';
 
 // 其他初始化
 import { setEncryptionKey } from './crypto/aes.js';
-import { initAIClient } from './ai/client.js';
+import { initAIClient } from './modules/draft/lib/client.js';
 import { success, Errors } from './core/errors/index.js';
 
 const logger = new LoggerService();
@@ -139,7 +138,7 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
   const { resetConfig } = await import('./core/config.js');
   resetConfig();
 
-  const sqlite = getSqliteDb(':memory:');
+  const sqlite = createSqliteDb(':memory:');
   initSchema(sqlite);
 
   // Register in-memory DatabaseConnection before DI resolves
@@ -161,7 +160,7 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
         sqlite,
         close: () => new Promise<void>((res, rej) => {
           server.close((err) => {
-            closeDb();
+            conn.close();
             err ? rej(err) : res();
           });
         }),
@@ -173,9 +172,14 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
 
 // 启动入口
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
-  const db = getSqliteDb();
-  initSchema(db);
-  await initDefaultAdmin();
+  const sqlite = createSqliteDb();
+  initSchema(sqlite);
+
+  // 注册 DatabaseConnection 到 DI 容器
+  const dbConnection = DatabaseConnection.fromSqlite(sqlite);
+  container.registerInstance(DatabaseConnection, dbConnection);
+
+  await initDefaultAdmin(dbConnection);
 
   // 设置加密密钥
   const encryptionKey = process.env.CLAUDE_CONFIG_ENCRYPTION_KEY || '';

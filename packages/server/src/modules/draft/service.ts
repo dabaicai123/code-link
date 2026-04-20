@@ -5,7 +5,7 @@ import { ProjectRepository } from '../project/repository.js';
 import { AuthRepository } from '../auth/repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { ParamError, NotFoundError, PermissionError } from '../../core/errors/index.js';
-import { parseAICommand, executeAICommand, isAICommand } from '../../ai/commands.js';
+import { parseAICommand, executeAICommand, isAICommand } from './lib/commands.js';
 import type { SelectDraft, InsertDraftMessage } from '../../db/schema/index.js';
 import type { CreateDraftInput, CreateDraftMessageInput, ConfirmMessageInput } from './schemas.js';
 import type { DraftDetail, DraftMessageWithUser, MessageConfirmationWithUser } from './types.js';

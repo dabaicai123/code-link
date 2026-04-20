@@ -1,8 +1,8 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
-import { createLogger } from '../core/logger/index.js';
-import { getContainerStatus } from '../docker/container-manager.js';
-import { DraftRepository } from '../modules/draft/repository.js';
+import { createLogger } from '../../../core/logger/index.js';
+import { getContainerStatus } from '../../../docker/container-manager.js';
+import { DraftRepository } from '../repository.js';
 
 const logger = createLogger('ai-context');
 const draftRepo = container.resolve(DraftRepository);

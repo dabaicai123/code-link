@@ -1,7 +1,7 @@
 import { isAIEnabled, sendAIMessage, type AIMessage } from './client.js';
 import { buildContextForDraft, type DraftContext } from './context.js';
 import { getSystemPrompt, getCommandPrompt } from './prompts.js';
-import { createLogger } from '../core/logger/index.js';
+import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('ai-commands');
 
