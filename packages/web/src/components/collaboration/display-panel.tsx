@@ -1,6 +1,7 @@
 'use client';
 
 import { useReducer, useRef, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 
 export interface SelectedElement {
   id: string;
@@ -303,133 +304,104 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '4px 8px' }}>
+    <div className="h-full flex flex-col">
+      {/* 地址栏 */}
+      <div className="p-2 border-b border-border bg-secondary flex items-center gap-2">
+        <div className="flex-1 flex items-center bg-card border border-border rounded-md px-2 py-1">
           <input
             type="text"
             value={state.url}
             onChange={(e) => dispatch({ type: 'SET_URL', url: e.target.value })}
-            style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}
+            className="flex-1 bg-transparent border-none outline-none text-foreground text-xs"
           />
         </div>
-        <button onClick={handleRefresh} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '11px' }}>刷新</button>
+        <button
+          onClick={handleRefresh}
+          className="btn btn-secondary px-2 py-1 text-[11px]"
+        >
+          刷新
+        </button>
         <button
           onClick={() => dispatch({ type: 'TOGGLE_SELECT_MODE' })}
-          className="btn"
-          style={{
-            padding: '4px 8px',
-            fontSize: '11px',
-            backgroundColor: state.selectMode ? 'rgba(248, 113, 113, 0.2)' : 'var(--accent-color)',
-            border: state.selectMode ? '1px solid var(--status-error)' : 'none',
-            color: state.selectMode ? 'var(--status-error)' : 'white',
-          }}
+          className={cn(
+            'px-2 py-1 text-[11px] rounded-md',
+            state.selectMode
+              ? 'bg-destructive/20 text-destructive border border-destructive'
+              : 'bg-primary text-white'
+          )}
         >
-          {state.selectMode ? '✕ 取消选择' : '🎯 选择'}
+          {state.selectMode ? '✕ 取消' : '🎯 选择'}
         </button>
       </div>
 
+      {/* 选择模式提示 */}
       {state.selectMode && (
-        <div style={{ padding: '4px 12px', backgroundColor: 'rgba(124, 58, 237, 0.1)', borderBottom: '1px solid var(--accent-color)', fontSize: '11px', color: 'var(--accent-light)' }}>
+        <div className="px-3 py-1 bg-primary/10 border-b border-primary text-[11px] text-accent-light">
           选择模式已开启，点击页面元素可添加到消息中
         </div>
       )}
 
-      <div style={{ flex: 1, position: 'relative' }}>
+      {/* 预览区域 */}
+      <div className="flex-1 relative">
         <iframe
           ref={iframeRef}
           src={state.url}
-          style={{ width: '100%', height: '100%', border: 'none', backgroundColor: 'white' }}
+          className="w-full h-full border-none bg-white"
         />
-        {/* 选择模式覆盖层 */}
+        {/* 选择模式覆盖层 - 保持原有逻辑，只更新颜色变量 */}
         {state.selectMode && (
           <div
             ref={overlayRef}
             onClick={handleOverlayClick}
             onMouseMove={handleOverlayMouseMove}
             onMouseLeave={handleOverlayMouseLeave}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              cursor: state.selectedElement ? 'default' : 'crosshair',
-              zIndex: 10,
-              backgroundColor: 'transparent',
-            }}
+            className="absolute inset-0 z-10"
+            style={{ cursor: state.selectedElement ? 'default' : 'crosshair' }}
           >
-            {/* hover 时的高亮框（只在未选中时显示） */}
+            {/* hover 高亮框 */}
             {state.hoveredElementRect && !state.selectedElement && (
               <div
+                className="absolute border-2 border-primary bg-primary/10 rounded-sm pointer-events-none"
                 style={{
-                  position: 'absolute',
                   top: state.hoveredElementRect.y,
                   left: state.hoveredElementRect.x,
                   width: state.hoveredElementRect.width,
                   height: state.hoveredElementRect.height,
-                  border: '2px solid var(--accent-color)',
-                  backgroundColor: 'rgba(124, 58, 237, 0.1)',
-                  pointerEvents: 'none',
-                  borderRadius: '2px',
                 }}
               />
             )}
 
-            {/* 选中元素的高亮框 */}
+            {/* 选中高亮框 */}
             {state.selectedElementRect && (
               <div
+                className="absolute border-2 border-status-running bg-status-running/15 rounded-sm pointer-events-none"
                 style={{
-                  position: 'absolute',
                   top: state.selectedElementRect.y,
                   left: state.selectedElementRect.x,
                   width: state.selectedElementRect.width,
                   height: state.selectedElementRect.height,
-                  border: '2px solid var(--status-success)',
-                  backgroundColor: 'rgba(34, 197, 94, 0.15)',
-                  pointerEvents: 'none',
-                  borderRadius: '2px',
                 }}
               />
             )}
 
-            {/* 点击后出现在鼠标附近的添加按钮 */}
+            {/* 添加按钮 */}
             {state.selectedElement && state.clickPosition && (
               <div
+                className="absolute flex gap-1 z-20"
                 style={{
-                  position: 'absolute',
                   top: getAddButtonPosition().top,
                   left: getAddButtonPosition().left,
-                  display: 'flex',
-                  gap: '4px',
-                  zIndex: 20,
                 }}
               >
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddElement();
-                  }}
-                  className="btn btn-primary"
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '11px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                  }}
+                  onClick={(e) => { e.stopPropagation(); handleAddElement(); }}
+                  className="btn btn-primary px-3 py-1.5 text-[11px] shadow-lg"
                 >
                   + 添加 &lt;{state.selectedElement.tagName}&gt;
                 </button>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCancelSelection();
-                  }}
-                  className="btn btn-secondary"
-                  style={{
-                    padding: '6px 8px',
-                    fontSize: '11px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                  }}
+                  onClick={(e) => { e.stopPropagation(); handleCancelSelection(); }}
+                  className="btn btn-secondary px-2 py-1.5 text-[11px] shadow-lg"
                 >
                   ✕
                 </button>

@@ -114,8 +114,8 @@ export function CollaborationPanel({
                 size="sm"
                 onClick={() => setActivePanel('display')}
                 className={cn(
-                  'text-xs',
-                  activePanel === 'display' ? 'bg-primary text-white' : 'bg-hover text-secondary'
+                  'text-xs h-6',
+                  activePanel === 'display' ? 'bg-primary text-white hover:bg-primary/90' : 'bg-hover text-muted-foreground hover:text-foreground'
                 )}
               >
                 展示
@@ -124,12 +124,13 @@ export function CollaborationPanel({
                 size="sm"
                 onClick={() => setActivePanel('drafts')}
                 className={cn(
-                  'text-xs',
-                  activePanel === 'drafts' ? 'bg-primary text-white' : 'bg-hover text-secondary'
+                  'text-xs h-6',
+                  activePanel === 'drafts' ? 'bg-primary text-white hover:bg-primary/90' : 'bg-hover text-muted-foreground hover:text-foreground'
                 )}
               >
                 Draft
               </Button>
+              <Button size="sm" variant="ghost" className="text-xs h-6">+</Button>
             </div>
           </>
         )}
