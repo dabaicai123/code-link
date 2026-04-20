@@ -3,16 +3,16 @@ import type { Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 const { verify } = jwt;
 import { createLogger } from '../../logger/index.js';
+import { getConfig } from '../../core/config.js';
 import type { SocketData } from '../types.js';
 
 const logger = createLogger('socket-auth');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
 // Re-export for compatibility
 export type AuthSocketData = SocketData;
 
 export function createAuthMiddleware() {
+  const config = getConfig();
   return async (socket: Socket, next: (err?: Error) => void) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
@@ -21,7 +21,7 @@ export function createAuthMiddleware() {
         return next(new Error('Unauthorized: No token provided'));
       }
 
-      const decoded = verify(token, JWT_SECRET) as { userId: number; userName: string };
+      const decoded = verify(token, config.jwtSecret) as { userId: number; userName: string };
 
       if (!decoded.userId || !decoded.userName) {
         return next(new Error('Unauthorized: Invalid token payload'));
