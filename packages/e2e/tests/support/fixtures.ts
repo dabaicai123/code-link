@@ -13,6 +13,11 @@ let globalServer: E2EServerInstance | null = null;
 
 async function getOrStartServer(): Promise<E2EServerInstance> {
   if (!globalServer) {
+    // 设置环境变量 BEFORE importing server modules
+    process.env.NODE_ENV = 'test';
+    process.env.DB_PATH = ':memory:';
+    process.env.JWT_SECRET = TEST_JWT_SECRET;
+
     const { startServerForE2E } = await import('@code-link/server/dist/index.js');
     globalServer = await startServerForE2E();
   }

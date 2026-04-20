@@ -14,12 +14,13 @@ import type { OrgRole } from '../db/schema/index.js';
 
 const logger = createLogger('auth');
 
-// 单例 Repository 实例通过容器获取
-const authRepo = container.resolve(AuthRepository);
-const orgRepo = container.resolve(OrganizationRepository);
-const projectRepo = container.resolve(ProjectRepository);
+// 延迟获取 Repository 实例（避免模块加载时解析）
+function getAuthRepo() { return container.resolve(AuthRepository); }
+function getOrgRepo() { return container.resolve(OrganizationRepository); }
+function getProjectRepo() { return container.resolve(ProjectRepository); }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const authRepo = getAuthRepo();
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     logger.debug('No auth token provided');
@@ -57,6 +58,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
  */
 export function createOrgMemberMiddleware(minRole: OrgRole) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const authRepo = getAuthRepo();
+    const orgRepo = getOrgRepo();
     const userId = req.userId;
     const orgIdParam = req.params.orgId || req.params.id || req.body.organization_id;
     const orgId = parseInt(Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam || '', 10);
@@ -105,6 +108,9 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
  */
 export function createProjectMemberMiddleware(minRole: OrgRole) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const authRepo = getAuthRepo();
+    const orgRepo = getOrgRepo();
+    const projectRepo = getProjectRepo();
     const userId = req.userId;
     const projectIdParam = req.params.id || req.params.projectId;
     const projectId = parseInt(Array.isArray(projectIdParam) ? projectIdParam[0] : projectIdParam || '', 10);
@@ -156,6 +162,8 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
  */
 export function createCanCreateOrgMiddleware() {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const authRepo = getAuthRepo();
+    const orgRepo = getOrgRepo();
     const userId = req.userId;
 
     if (!userId) {

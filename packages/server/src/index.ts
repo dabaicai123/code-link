@@ -134,6 +134,7 @@ export interface E2EServerInstance {
 export async function startServerForE2E(options?: { port?: number }): Promise<E2EServerInstance> {
   process.env.NODE_ENV = 'test';
   process.env.DB_PATH = ':memory:';
+  process.env.JWT_SECRET = process.env.JWT_SECRET || 'e2e-test-secret-key-minimum-32-chars-long';
 
   const { resetConfig } = await import('./core/config.js');
   resetConfig();
