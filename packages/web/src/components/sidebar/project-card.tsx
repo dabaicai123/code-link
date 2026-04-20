@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ interface ProjectCardProps {
   onRefresh?: () => void;
 }
 
-export function ProjectCard({
+export const ProjectCard = memo(function ProjectCard({
   project,
   isActive,
   isExpanded,
@@ -179,4 +179,4 @@ export function ProjectCard({
       )}
     </>
   );
-}
+});

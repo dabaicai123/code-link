@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import type { DraftMessage, MessageConfirmation } from '../../types/draft';
 import { api } from '@/lib/api';
 import {
@@ -16,7 +16,7 @@ interface MessageItemProps {
   onConfirm?: (messageId: number, type: string) => void;
 }
 
-export function MessageItem({ message, currentUserId, onReply, onConfirm }: MessageItemProps) {
+export const MessageItem = memo(function MessageItem({ message, currentUserId, onReply, onConfirm }: MessageItemProps) {
   const [showConfirmations, setShowConfirmations] = useState(false);
   const [confirmations, setConfirmations] = useState<MessageConfirmation[]>([]);
   const [userConfirm, setUserConfirm] = useState<string | null>(null);
@@ -384,4 +384,4 @@ export function MessageItem({ message, currentUserId, onReply, onConfirm }: Mess
       </div>
     </div>
   );
-}
+});
