@@ -12,7 +12,7 @@ export function useCurrentUser() {
   const setUser = useAuthStore((s) => s.setUser);
 
   return useQuery({
-    queryKey: authKeys.current(),
+    queryKey: authKeys.current,
     queryFn: () => api.get<User>('/auth/me'),
     enabled: !isAuthenticated,
     retry: false,

@@ -26,8 +26,20 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
   };
 
   // WebSocket 回调
-  const handleMessageReceived = useCallback((msg: { message: DraftMessage }) => {
-    const draftMessage = msg.message;
+  const handleMessageReceived = useCallback((msg: { draftId: number; message: { id: number; draft_id: number; parent_id: number | null; user_id: number; user_name: string; content: string; message_type: string; created_at: string }; timestamp: string }) => {
+    // 将 snake_case 转换为 camelCase
+    const draftMessage: DraftMessage = {
+      id: msg.message.id,
+      draftId: msg.message.draft_id,
+      parentId: msg.message.parent_id,
+      userId: msg.message.user_id,
+      userName: msg.message.user_name,
+      content: msg.message.content,
+      messageType: msg.message.message_type as MessageType,
+      metadata: null,
+      createdAt: msg.message.created_at,
+      updatedAt: msg.message.created_at,
+    };
     setMessages(prev => {
       // 避免重复添加
       if (prev.some(m => m.id === draftMessage.id)) return prev;
