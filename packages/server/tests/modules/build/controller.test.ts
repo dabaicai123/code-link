@@ -11,7 +11,7 @@ vi.mock('../../../src/build/preview-container.js', () => ({
   getPreviewContainerManager: vi.fn(),
 }));
 
-vi.mock('../../../src/websocket/server.js', () => ({
+vi.mock('../../../src/socket/index.js', () => ({
   getWebSocketServer: vi.fn(),
 }));
 
