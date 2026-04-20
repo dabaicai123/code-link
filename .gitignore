@@ -60,3 +60,4 @@ docs/superpowers/
 .temp/
 packages/server/dist-tests/
 test-results/
+data/
