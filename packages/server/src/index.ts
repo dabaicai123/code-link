@@ -4,7 +4,6 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { container } from 'tsyringe';
-
 import { getConfig } from './core/config.js';
 
 // 数据库初始化
@@ -49,9 +48,10 @@ export function createApp(): express.Express {
   registerClaudeConfigModule();
   registerContainerModule();
 
-  // 中间件
+  // 获取配置
   const config = getConfig();
 
+  // 中间件
   // Configure CORS with origin whitelist
   const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
@@ -67,7 +67,6 @@ export function createApp(): express.Express {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   };
-
   app.use(cors(corsOptions));
   app.use(express.json());
 

@@ -12,6 +12,7 @@ const logger = createLogger('socket-auth');
 export type AuthSocketData = SocketData;
 
 export function createAuthMiddleware() {
+  const config = getConfig();
   return async (socket: Socket, next: (err?: Error) => void) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
@@ -20,7 +21,6 @@ export function createAuthMiddleware() {
         return next(new Error('Unauthorized: No token provided'));
       }
 
-      const config = getConfig();
       const decoded = verify(token, config.jwtSecret) as { userId: number; userName: string };
 
       if (!decoded.userId || !decoded.userName) {

@@ -11,6 +11,7 @@ describe('Socket auth middleware', () => {
 
   afterEach(() => {
     resetConfig();
+    delete process.env.JWT_SECRET;
   });
 
   it('should use getConfig() for JWT secret', async () => {
@@ -25,5 +26,18 @@ describe('Socket auth middleware', () => {
     await middleware(mockSocket as any, mockNext);
     expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
     expect(mockNext.mock.calls[0][0].message).toContain('Unauthorized');
+  });
+
+  it('should reject invalid tokens', async () => {
+    const middleware = createAuthMiddleware();
+    const mockSocket = {
+      handshake: { auth: { token: 'invalid-token-format' }, headers: {} },
+      data: {},
+    };
+    const mockNext = vi.fn();
+
+    await middleware(mockSocket as any, mockNext);
+    expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+    expect(mockNext.mock.calls[0][0].message).toBe('Unauthorized: Invalid token');
   });
 });

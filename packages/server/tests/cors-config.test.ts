@@ -1,3 +1,6 @@
+// Set JWT_SECRET before any imports that use tsyringe DI
+process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/index.js';
