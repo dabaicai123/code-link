@@ -32,4 +32,30 @@ export class ProjectController {
     await this.service.delete(req.userId!, projectId);
     res.status(204).send();
   }
+
+  async listRepos(req: Request, res: Response): Promise<void> {
+    const userId = req.userId!;
+    const projectId = Number(req.params.id);
+
+    const repos = await this.service.findRepos(projectId, userId);
+    res.json(success(repos));
+  }
+
+  async addRepo(req: Request, res: Response): Promise<void> {
+    const userId = req.userId!;
+    const projectId = Number(req.params.id);
+    const input = req.body; // AddRepoInput
+
+    const repo = await this.service.addRepo(projectId, userId, input);
+    res.status(201).json(success(repo));
+  }
+
+  async deleteRepo(req: Request, res: Response): Promise<void> {
+    const userId = req.userId!;
+    const projectId = Number(req.params.projectId);
+    const repoId = Number(req.params.repoId);
+
+    await this.service.deleteRepo(projectId, userId, repoId);
+    res.status(204).send();
+  }
 }
