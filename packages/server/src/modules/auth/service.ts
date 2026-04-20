@@ -21,7 +21,7 @@ export class AuthService {
       throw new ConflictError('该邮箱已被注册');
     }
 
-    const passwordHash = bcrypt.hashSync(data.password, 10);
+    const passwordHash = await bcrypt.hash(data.password, 10);
     const user = await this.repo.create({
       name: data.name,
       email: data.email,
@@ -39,7 +39,7 @@ export class AuthService {
   async login(data: LoginInput): Promise<AuthResult> {
     const user = await this.repo.findByEmail(data.email);
 
-    if (!user || !bcrypt.compareSync(data.password, user.passwordHash)) {
+    if (!user || !(await bcrypt.compare(data.password, user.passwordHash))) {
       throw new AuthError('邮箱或密码错误');
     }
 
