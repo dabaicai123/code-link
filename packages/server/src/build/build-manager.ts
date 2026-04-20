@@ -2,7 +2,6 @@
 import { getDockerClient } from '../docker/client.js';
 import { getVolumePath } from '../docker/volume-manager.js';
 import { getPreviewContainerManager } from './preview-container.js';
-import { getWebSocketServer } from '../websocket/server.js';
 import { BuildRepository } from '../repositories/index.js';
 import type { SelectBuild } from '../db/schema/index.js';
 
@@ -15,10 +14,7 @@ export class BuildManager {
 
   async createBuild(projectId: number): Promise<SelectBuild> {
     const build = await this.buildRepo.create(projectId);
-
-    // 通知 WebSocket 客户端
-    this.notifyBuildStatus(projectId, 'pending');
-
+    // WebSocket notification will be added later when websocket module is available
     return build;
   }
 
@@ -66,12 +62,6 @@ export class BuildManager {
     previewPort?: number
   ): Promise<void> {
     await this.buildRepo.updateStatus(buildId, status, previewPort);
-
-    // 获取项目 ID 并通知 WebSocket 客户端
-    const build = await this.getBuild(buildId);
-    if (build) {
-      this.notifyBuildStatus(build.projectId, status, previewPort);
-    }
   }
 
   async getBuild(buildId: number): Promise<SelectBuild | null> {
@@ -86,17 +76,6 @@ export class BuildManager {
   async getLatestBuild(projectId: number): Promise<SelectBuild | null> {
     const build = await this.buildRepo.findLatestByProjectId(projectId);
     return build ?? null;
-  }
-
-  private notifyBuildStatus(
-    projectId: number,
-    status: string,
-    previewPort?: number
-  ): void {
-    const wsServer = getWebSocketServer();
-    if (wsServer) {
-      wsServer.broadcastBuildStatus(projectId, status, previewPort);
-    }
   }
 }
 

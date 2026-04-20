@@ -21,19 +21,19 @@ export class OrganizationController {
   }
 
   async get(req: Request, res: Response): Promise<void> {
-    const orgId = parseInt(req.params.id, 10);
+    const orgId = parseInt(req.params.id as string, 10);
     const result = await this.service.findById(orgId, req.userId!);
     res.json(success(result));
   }
 
   async update(req: Request, res: Response): Promise<void> {
-    const orgId = parseInt(req.params.id, 10);
+    const orgId = parseInt(req.params.id as string, 10);
     const result = await this.service.updateName(orgId, req.userId!, req.body);
     res.json(success(result));
   }
 
   async delete(req: Request, res: Response): Promise<void> {
-    const orgId = parseInt(req.params.id, 10);
+    const orgId = parseInt(req.params.id as string, 10);
     await this.service.delete(orgId, req.userId!);
     res.status(204).send();
   }

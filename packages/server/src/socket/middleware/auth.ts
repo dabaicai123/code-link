@@ -1,6 +1,7 @@
 // packages/server/src/socket/middleware/auth.ts
 import type { Socket } from 'socket.io';
-import { verify } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+const { verify } = jwt;
 import { createLogger } from '../../logger/index.js';
 import type { SocketData } from '../types.js';
 
@@ -10,12 +11,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
 // Re-export for compatibility
 export type AuthSocketData = SocketData;
-
-declare module 'socket.io' {
-  interface Socket {
-    data: SocketData;
-  }
-}
 
 export function createAuthMiddleware() {
   return async (socket: Socket, next: (err?: Error) => void) => {

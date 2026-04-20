@@ -5,6 +5,7 @@ import { isSuperAdmin } from '../utils/super-admin.js';
 import { Errors } from '../utils/response.js';
 import { parseIdParam } from '../utils/params.js';
 import type { OrgRole } from '../types.js';
+import type { SelectOrganizationMember } from '../db/schema/index.js';
 
 const userRepo = new UserRepository();
 const orgRepo = new OrganizationRepository();
@@ -14,7 +15,7 @@ interface ProjectAccessResult {
   projectId: number;
   userId: number;
   project: NonNullable<Awaited<ReturnType<typeof projectRepo.findById>>>;
-  membership: Awaited<ReturnType<typeof orgRepo.findUserMembership>>;
+  membership: SelectOrganizationMember;
 }
 
 /**
@@ -41,9 +42,18 @@ export async function getProjectAccess(
   // 检查用户邮箱判断超级管理员
   const userEmail = await userRepo.findEmailById(userId);
   if (userEmail && isSuperAdmin(userEmail)) {
+    // Create a synthetic membership for super admin
+    const syntheticMembership: SelectOrganizationMember = {
+      id: 0, // Synthetic ID
+      userId,
+      organizationId: project.organizationId,
+      role: 'owner',
+      invitedBy: userId, // Self-invited as super admin
+      joinedAt: new Date().toISOString(),
+    };
     return {
       success: true,
-      data: { projectId, userId, project, membership: { userId, organizationId: project.organizationId, role: 'owner' as OrgRole, joinedAt: new Date().toISOString() } }
+      data: { projectId, userId, project, membership: syntheticMembership }
     };
   }
 

@@ -8,7 +8,8 @@ import { getBuildManager } from '../../build/build-manager.js';
 import { getPreviewContainerManager } from '../../build/preview-container.js';
 import { createLogger } from '../../logger/index.js';
 import type { SelectBuild } from '../../db/schema/index.js';
-import type { PreviewInfo, CreateBuildInput } from './schemas.js';
+import type { CreateBuildInput } from './schemas.js';
+import type { PreviewInfo } from './types.js';
 
 const logger = createLogger('build-service');
 

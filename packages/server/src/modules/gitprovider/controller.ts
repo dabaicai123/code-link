@@ -32,14 +32,16 @@ export class GitProviderController {
 
   async getGitHubRepo(req: Request, res: Response): Promise<void> {
     const userId = parseInt(req.query.userId as string, 10);
-    const { owner, repo } = req.params;
+    const owner = req.params.owner as string;
+    const repo = req.params.repo as string;
     const repoInfo = await this.service.getGitHubRepo(userId, owner, repo);
     res.json(success(repoInfo));
   }
 
   async getGitHubBranches(req: Request, res: Response): Promise<void> {
     const userId = parseInt(req.query.userId as string, 10);
-    const { owner, repo } = req.params;
+    const owner = req.params.owner as string;
+    const repo = req.params.repo as string;
     const branches = await this.service.getGitHubBranches(userId, owner, repo);
     res.json(success(branches));
   }
@@ -82,14 +84,14 @@ export class GitProviderController {
 
   async getGitLabProject(req: Request, res: Response): Promise<void> {
     const userId = parseInt(req.query.userId as string, 10);
-    const projectId = parseInt(req.params.id, 10);
+    const projectId = parseInt(req.params.id as string, 10);
     const project = await this.service.getGitLabProject(userId, projectId);
     res.json(success(project));
   }
 
   async getGitLabBranches(req: Request, res: Response): Promise<void> {
     const userId = parseInt(req.query.userId as string, 10);
-    const projectId = parseInt(req.params.id, 10);
+    const projectId = parseInt(req.params.id as string, 10);
     const branches = await this.service.getGitLabBranches(userId, projectId);
     res.json(success(branches));
   }

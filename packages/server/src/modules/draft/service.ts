@@ -75,7 +75,7 @@ export class DraftService {
     return this.draftRepo.findByUserId(userId);
   }
 
-  async updateStatus(draftId: number, userId: number, status: string): Promise<SelectDraft> {
+  async updateStatus(draftId: number, userId: number, status: 'discussing' | 'brainstorming' | 'reviewing' | 'developing' | 'confirmed' | 'archived'): Promise<SelectDraft> {
     const draft = await this.draftRepo.findById(draftId);
     if (!draft) {
       throw new NotFoundError('草稿');
@@ -144,7 +144,7 @@ export class DraftService {
       content: input.content,
       messageType: input.messageType ?? 'text',
       parentId: input.parentId,
-      metadata: input.metadata,
+      metadata: input.metadata ? JSON.stringify(input.metadata) : null,
     });
 
     await this.draftRepo.touch(draftId);

@@ -8,3 +8,6 @@ export interface PreviewInfo {
 export interface BuildDetail extends SelectBuild {
   projectName?: string;
 }
+
+// Re-export from schemas for convenience
+export type { CreateBuildInput } from './schemas.js';

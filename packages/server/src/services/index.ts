@@ -1,5 +1,6 @@
-export { AuthService } from './auth.service.js';
-export type { RegisterInput, LoginInput, AuthResult } from './auth.service.js';
+// Re-export from modules
+export { AuthService } from '../modules/auth/service.js';
+export type { RegisterInput, LoginInput } from '../modules/auth/schemas.js';
 
 export { OrganizationService } from './organization.service.js';
 export type {

@@ -1,5 +1,8 @@
 import type { ClaudeConfig } from './schemas.js';
 
+// Re-export ClaudeConfig for external use
+export type { ClaudeConfig } from './schemas.js';
+
 export interface ClaudeConfigResponse {
   config: ClaudeConfig;
   hasConfig: boolean;

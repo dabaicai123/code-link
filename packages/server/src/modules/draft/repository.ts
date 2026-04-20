@@ -52,7 +52,7 @@ export class DraftRepository extends BaseRepository {
       .map(row => row.drafts);
   }
 
-  async updateStatus(id: number, status: string): Promise<SelectDraft> {
+  async updateStatus(id: number, status: 'discussing' | 'brainstorming' | 'reviewing' | 'developing' | 'confirmed' | 'archived'): Promise<SelectDraft> {
     return this.db
       .update(drafts)
       .set({ status, updatedAt: sql`datetime('now')` })

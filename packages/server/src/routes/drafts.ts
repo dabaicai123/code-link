@@ -100,7 +100,6 @@ export function createDraftsRouter(): Router {
                 user_name: 'AI Assistant',
                 content: result.message.content || '',
                 message_type: result.message.messageType,
-                metadata: result.message.metadata || null,
                 created_at: result.message.createdAt,
               });
             }

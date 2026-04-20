@@ -6,8 +6,10 @@ import { createLogger } from '../logger/index.js';
 
 const logger = createLogger('oauth');
 
+export type GitProviderName = 'github' | 'gitlab';
+
 export interface OAuthProvider {
-  name: string;
+  name: GitProviderName;
   getOAuthUrl: (config: any) => string;
   exchangeCode: (config: any, code: string) => Promise<{
     access_token: string;
@@ -101,7 +103,7 @@ export function createOAuthRouterBase(options: OAuthRouterOptions): Router {
  */
 export function createTokenRequiredHandler(
   tokenManager: TokenManager,
-  providerName: string,
+  providerName: GitProviderName,
   handler: (token: string, req: any, res: any) => Promise<void>
 ) {
   return async (req: any, res: any) => {
