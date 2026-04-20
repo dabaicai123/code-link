@@ -51,8 +51,8 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-[320px] text-center">
-        <div className="text-base font-semibold text-primary mb-2">Code Link</div>
+      <div className="w-80 text-center">
+        <div className="text-sm font-medium text-primary mb-2">Code Link</div>
         <div className="text-muted-foreground mb-6 text-sm">开发环境管理平台</div>
 
         <Form {...form}>
@@ -124,7 +124,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           </form>
         </Form>
 
-        <div className="mt-4 text-secondary text-sm">
+        <div className="mt-4 text-muted-foreground text-sm">
           {mode === 'login' ? (
             <>
               没有账户？{' '}
