@@ -7,7 +7,7 @@ import { container } from 'tsyringe';
 import { getConfig } from './core/config.js';
 
 // 数据库初始化
-import { getSqliteDb, initSchema, initDefaultAdmin } from './db/index.js';
+import { getSqliteDb, initSchema, initDefaultAdmin, closeDb } from './db/index.js';
 
 // 模块注册
 import { registerAuthModule, createAuthRoutes, AuthController } from './modules/auth/auth.module.js';
@@ -121,6 +121,53 @@ export function startServer(port: number = 3001): void {
   server.listen(port, () => {
     logger.info(`Server running on http://localhost:${port}`);
     logger.info(`Socket.IO server ready on ws://localhost:${port}`);
+  });
+}
+
+export interface E2EServerInstance {
+  server: ReturnType<typeof createServer>;
+  port: number;
+  baseUrl: string;
+  sqlite: import('better-sqlite3').Database;
+  close: () => Promise<void>;
+}
+
+export async function startServerForE2E(options?: { port?: number }): Promise<E2EServerInstance> {
+  process.env.NODE_ENV = 'test';
+  process.env.DB_PATH = ':memory:';
+
+  const { resetConfig } = await import('./core/config.js');
+  resetConfig();
+
+  const sqlite = getSqliteDb(':memory:');
+  initSchema(sqlite);
+
+  // Register in-memory DatabaseConnection before DI resolves
+  const { container } = await import('tsyringe');
+  container.reset();
+  const conn = DatabaseConnection.fromSqlite(sqlite);
+  container.registerInstance(DatabaseConnection, conn);
+
+  const app = createApp();
+  const server = createServer(app);
+
+  return new Promise((resolve, reject) => {
+    server.listen(options?.port ?? 0, () => {
+      const address = server.address() as import('net').AddressInfo;
+      resolve({
+        server,
+        port: address.port,
+        baseUrl: `http://localhost:${address.port}`,
+        sqlite,
+        close: () => new Promise<void>((res, rej) => {
+          server.close((err) => {
+            closeDb();
+            err ? rej(err) : res();
+          });
+        }),
+      });
+    });
+    server.on('error', reject);
   });
 }
 

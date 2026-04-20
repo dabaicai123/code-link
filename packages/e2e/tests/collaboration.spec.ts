@@ -1,16 +1,10 @@
-// packages/e2e/tests/collaboration.spec.ts
 import { test, expect } from '../fixtures/base';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { seedTestOrganization, seedTestProject } from '../helpers/test-db';
 
 test.describe('协作功能', () => {
-  // 协作功能在 Workspace 中，需要先选择项目
-
-  test.beforeEach(async ({ page, testServer, testUser, webBaseUrl }) => {
-    // 创建组织和项目
-    const db = drizzle(testServer.db);
-    const orgId = await seedTestOrganization(db, testUser.id, 'Collab Org');
-    await seedTestProject(db, testUser.id, orgId, { name: 'Collab Project' });
+  test.beforeEach(async ({ page, testUser, testDb, webBaseUrl }) => {
+    const orgId = await seedTestOrganization(testDb, testUser.id, 'Collab Org');
+    await seedTestProject(testDb, testUser.id, orgId, { name: 'Collab Project' });
     await page.goto(`${webBaseUrl}/dashboard`);
   });
 
@@ -20,7 +14,6 @@ test.describe('协作功能', () => {
 
   test('点击项目进入工作区', async ({ page }) => {
     await page.click('text=Collab Project');
-    // 点击后会尝试启动容器，等待工作区加载
   });
 
   test('新建项目按钮可见', async ({ page }) => {

@@ -3,11 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // CI 环境使用较少 workers 保证稳定性，本地使用更多 workers 加速
-  workers: process.env.CI ? 2 : 4,
+  workers: process.env.CI ? 2 : 1,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report' }]],
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',

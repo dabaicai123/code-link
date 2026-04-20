@@ -5,7 +5,7 @@
     "dev:server": "pnpm --filter @code-link/server dev",
     "dev:web": "pnpm --filter @code-link/web dev",
     "dev": "pnpm run dev:server & pnpm run dev:web",
-    "test": "pnpm -r test",
+    "test": "pnpm --filter @code-link/server test && pnpm --filter @code-link/web test",
     "test:e2e": "pnpm --filter @code-link/e2e test",
     "test:e2e:ui": "pnpm --filter @code-link/e2e test:ui",
     "test:e2e:debug": "pnpm --filter @code-link/e2e test:debug",

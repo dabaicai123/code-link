@@ -6,6 +6,12 @@ export default defineConfig({
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
     environment: 'jsdom',
     globals: false,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        maxForks: 2,
+      },
+    },
   },
   resolve: {
     alias: {

@@ -16,11 +16,20 @@ describe('Config required environment variables', () => {
 
   describe('JWT_SECRET validation', () => {
     it('should throw when JWT_SECRET is not set', () => {
+      process.env.NODE_ENV = 'development';
       delete process.env.JWT_SECRET;
       expect(() => loadConfig()).toThrow('JWT_SECRET must be set and at least 32 characters');
     });
 
+    it('should use default secret in test mode', () => {
+      process.env.NODE_ENV = 'test';
+      delete process.env.JWT_SECRET;
+      const config = loadConfig();
+      expect(config.jwtSecret).toBeTruthy();
+    });
+
     it('should throw when JWT_SECRET is less than 32 chars', () => {
+      process.env.NODE_ENV = 'development';
       process.env.JWT_SECRET = 'short-key';
       expect(() => loadConfig()).toThrow('JWT_SECRET must be at least 32 characters');
     });

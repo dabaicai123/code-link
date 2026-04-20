@@ -16,15 +16,17 @@ const configSchema = z.object({
 
 export type Config = z.infer<typeof configSchema>;
 
+const TEST_JWT_SECRET = 'e2e-test-secret-key-minimum-32-chars-long';
+
 export function loadConfig(): Config {
   const nodeEnv = process.env.NODE_ENV || 'development';
 
-  // Validate JWT_SECRET before schema parsing for clearer error
-  if (!process.env.JWT_SECRET) {
+  const isTest = nodeEnv === 'test';
+
+  if (!isTest && !process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET must be set and at least 32 characters');
   }
 
-  // Production validation: require ADMIN_PASSWORD
   if (nodeEnv === 'production' && !process.env.ADMIN_PASSWORD) {
     throw new Error('ADMIN_PASSWORD is required in production');
   }
@@ -32,7 +34,7 @@ export function loadConfig(): Config {
   return configSchema.parse({
     port: process.env.PORT ? parseInt(process.env.PORT, 10) : undefined,
     dbPath: process.env.DB_PATH,
-    jwtSecret: process.env.JWT_SECRET, // No fallback - required
+    jwtSecret: process.env.JWT_SECRET || (isTest ? TEST_JWT_SECRET : undefined),
     corsOrigin: process.env.CORS_ORIGIN,
     corsOrigins: process.env.CORS_ORIGINS?.split(',').map(s => s.trim()),
     logLevel: process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error' | undefined,
