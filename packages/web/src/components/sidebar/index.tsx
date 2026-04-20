@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProjectCard } from './project-card';
 import { UserSection } from './user-section';
-import { api, ApiError, Organization } from '@/lib/api';
 import { useOrganizationStore } from '@/lib/stores';
-import { useOrganizations } from '@/lib/queries';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Project, User } from '@/types';
+import { useSidebarProjects } from '@/hooks/use-sidebar-projects';
 
 interface SidebarProps {
   user: User;
@@ -26,29 +25,13 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
   const organizations = useOrganizationStore((s) => s.organizations);
   const currentOrganization = useOrganizationStore((s) => s.currentOrganization);
   const setCurrentOrganization = useOrganizationStore((s) => s.setCurrentOrganization);
-  const { isLoading: orgLoading } = useOrganizations();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<number>>(new Set());
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
-  useEffect(() => {
-    if (!orgLoading && currentOrganization) {
-      fetchProjects();
-    }
-  }, [refreshKey, currentOrganization, orgLoading]);
-
-  const fetchProjects = async () => {
-    if (!currentOrganization) return;
-    try {
-      const data = await api.get<Project[]>(`/projects?organizationId=${currentOrganization.id}`);
-      setProjects(data);
-    } catch (err) {
-      console.error('Failed to fetch projects:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { runningProjects, stoppedProjects, loading, refetch } = useSidebarProjects({
+    organizationId: currentOrganization?.id ?? null,
+    refreshKey,
+  });
 
   const toggleExpand = (projectId: number) => {
     setExpandedProjectIds((prev) => {
@@ -62,9 +45,6 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
     });
   };
 
-  const runningProjects = projects.filter((p) => p.status === 'running');
-  const stoppedProjects = projects.filter((p) => p.status !== 'running');
-
   return (
     <div className="sidebar-container">
       <div className="p-3.5 border-b border-border">
@@ -74,7 +54,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
 
       <div className={cn(
         "flex-1 p-3",
-        projects.length > 10 ? "overflow-auto" : "overflow-visible"
+        (runningProjects.length + stoppedProjects.length) > 10 ? "overflow-auto" : "overflow-visible"
       )}>
         {/* 组织选择器 */}
         <div className="mb-3">
@@ -99,7 +79,6 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                   onClick={() => {
                     setCurrentOrganization(org);
                     setShowOrgDropdown(false);
-                    setLoading(true);
                   }}
                   className={cn(
                     "px-3 py-2.5 text-[13px] cursor-pointer transition-colors duration-150",
@@ -165,7 +144,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                     isExpanded={expandedProjectIds.has(project.id)}
                     onToggleExpand={() => toggleExpand(project.id)}
                     onClick={() => onProjectSelect(project)}
-                    onRefresh={fetchProjects}
+                    onRefresh={refetch}
                   />
                 ))}
               </div>
@@ -184,7 +163,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                     isExpanded={expandedProjectIds.has(project.id)}
                     onToggleExpand={() => toggleExpand(project.id)}
                     onClick={() => onProjectSelect(project)}
-                    onRefresh={fetchProjects}
+                    onRefresh={refetch}
                   />
                 ))}
               </div>
