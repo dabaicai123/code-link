@@ -28,6 +28,24 @@ interface Branch {
   name: string;
 }
 
+interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  html_url: string;
+  default_branch: string;
+  private: boolean;
+}
+
+interface GitLabProject {
+  id: number;
+  name: string;
+  path_with_namespace: string;
+  web_url: string;
+  default_ref: string;
+  private: boolean;
+}
+
 interface RepoImportDialogProps {
   isOpen: boolean;
   projectId: number;
@@ -104,15 +122,15 @@ export function RepoImportDialog({
     setSelectedBranch('');
     try {
       const endpoint = provider === 'github' ? '/github/repos' : '/gitlab/projects';
-      const data = await api.get<Repo[]>(`${endpoint}?userId=${user!.id}`);
+      const data = await api.get<unknown>(`${endpoint}?userId=${user!.id}`);
 
       // 转换数据格式
-      const formattedRepos: Repo[] = data.map((repo: any) => ({
+      const formattedRepos: Repo[] = (data as (GitHubRepo | GitLabProject)[]).map((repo) => ({
         id: repo.id,
         name: repo.name,
-        full_name: repo.full_name || repo.path_with_namespace,
-        url: repo.html_url || repo.web_url,
-        default_branch: repo.default_branch || repo.default_ref,
+        full_name: 'full_name' in repo ? repo.full_name : repo.path_with_namespace,
+        url: 'html_url' in repo ? repo.html_url : repo.web_url,
+        default_branch: 'default_branch' in repo ? repo.default_branch : repo.default_ref || 'main',
         private: repo.private,
       }));
 
