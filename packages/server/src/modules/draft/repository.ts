@@ -11,6 +11,7 @@ import {
 } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
 import { DatabaseConnection } from '../../core/database/connection.js';
+import { PAGINATION_LIMITS } from '../../core/database/constants.js';
 import type {
   InsertDraft,
   SelectDraft,
@@ -148,7 +149,12 @@ export class DraftRepository extends BaseRepository {
   }
 
   async findMessages(draftId: number, limit?: number): Promise<DraftMessageWithUser[]> {
-    let query = this.db
+    // When no limit specified, use max; otherwise cap provided limit at max
+    const effectiveLimit = limit !== undefined
+      ? Math.min(limit, PAGINATION_LIMITS.messages.max)
+      : PAGINATION_LIMITS.messages.max;
+
+    return this.db
       .select({
         id: draftMessages.id,
         draftId: draftMessages.draftId,
@@ -164,13 +170,9 @@ export class DraftRepository extends BaseRepository {
       .from(draftMessages)
       .innerJoin(users, eq(draftMessages.userId, users.id))
       .where(eq(draftMessages.draftId, draftId))
-      .orderBy(desc(draftMessages.createdAt));
-
-    if (limit) {
-      query = query.limit(limit) as typeof query;
-    }
-
-    return query.all();
+      .orderBy(desc(draftMessages.createdAt))
+      .limit(effectiveLimit)
+      .all();
   }
 
   // ==================== Confirmation Operations ====================

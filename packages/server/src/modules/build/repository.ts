@@ -4,6 +4,7 @@ import { eq, desc } from 'drizzle-orm';
 import { builds } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
 import { DatabaseConnection } from '../../core/database/connection.js';
+import { PAGINATION_LIMITS } from '../../core/database/constants.js';
 import type { InsertBuild, SelectBuild } from '../../db/schema/index.js';
 
 @singleton()
@@ -28,11 +29,16 @@ export class BuildRepository extends BaseRepository {
       .get();
   }
 
-  async findByProjectId(projectId: number): Promise<SelectBuild[]> {
+  async findByProjectId(projectId: number, limit?: number): Promise<SelectBuild[]> {
+    // When no limit specified, use max; otherwise cap provided limit at max
+    const effectiveLimit = limit !== undefined
+      ? Math.min(limit, PAGINATION_LIMITS.builds.max)
+      : PAGINATION_LIMITS.builds.max;
     return this.db.select()
       .from(builds)
       .where(eq(builds.projectId, projectId))
-      .orderBy(desc(builds.createdAt));
+      .orderBy(desc(builds.createdAt))
+      .limit(effectiveLimit);
   }
 
   async findLatestByProjectId(projectId: number): Promise<SelectBuild | undefined> {

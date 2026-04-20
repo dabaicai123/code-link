@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { projects, projectRepos, organizationMembers, users } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
 import { DatabaseConnection } from '../../core/database/connection.js';
+import { PAGINATION_LIMITS } from '../../core/database/constants.js';
 import type { InsertProject, SelectProject, SelectProjectRepo } from '../../db/schema/index.js';
 import type { ProjectMemberWithUser } from './types.js';
 
@@ -33,12 +34,17 @@ export class ProjectRepository extends BaseRepository {
     return this.db.update(projects).set({ containerId }).where(eq(projects.id, id)).returning().get();
   }
 
-  async findByUserId(userId: number, organizationId?: number): Promise<SelectProject[]> {
+  async findByUserId(userId: number, organizationId?: number, limit?: number): Promise<SelectProject[]> {
     const conditions = [eq(organizationMembers.userId, userId)];
 
     if (organizationId) {
       conditions.push(eq(projects.organizationId, organizationId));
     }
+
+    // When no limit specified, use max; otherwise cap provided limit at max
+    const effectiveLimit = limit !== undefined
+      ? Math.min(limit, PAGINATION_LIMITS.projects.max)
+      : PAGINATION_LIMITS.projects.max;
 
     return this.db.select({
       id: projects.id,
@@ -56,6 +62,7 @@ export class ProjectRepository extends BaseRepository {
         eq(projects.organizationId, organizationMembers.organizationId)
       )
       .where(and(...conditions))
+      .limit(effectiveLimit)
       .all();
   }
 
