@@ -9,11 +9,9 @@ export class DatabaseConnection {
   private db: ReturnType<typeof drizzle>;
   private sqlite: Database.Database;
 
-  constructor(dbPath?: string) {
+  constructor() {
     const config = getConfig();
-    const path = dbPath || config.dbPath;
-    
-    this.sqlite = new Database(path);
+    this.sqlite = new Database(config.dbPath);
     this.sqlite.pragma('journal_mode = WAL');
     this.sqlite.pragma('foreign_keys = ON');
     this.db = drizzle(this.sqlite, { schema });

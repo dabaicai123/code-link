@@ -37,12 +37,7 @@ const logger = new LoggerService();
 export function createApp(): express.Express {
   const app = express();
 
-  // 注册核心服务
-  container.registerSingleton(DatabaseConnection);
-  container.registerSingleton(LoggerService);
-  container.registerSingleton(PermissionService);
-
-  // 注册所有模块
+  // 注册所有模块（@singleton() 装饰器会自动处理 DI）
   registerAuthModule();
   registerOrganizationModule();
   registerProjectModule();
