@@ -48,8 +48,7 @@ packages/server/volumes
 
 # Database
 data/*.db
-data/*.db-shm
-data/*.db-wal
+data/*.db-*
 
 # Superpowers docs (local only)
 docs/superpowers/
