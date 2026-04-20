@@ -31,6 +31,12 @@ export class TestApp {
     await this.page.click('button[type="submit"]');
     await this.page.waitForURL('**/dashboard', { timeout: 10000 });
 
+    // Get token from localStorage and set it on API
+    const token = await this.page.evaluate(() => localStorage.getItem('token'));
+    if (token) {
+      this.api.setToken(token);
+    }
+
     // Return user info from API
     return this.api.getCurrentUser();
   }
@@ -44,6 +50,12 @@ export class TestApp {
     await this.page.fill('input[type="password"]', password);
     await this.page.click('button[type="submit"]');
     await this.page.waitForURL('**/dashboard', { timeout: 10000 });
+
+    // Sync token to API
+    const token = await this.page.evaluate(() => localStorage.getItem('token'));
+    if (token) {
+      this.api.setToken(token);
+    }
   }
 
   /**
@@ -52,6 +64,7 @@ export class TestApp {
   async logout(): Promise<void> {
     await this.page.click('text=退出');
     await this.page.waitForURL('**/login', { timeout: 5000 });
+    this.api.clearToken();
   }
 
   // ============================================

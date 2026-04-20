@@ -2,6 +2,7 @@
 import type { TestUser, TestOrganization, TestProject } from './types';
 
 interface ApiResponse<T> {
+  code: number;
   data: T;
   error?: string;
 }
@@ -25,15 +26,15 @@ export class TestApi {
   // === User Operations ===
 
   async getCurrentUser(): Promise<TestUser> {
-    const response = await this.get<ApiResponse<{ user: TestUser }>>('/auth/me');
-    return response.data.user;
+    const response = await this.get<ApiResponse<TestUser>>('/auth/me');
+    return response.data;
   }
 
   // === Organization Operations ===
 
   async getOrganizations(): Promise<TestOrganization[]> {
-    const response = await this.get<ApiResponse<{ organizations: TestOrganization[] }>>('/organizations');
-    return response.data.organizations;
+    const response = await this.get<ApiResponse<TestOrganization[]>>('/organizations');
+    return response.data;
   }
 
   async getOrganizationByName(name: string): Promise<TestOrganization | undefined> {
@@ -42,15 +43,15 @@ export class TestApi {
   }
 
   async getOrganizationById(id: number): Promise<TestOrganization | undefined> {
-    const response = await this.get<ApiResponse<{ organization: TestOrganization }>>(`/organizations/${id}`);
-    return response.data.organization;
+    const response = await this.get<ApiResponse<TestOrganization>>(`/organizations/${id}`);
+    return response.data;
   }
 
   // === Project Operations ===
 
   async getProjects(): Promise<TestProject[]> {
-    const response = await this.get<ApiResponse<{ projects: TestProject[] }>>('/projects');
-    return response.data.projects;
+    const response = await this.get<ApiResponse<TestProject[]>>('/projects');
+    return response.data;
   }
 
   async getProjectByName(name: string): Promise<TestProject | undefined> {
@@ -59,8 +60,8 @@ export class TestApi {
   }
 
   async getProjectById(id: number): Promise<TestProject> {
-    const response = await this.get<ApiResponse<{ project: TestProject }>>(`/projects/${id}`);
-    return response.data.project;
+    const response = await this.get<ApiResponse<TestProject>>(`/projects/${id}`);
+    return response.data;
   }
 
   async getProjectStatus(projectId: number): Promise<string> {

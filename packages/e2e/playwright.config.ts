@@ -57,6 +57,16 @@ export default defineConfig({
       name: 'journeys',
       use: {
         ...devices['Desktop Chrome'],
+        // 添加字体支持
+        launchOptions: {
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--font-render-hinting=none',
+          ],
+        },
+        locale: 'zh-CN',
       },
       testMatch: '**/*.journey.ts',
     },
