@@ -53,12 +53,7 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
     onMessage: handleMessageReceived,
   });
 
-  // 加载历史消息
-  useEffect(() => {
-    loadMessages();
-  }, [draft.id]);
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     try {
       setLoading(true);
       const result = await api.getDraftMessages(draft.id, { limit: 100 });
@@ -69,7 +64,12 @@ export function MessagePanel({ draft, currentUserId, currentUserName }: MessageP
     } finally {
       setLoading(false);
     }
-  };
+  }, [draft.id]);
+
+  // 加载历史消息
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
 
   const handleSend = async (content: string, messageType: MessageType, parentId?: number) => {
     const result = await api.sendDraftMessage(draft.id, {

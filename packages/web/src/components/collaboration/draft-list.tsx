@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import type { Draft } from '../../types/draft';
 import { DRAFT_STATUS_LABELS, DRAFT_STATUS_COLORS } from '../../types/draft';
@@ -22,11 +22,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
 
-  useEffect(() => {
-    loadDrafts();
-  }, [projectId]);
-
-  const loadDrafts = async () => {
+  const loadDrafts = useCallback(async () => {
     try {
       setLoading(true);
       const result = await api.getDrafts(projectId);
@@ -37,7 +33,11 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    loadDrafts();
+  }, [loadDrafts]);
 
   const handleCreate = async () => {
     if (!newTitle.trim() || !projectId) return;
