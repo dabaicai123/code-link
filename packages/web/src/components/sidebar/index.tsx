@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ProjectCard } from './project-card';
 import { UserSection } from './user-section';
 import { api, ApiError, Organization } from '@/lib/api';
-import { useOrganization } from '@/lib/organization-context';
+import { useOrganizationStore } from '@/lib/stores';
+import { useOrganizations } from '@/lib/queries';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +39,10 @@ interface SidebarProps {
 
 export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout, invitationCount }: SidebarProps) {
   const router = useRouter();
-  const { organizations, currentOrganization, setCurrentOrganization, loading: orgLoading } = useOrganization();
+  const organizations = useOrganizationStore((s) => s.organizations);
+  const currentOrganization = useOrganizationStore((s) => s.currentOrganization);
+  const setCurrentOrganization = useOrganizationStore((s) => s.setCurrentOrganization);
+  const { isLoading: orgLoading } = useOrganizations();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<number>>(new Set());
