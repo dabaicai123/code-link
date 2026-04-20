@@ -8,9 +8,9 @@ import { ROLE_HIERARCHY } from '../utils/roles.js';
 import { AuthRepository } from '../modules/auth/repository.js';
 import { OrganizationRepository } from '../modules/organization/repository.js';
 import { ProjectRepository } from '../modules/project/repository.js';
-import { Errors } from '../utils/response.js';
+import { Errors } from '../core/errors/index.js';
 import { getConfig } from '../core/config.js';
-import type { OrgRole } from '../types.js';
+import type { OrgRole } from '../db/schema/index.js';
 
 // 扩展 Express Request 类型
 declare global {
