@@ -159,6 +159,12 @@ export function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_draft_messages_draft_id ON draft_messages(draft_id);
     CREATE INDEX IF NOT EXISTS idx_draft_messages_parent_id ON draft_messages(parent_id);
     CREATE INDEX IF NOT EXISTS idx_message_confirmations_message_id ON message_confirmations(message_id);
+
+    -- Performance indexes for common queries
+    CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id);
+    CREATE INDEX IF NOT EXISTS idx_projects_organization_id ON projects(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_tokens_user_id ON project_tokens(user_id);
+    CREATE INDEX IF NOT EXISTS idx_repos_project_id ON project_repos(project_id);
   `);
 
   logger.info('Database schema initialized');
