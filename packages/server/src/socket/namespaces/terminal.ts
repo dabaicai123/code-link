@@ -2,7 +2,7 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
 import type { Namespace, Socket } from 'socket.io';
-import { createLogger } from '../../logger/index.js';
+import { createLogger } from '../../core/logger/index.js';
 import { TerminalEvents } from '../types.js';
 import { getTerminalManager } from '../../terminal/terminal-manager.js';
 import { getContainerStatus } from '../../docker/container-manager.js';
@@ -91,7 +91,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
           return;
         }
       } catch (error) {
-        logger.error('Failed to decrypt user config', error);
+        logger.error('Failed to decrypt user config', error instanceof Error ? error : new Error(String(error)));
         socket.emit('error', { message: '用户配置解密失败，请重新配置' });
         return;
       }
@@ -136,7 +136,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
       try {
         await terminalManager.resize(sessionId, cols, rows);
       } catch (error) {
-        logger.error('Failed to resize terminal', error);
+        logger.error('Failed to resize terminal', error instanceof Error ? error : new Error(String(error)));
       }
     });
 

@@ -2,7 +2,7 @@
 import type { Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 const { verify } = jwt;
-import { createLogger } from '../../logger/index.js';
+import { createLogger } from '../../core/logger/index.js';
 import { getConfig } from '../../core/config.js';
 import type { SocketData } from '../types.js';
 
@@ -35,7 +35,7 @@ export function createAuthMiddleware() {
       logger.debug(`Socket authenticated: userId=${decoded.userId}`);
       next();
     } catch (error) {
-      logger.error('Socket authentication failed', error);
+      logger.error('Socket authentication failed', error instanceof Error ? error : new Error(String(error)));
       next(new Error('Unauthorized: Invalid token'));
     }
   };

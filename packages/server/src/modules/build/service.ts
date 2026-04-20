@@ -6,7 +6,7 @@ import { PermissionService } from '../../shared/permission.service.js';
 import { NotFoundError } from '../../core/errors/index.js';
 import { getBuildManager } from '../../build/build-manager.js';
 import { getPreviewContainerManager } from '../../build/preview-container.js';
-import { createLogger } from '../../logger/index.js';
+import { createLogger } from '../../core/logger/index.js';
 import type { SelectBuild } from '../../db/schema/index.js';
 import type { CreateBuildInput } from './schemas.js';
 import type { PreviewInfo } from './types.js';
@@ -28,7 +28,7 @@ export class BuildService {
     const build = await buildManager.createBuild(input.projectId);
 
     buildManager.startBuild(input.projectId, build.id).catch((error) => {
-      logger.error('Build failed', { projectId: input.projectId, buildId: build.id, error });
+      logger.error('Build failed', error instanceof Error ? error : new Error(String(error)), { projectId: input.projectId, buildId: build.id });
     });
 
     return build;

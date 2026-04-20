@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { container } from "tsyringe";
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../core/logger/index.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
 import { ROLE_HIERARCHY } from '../utils/roles.js';
 import { AuthRepository } from '../modules/auth/repository.js';
@@ -56,7 +56,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     req.userId = payload.userId;
     next();
   } catch (err) {
-    logger.warn('Token verification failed', err);
+    logger.warn('Token verification failed', { error: err instanceof Error ? err.message : String(err) });
     res.status(401).json(Errors.unauthorized());
   }
 }

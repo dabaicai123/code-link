@@ -5,7 +5,7 @@ import {
   runRepoClonedMigration,
   runProjectOrganizationMigration,
 } from './db/migration.js';
-import { createLogger } from './logger/index.js';
+import { createLogger } from './core/logger/index.js';
 
 const logger = createLogger('migrate');
 

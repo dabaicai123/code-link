@@ -1,6 +1,6 @@
 // packages/server/src/socket/namespaces/draft.ts
 import type { Namespace, Socket } from 'socket.io';
-import { createLogger } from '../../logger/index.js';
+import { createLogger } from '../../core/logger/index.js';
 import { DraftEvents } from '../types.js';
 import type { z } from 'zod';
 import {

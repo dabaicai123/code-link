@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../core/logger/index.js';
 
 const logger = createLogger('migration');
 

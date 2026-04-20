@@ -1,7 +1,7 @@
 import { isAIEnabled, sendAIMessage, type AIMessage } from './client.js';
 import { buildContextForDraft, type DraftContext } from './context.js';
 import { getSystemPrompt, getCommandPrompt } from './prompts.js';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../core/logger/index.js';
 
 const logger = createLogger('ai-commands');
 
@@ -121,10 +121,9 @@ export async function executeAICommand(
       commandType: command.type,
     };
   } catch (error) {
-    logger.error('Failed to execute AI command', {
+    logger.error('Failed to execute AI command', error instanceof Error ? error : new Error(String(error)), {
       draftId,
       commandType: command.type,
-      error,
     });
 
     return {

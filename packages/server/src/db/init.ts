@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { getDb } from './drizzle.js';
 import { users } from './schema/index.js';
 import { eq } from 'drizzle-orm';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../core/logger/index.js';
 import { getConfig } from '../core/config.js';
 
 const logger = createLogger('db-init');

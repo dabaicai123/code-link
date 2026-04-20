@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../core/logger/index.js';
 import { getContainerStatus } from '../docker/container-manager.js';
 import { DraftRepository } from '../modules/draft/repository.js';
 

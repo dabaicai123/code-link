@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../core/logger/index.js';
 
 const logger = createLogger('ai-client');
 
@@ -77,7 +77,7 @@ export async function sendAIMessage(
       },
     };
   } catch (error) {
-    logger.error('AI request failed:', error);
+    logger.error('AI request failed:', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }

@@ -6,7 +6,7 @@ import { setupProjectNamespace } from './namespaces/project.js';
 import { setupDraftNamespace } from './namespaces/draft.js';
 import { setupTerminalNamespace } from './namespaces/terminal.js';
 import { setupCleanupInterval, stopCleanupInterval, resetRoomUsers } from './utils/room-manager.js';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../core/logger/index.js';
 
 const logger = createLogger('socket-server');
 

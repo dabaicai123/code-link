@@ -1,5 +1,5 @@
 // packages/server/src/socket/utils/room-manager.ts
-import { createLogger } from '../../logger/index.js';
+import { createLogger } from '../../core/logger/index.js';
 
 const logger = createLogger('room-manager');
 
@@ -131,7 +131,7 @@ export function removeUserFromProjectRoom(
     emptyRoomTimestamps.set(key, Date.now());
   }
 
-  return { user, remainingCount };
+  return { user: user ?? null, remainingCount };
 }
 
 /**
@@ -158,7 +158,7 @@ export function removeUserFromDraftRoom(
     emptyRoomTimestamps.set(key, Date.now());
   }
 
-  return { user, remainingCount };
+  return { user: user ?? null, remainingCount };
 }
 
 /**

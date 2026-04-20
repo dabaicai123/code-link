@@ -1,6 +1,6 @@
 import { getDockerClient } from '../docker/client.js';
 import { getPortManager } from './port-manager.js';
-import { createLogger } from '../logger/index.js';
+import { createLogger } from '../core/logger/index.js';
 
 const logger = createLogger('preview');
 const PREVIEW_CONTAINER_PREFIX = 'code-link-preview-';
@@ -75,7 +75,7 @@ export class PreviewContainerManager {
         await container.stop();
         await container.remove();
       } catch (error) {
-        logger.error('Failed to stop container', error);
+        logger.error('Failed to stop container', error instanceof Error ? error : new Error(String(error)));
       }
 
       // 释放端口
@@ -95,7 +95,7 @@ export class PreviewContainerManager {
           portManager.releasePort(parseInt(portBinding, 10));
         }
       } catch (error) {
-        logger.error('Failed to stop container by name', error);
+        logger.error('Failed to stop container by name', error instanceof Error ? error : new Error(String(error)));
       }
     }
   }
@@ -119,7 +119,7 @@ export class PreviewContainerManager {
         await container.stop();
         await container.remove();
       } catch (error) {
-        logger.error('Failed to cleanup container', error);
+        logger.error('Failed to cleanup container', error instanceof Error ? error : new Error(String(error)));
       }
 
       // 释放端口
