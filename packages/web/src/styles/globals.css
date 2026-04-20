@@ -6,74 +6,63 @@
 
 @layer base {
   :root {
-    /* 背景色 - 温暖深灰 */
-    --bg-primary: #1a1a1a;
-    --bg-secondary: #202020;
-    --bg-card: #252525;
-    --bg-hover: #2a2a2a;
-    --bg-active: #303030;
+    /* 背景色 */
+    --bg-primary: #0d0d0d;
+    --bg-secondary: #141414;
+    --bg-card: #1a1a1a;
+    --bg-hover: #242424;
+    --bg-active: #2a2a2a;
 
-    /* 强调色 - 珊瑚橙 */
+    /* 强调色 */
     --accent-primary: #d97757;
     --accent-hover: #c55a3b;
     --accent-light: #f0a080;
 
-    /* 成功/状态色 */
+    /* 文本色 */
+    --text-primary: #e0e0e0;
+    --text-secondary: #909090;
+    --text-muted: #606060;
+
+    /* 状态色 */
     --status-running: #4ade80;
     --status-stopped: #f87171;
     --status-warning: #fbbf24;
 
-    /* 文本色 - 温暖灰 */
-    --text-primary: #e5e5e5;
-    --text-secondary: #a0a0a0;
-    --text-muted: #6b6b6b;
-
-    /* 边框 */
-    --border-color: #333333;
-    --border-light: #404040;
+    /* 边框色 */
+    --border-default: #2a2a2a;
+    --border-light: #3a3a3a;
 
     /* 尺寸 */
     --sidebar-width: 250px;
-    --status-bar-height: 32px;
-
-    /* 圆角 */
     --radius-sm: 4px;
     --radius-md: 6px;
     --radius-lg: 8px;
     --radius: 0.5rem;
 
     /* 字体 */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-mono: 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', Menlo, Monaco, monospace;
 
     /* Shadcn 主题变量 */
-    --background: 0 0% 10%;
-    --foreground: 0 0% 90%;
-    --card: 0 0% 15%;
-    --card-foreground: 0 0% 90%;
-    --popover: 0 0% 15%;
-    --popover-foreground: 0 0% 90%;
-    --primary: 16 65% 55%;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 88%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 88%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 88%;
+    --primary: 16 65% 59%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 20%;
-    --secondary-foreground: 0 0% 90%;
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 16 65% 55%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 0 0% 88%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 56%;
+    --accent: 16 65% 59%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 70% 55%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 16 65% 55%;
-
-    /* 向后兼容别名 */
-    --accent-color: var(--accent-primary);
-    --accent-hover-old: var(--accent-hover);
-    --accent-light-old: var(--accent-light);
-    --status-success: var(--status-running);
-    --status-error: var(--status-stopped);
-    --text-disabled: var(--text-muted);
+    --border: 0 0% 16%;
+    --input: 0 0% 12%;
+    --ring: 16 65% 59%;
   }
 }
 
@@ -101,7 +90,7 @@ a:hover { color: var(--accent-light); }
 /* 滚动条 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
 /* 动画 */
@@ -124,9 +113,10 @@ a:hover { color: var(--accent-light); }
     background-color: var(--bg-secondary);
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-default);
   }
 
+  /* 面板容器 */
   .panel-container {
     height: 100%;
     display: flex;
@@ -136,8 +126,8 @@ a:hover { color: var(--accent-light); }
 
   .panel-header {
     padding: 8px 12px;
-    border-bottom: 1px solid var(--border-color);
     background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-default);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -156,35 +146,56 @@ a:hover { color: var(--accent-light); }
     display: inline-block;
   }
 
-  .status-running {
+  .status-dot-running {
     background-color: var(--status-running);
   }
 
-  .status-stopped {
+  .status-dot-stopped {
     background-color: var(--status-stopped);
   }
 
-  /* 标签样式 */
+  /* 元素标签（内嵌式） */
   .element-tag {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 8px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    padding: 2px 6px;
+    background: rgba(217, 119, 87, 0.15);
+    border: 1px solid var(--accent-primary);
     border-radius: var(--radius-sm);
-    font-size: 12px;
-    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent-primary);
+    white-space: nowrap;
   }
 
   .element-tag .remove {
     color: var(--text-muted);
     cursor: pointer;
     margin-left: 2px;
+    font-size: 10px;
   }
 
   .element-tag .remove:hover {
     color: var(--status-stopped);
+  }
+
+  /* 内嵌式输入容器 */
+  .inline-input-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 8px 12px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    min-height: 36px;
+    cursor: text;
+  }
+
+  .inline-input-container:focus-within {
+    border-color: var(--accent-primary);
   }
 
   /* 项目卡片 */
@@ -217,7 +228,7 @@ a:hover { color: var(--accent-light); }
     background: var(--accent-primary);
   }
 
-  /* 向后兼容按钮类 */
+  /* 按钮类 */
   .btn {
     display: inline-flex;
     align-items: center;
@@ -249,7 +260,7 @@ a:hover { color: var(--accent-light); }
   .btn-secondary {
     background-color: var(--bg-card);
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-default);
     padding: 8px 16px;
   }
 
@@ -273,7 +284,7 @@ a:hover { color: var(--accent-light); }
     width: 100%;
     padding: 8px 12px;
     background-color: var(--bg-card);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-size: 14px;

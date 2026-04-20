@@ -46,9 +46,21 @@ const config: Config = {
         ring: 'hsl(var(--ring))',
         status: {
           running: 'var(--status-running)',
-          error: 'var(--status-error)',
+          error: 'var(--status-stopped)',
           warning: 'var(--status-warning)',
         },
+        // 新增直接映射
+        'bg-primary': 'var(--bg-primary)',
+        'bg-secondary': 'var(--bg-secondary)',
+        'bg-card': 'var(--bg-card)',
+        'bg-hover': 'var(--bg-hover)',
+        'bg-active': 'var(--bg-active)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-muted': 'var(--text-muted)',
+        'accent-primary': 'var(--accent-primary)',
+        'accent-hover': 'var(--accent-hover)',
+        'accent-light': 'var(--accent-light)',
       },
       borderRadius: {
         lg: 'var(--radius)',
