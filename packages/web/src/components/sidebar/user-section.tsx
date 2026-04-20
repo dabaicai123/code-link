@@ -1,9 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-
 interface User {
   id: number;
   email: string;
@@ -16,33 +12,22 @@ interface UserSectionProps {
 }
 
 export function UserSection({ user, onLogout }: UserSectionProps) {
-  const router = useRouter();
-
   return (
-    <div className="p-3 border-t border-border flex items-center gap-2.5">
-      <div className="w-7 h-7 bg-primary rounded flex items-center justify-center text-white text-[11px] font-semibold">
+    <div className="p-3 border-t border-border flex items-center gap-2">
+      <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-white text-[11px] font-medium">
         {user.name.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-foreground text-[13px]">{user.name}</div>
+        <div className="text-foreground text-[12px]">{user.name}</div>
         <div className="text-muted-foreground text-[11px]">{user.email}</div>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => router.push('/settings')}
-        title="设置"
-      >
-        <span>设置</span>
-      </Button>
-      <Button
-        variant="secondary"
-        size="sm"
+      <button
         onClick={onLogout}
-        title="退出"
+        className="text-muted-foreground hover:text-foreground text-sm"
+        title="退出登录"
       >
-        退出
-      </Button>
+        ⚙
+      </button>
     </div>
   );
 }

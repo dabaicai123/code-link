@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ProjectCard } from './project-card';
 import { UserSection } from './user-section';
 import { useOrganizationStore } from '@/lib/stores';
@@ -17,11 +16,9 @@ interface SidebarProps {
   onProjectSelect: (project: Project) => void;
   onCreateProject: () => void;
   onLogout: () => void;
-  invitationCount?: number;
 }
 
-export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout, invitationCount }: SidebarProps) {
-  const router = useRouter();
+export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout }: SidebarProps) {
   const organizations = useOrganizationStore((s) => s.organizations);
   const currentOrganization = useOrganizationStore((s) => s.currentOrganization);
   const setCurrentOrganization = useOrganizationStore((s) => s.setCurrentOrganization);
@@ -48,7 +45,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
   return (
     <div className="sidebar-container">
       <div className="p-3.5 border-b border-border">
-        <div className="text-accent-primary font-semibold text-[13px]">Code Link</div>
+        <div className="text-primary font-medium text-[13px]">Code Link</div>
         <div className="text-muted-foreground text-[11px] mt-0.5">v1.0.0</div>
       </div>
 
@@ -61,7 +58,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
           <div
             onClick={() => setShowOrgDropdown(!showOrgDropdown)}
             className={cn(
-              "w-full px-3 py-2.5 border border-border rounded-md",
+              "w-full px-3 py-2 border border-border rounded-md",
               "text-[13px] cursor-pointer flex items-center justify-between relative",
               "transition-colors duration-150",
               showOrgDropdown ? "bg-primary/5" : "bg-card"
@@ -82,7 +79,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                   }}
                   className={cn(
                     "px-3 py-2.5 text-[13px] cursor-pointer transition-colors duration-150",
-                    currentOrganization?.id === org.id ? "text-accent-primary" : "text-primary",
+                    currentOrganization?.id === org.id ? "text-primary" : "text-foreground",
                     index !== organizations.length - 1 && "border-b border-border"
                   )}
                 >
@@ -91,31 +88,6 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                 </div>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* 导航入口 */}
-        <div className="mb-3">
-          <Button
-            variant="secondary"
-            onClick={() => router.push('/settings')}
-            className="w-full justify-between"
-          >
-            <span>组织设置</span>
-            <span className="text-muted-foreground text-[11px]">→</span>
-          </Button>
-
-          {invitationCount && invitationCount > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => router.push('/invitations')}
-              className="w-full justify-between mt-1.5 border-accent-primary text-accent-primary"
-            >
-              <span>待处理邀请</span>
-              <span className="bg-accent-primary text-white px-1.5 py-0.5 rounded-sm text-[11px]">
-                {invitationCount}
-              </span>
-            </Button>
           )}
         </div>
 

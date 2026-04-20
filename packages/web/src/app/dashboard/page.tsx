@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useLogout, useCurrentUser, useProjects, useStartContainer, useMyInvitations } from '@/lib/queries';
+import { useLogout, useCurrentUser, useProjects, useStartContainer } from '@/lib/queries';
 import type { Project } from '@/types';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useOrganizationStore } from '@/lib/stores';
@@ -22,7 +22,6 @@ export default function DashboardPage() {
 
   // 使用 TanStack Query
   const { data: projects, isLoading: projectsLoading } = useProjects();
-  const { data: invitations = [] } = useMyInvitations();
   const startContainer = useStartContainer();
 
   const [activeProject, setActiveProject] = useState<Project | null>(null);
@@ -71,7 +70,6 @@ export default function DashboardPage() {
         onProjectSelect={handleProjectSelect}
         onCreateProject={() => setIsDialogOpen(true)}
         onLogout={handleLogout}
-        invitationCount={invitations.length}
       />
       <div className="flex-1 overflow-hidden relative">
         {isStarting ? (

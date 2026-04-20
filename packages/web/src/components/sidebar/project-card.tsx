@@ -76,49 +76,37 @@ export const ProjectCard = memo(function ProjectCard({
         )}
         onClick={onClick}
       >
-        {/* 项目名称行 */}
         <div className="flex items-center mb-1">
           <span
             onClick={(e) => {
               e.stopPropagation();
               onToggleExpand?.();
             }}
-            className="text-[10px] text-[var(--text-muted)] mr-1 cursor-pointer w-4 text-center"
+            className="text-[10px] text-muted-foreground mr-1 cursor-pointer w-4 text-center"
           >
             {isExpanded ? '▼' : '▶'}
           </span>
-          <span className="text-[var(--text-primary)] text-[13px] font-medium">
+          <span className="text-foreground text-[13px]">
             {project.name}
           </span>
-          {/* 状态指示器 */}
           <span
             className={cn(
-              'w-[6px] h-[6px] rounded-full ml-auto',
-              isRunning && 'animate-pulse',
-              project.status === 'running' && 'bg-status-running',
-              project.status === 'stopped' && 'bg-status-error',
-              project.status === 'created' && 'bg-muted-foreground'
+              'status-dot ml-auto',
+              isRunning && 'status-dot-running animate-pulse',
+              !isRunning && 'status-dot-stopped'
             )}
           />
         </div>
 
-        {/* 模板类型 */}
-        <div className="text-[var(--text-secondary)] text-[11px] ml-5">
+        <div className="text-muted-foreground text-[11px] ml-5">
           {TEMPLATE_LABELS[project.templateType]}
         </div>
-
-        {/* 仓库数量摘要（折叠时显示） */}
-        {!isExpanded && repos.length > 0 && (
-          <div className="text-[var(--text-muted)] text-[11px] ml-5 mt-1">
-            📦 {repos.length} 个仓库
-          </div>
-        )}
 
         {/* 展开的仓库列表 */}
         {isExpanded && (
           <div className="mt-2">
             {loadingRepos ? (
-              <div className="text-[var(--text-muted)] text-xs py-2">
+              <div className="text-muted-foreground text-xs py-2">
                 加载中...
               </div>
             ) : (
@@ -139,7 +127,7 @@ export const ProjectCard = memo(function ProjectCard({
                     e.stopPropagation();
                     setShowAddRepo(true);
                   }}
-                  className="w-[calc(100%-24px)] h-auto py-1.5 px-0 border border-dashed border-[var(--border-light)] text-[var(--text-muted)] text-[11px] mt-1 ml-6 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                  className="w-[calc(100%-24px)] h-auto py-1.5 px-0 border border-dashed border-border-light text-muted-foreground text-[11px] mt-1 ml-6 hover:bg-hover hover:text-foreground"
                 >
                   + 添加仓库
                 </Button>
