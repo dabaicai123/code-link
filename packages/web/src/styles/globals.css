@@ -63,6 +63,13 @@
     --border: 0 0% 16%;
     --input: 0 0% 12%;
     --ring: 16 65% 59%;
+
+    /* 向后兼容别名 */
+    --accent-color: var(--accent-primary);
+    --border-color: var(--border-default);
+    --status-success: var(--status-running);
+    --status-error: var(--status-stopped);
+    --text-disabled: var(--text-muted);
   }
 }
 
