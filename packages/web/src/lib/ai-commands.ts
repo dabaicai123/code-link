@@ -1,9 +1,8 @@
 // packages/web/src/lib/ai-commands.ts
+import type { AICommandType } from '@/types/draft';
 
-/**
- * AI 命令类型
- */
-export type AICommandType = 'generate' | 'analyze' | 'suggest' | 'explain' | 'review' | 'refactor' | 'test';
+// 重新导出类型以保持向后兼容
+export type { AICommandType };
 
 /**
  * AI 命令建议
