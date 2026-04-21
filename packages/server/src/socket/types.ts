@@ -104,6 +104,7 @@ export const DraftEvents = {
       user_name: z.string(),
       content: z.string(),
       message_type: z.string(),
+      metadata: z.string().nullable(),
       created_at: z.string(),
     }),
     timestamp: z.string(),

@@ -81,7 +81,6 @@ export default function DashboardPage() {
           <Workspace
             project={activeProject}
             userId={user.id}
-            wsUrl={process.env.NEXT_PUBLIC_WS_URL}
           />
         )}
       </div>
