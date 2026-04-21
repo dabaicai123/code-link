@@ -1,5 +1,6 @@
 // packages/server/src/ai/context-builder.ts
-import { loadDiscussion, loadCard, getDiscussionPath, getTranscriptPath } from './transcript.js';
+import { loadCard, getTranscriptPath } from './transcript.js';
+import path from 'path';
 import { createLogger } from '../core/logger/index.js';
 
 const logger = createLogger('context-builder');
@@ -7,7 +8,6 @@ const logger = createLogger('context-builder');
 export interface AIExecutionContext {
   projectId: number;
   draftId: number;
-  discussionPath: string;
   transcriptPath?: string;
   command: string;
   args: string;
@@ -25,25 +25,22 @@ export async function buildAIExecutionContext(input: {
 }): Promise<AIExecutionContext> {
   const { projectId, draftId, command, args, contextCardId } = input;
 
-  // 1. Discussion 文件路径
-  const discussionPath = getDiscussionPath(projectId, draftId);
-
-  // 2. 如果有引用卡片，加载其 transcript 路径
+  // 如果有引用卡片，加载其 transcript 路径
   let transcriptPath: string | undefined;
   if (contextCardId) {
     const card = await loadCard(projectId, draftId, contextCardId);
     if (card) {
-      // 使用卡片数据中的 transcriptPath 或生成路径
       transcriptPath = card.transcriptPath || getTranscriptPath(projectId, draftId, contextCardId);
+    } else {
+      logger.warn(`Context card not found: ${contextCardId}`);
     }
   }
 
-  logger.debug('Built AI context', { projectId, draftId, discussionPath, transcriptPath });
+  logger.debug('Built AI context', { projectId, draftId, transcriptPath });
 
   return {
     projectId,
     draftId,
-    discussionPath,
     transcriptPath,
     command,
     args,
@@ -63,7 +60,8 @@ export function generateClaudeCodePrompt(context: AIExecutionContext): string {
   parts.push(`@${containerDiscussionPath}`);
 
   if (context.transcriptPath) {
-    const containerTranscriptPath = `/workspace/transcripts/${context.projectId}/${context.draftId}/${context.transcriptPath.split('/').pop()}`;
+    const filename = path.basename(context.transcriptPath);
+    const containerTranscriptPath = `/workspace/transcripts/${context.projectId}/${context.draftId}/${filename}`;
     parts.push(`@${containerTranscriptPath}`);
   }
 
