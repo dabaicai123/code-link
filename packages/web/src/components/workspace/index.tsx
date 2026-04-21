@@ -8,19 +8,18 @@ import { SelectedElement } from '@/components/collaboration/display-panel';
 import { Loading } from '@/components/ui/loading';
 import type { Project } from '@/types';
 
-const TerminalWorkspace = dynamic(
-  () => import('@/components/terminal').then((m) => ({ default: m.TerminalWorkspace })),
-  { loading: () => <Loading text="加载终端..." /> }
+const ChatWorkspace = dynamic(
+  () => import('@/components/chat').then((m) => ({ default: m.ChatWorkspace })),
+  { loading: () => <Loading text="加载聊天..." /> }
 );
 
 interface WorkspaceProps {
   project: Project | null;
   userId: number;
-  wsUrl?: string;
   onRestart?: () => void;
 }
 
-export function Workspace({ project, userId, wsUrl, onRestart }: WorkspaceProps) {
+export function Workspace({ project, userId, onRestart }: WorkspaceProps) {
   const [elements, setElements] = useState<SelectedElement[]>([]);
   const sendClaudeMessageRef = useRef<((elements: SelectedElement[], message: string) => void) | null>(null);
 
@@ -49,15 +48,14 @@ export function Workspace({ project, userId, wsUrl, onRestart }: WorkspaceProps)
   return (
     <ResizableSplit
       left={
-        <TerminalWorkspace
+        <ChatWorkspace
           project={project}
           userId={userId}
-          wsUrl={wsUrl}
           elements={elements}
           onRemoveElement={handleRemoveElement}
           onSendMessage={handleSendMessage}
           onRestart={onRestart}
-          onTerminalReady={handleTerminalReady}
+          onChatReady={handleTerminalReady}
         />
       }
       right={<CollaborationPanel onAddElement={handleAddElement} />}
