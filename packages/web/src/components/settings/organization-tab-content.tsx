@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { api, ApiError, Organization, OrganizationDetail, OrgRole } from '@/lib/api';
 import { CreateOrganizationDialog } from '@/components/create-organization-dialog';
 import { OrganizationDetailPanel } from './organization-detail-panel';
+import { Button } from '@/components/ui/button';
 
 const ROLE_LABELS: Record<OrgRole, string> = {
   owner: 'Owner',
@@ -106,9 +107,9 @@ export function OrganizationTabContent({ currentUserId }: OrganizationTabContent
         }}
       >
         {error}
-        <button onClick={fetchOrganizations} className="btn btn-secondary" style={{ marginLeft: '12px' }}>
+        <Button onClick={fetchOrganizations} variant="secondary" style={{ marginLeft: '12px' }}>
           重试
-        </button>
+        </Button>
       </div>
     );
   }
@@ -126,9 +127,9 @@ export function OrganizationTabContent({ currentUserId }: OrganizationTabContent
         }}
       >
         <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
-          <button onClick={() => setIsCreateDialogOpen(true)} className="btn btn-primary" style={{ width: '100%' }}>
+          <Button onClick={() => setIsCreateDialogOpen(true)} variant="default" style={{ width: '100%' }}>
             + 创建组织
-          </button>
+          </Button>
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>

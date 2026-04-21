@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useOrganizations } from '@/lib/queries';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
 
 interface OrganizationListProps {
   onCreateOrganization: () => void;
@@ -28,9 +29,9 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
     return (
       <div style={{ padding: '20px', backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--status-error)', borderRadius: 'var(--radius-md)', color: 'var(--status-error)' }}>
         {error.message}
-        <button onClick={() => refetch()} className="btn btn-secondary" style={{ marginLeft: '12px' }}>
+        <Button onClick={() => refetch()} variant="secondary" style={{ marginLeft: '12px' }}>
           重试
-        </button>
+        </Button>
       </div>
     );
   }
@@ -39,9 +40,9 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
     return (
       <div style={{ textAlign: 'center', padding: '40px' }}>
         <div style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>您尚未加入任何组织</div>
-        <button onClick={onCreateOrganization} className="btn btn-primary">
+        <Button onClick={onCreateOrganization} variant="default">
           创建组织
-        </button>
+        </Button>
       </div>
     );
   }
@@ -52,9 +53,9 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
         <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
           共 {organizations.length} 个组织
         </div>
-        <button onClick={onCreateOrganization} className="btn btn-primary">
+        <Button onClick={onCreateOrganization} variant="default">
           创建组织
-        </button>
+        </Button>
       </div>
 
       <div style={{ display: 'grid', gap: '12px' }}>

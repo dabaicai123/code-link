@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { api, ApiError, OrganizationMember, OrgRole } from '@/lib/api';
 import { ROLE_LABELS, ROLE_COLORS, ROLE_OPTIONS } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface OrganizationMemberListProps {
   organizationId: number;
@@ -160,22 +162,22 @@ export function OrganizationMemberList({
                       <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                     ))}
                   </select>
-                  <button
+                  <Button
                     onClick={() => handleSaveRole(member.id)}
                     disabled={isUpdating}
-                    className="btn btn-primary"
+                    variant="default"
                     style={{ padding: '4px 8px', fontSize: '12px' }}
                   >
                     {isUpdating ? '保存中...' : '保存'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleCancelEdit}
                     disabled={isUpdating}
-                    className="btn btn-secondary"
+                    variant="secondary"
                     style={{ padding: '4px 8px', fontSize: '12px' }}
                   >
                     取消
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -194,20 +196,20 @@ export function OrganizationMemberList({
 
                   {canManageMembers && !isCurrentUser && (
                     <>
-                      <button
+                      <Button
                         onClick={() => handleEditRole(member.id, member.role)}
-                        className="btn btn-secondary"
+                        variant="secondary"
                         style={{ padding: '4px 8px', fontSize: '12px' }}
                       >
                         修改角色
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => handleRemoveMember(member.id, member.role)}
-                        className="btn btn-secondary"
+                        variant="secondary"
                         style={{ padding: '4px 8px', fontSize: '12px', color: 'var(--status-error)' }}
                       >
                         移除
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>

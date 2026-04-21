@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { api, ApiError, OrganizationInvitation, OrgRole } from '@/lib/api';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
 
 interface InvitationListProps {
   invitations: OrganizationInvitation[];
@@ -98,20 +99,20 @@ export function InvitationList({ invitations, onRefresh }: InvitationListProps) 
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                <button
+                <Button
                   onClick={() => handleAccept(inv.id)}
                   disabled={isProcessing}
-                  className="btn btn-primary"
+                  variant="default"
                 >
                   {isProcessing ? '处理中...' : '接受'}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleDecline(inv.id)}
                   disabled={isProcessing}
-                  className="btn btn-secondary"
+                  variant="secondary"
                 >
                   拒绝
-                </button>
+                </Button>
               </div>
             </div>
           );

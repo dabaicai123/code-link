@@ -2,6 +2,7 @@
 
 import { useReducer, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export interface SelectedElement {
   id: string;
@@ -315,12 +316,13 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
             className="flex-1 bg-transparent border-none outline-none text-foreground text-xs"
           />
         </div>
-        <button
+        <Button
           onClick={handleRefresh}
-          className="btn btn-secondary px-2 py-1 text-[11px]"
+          variant="secondary"
+          className="px-2 py-1 text-[11px]"
         >
           刷新
-        </button>
+        </Button>
         <button
           onClick={() => dispatch({ type: 'TOGGLE_SELECT_MODE' })}
           className={cn(
@@ -393,18 +395,20 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
                   left: getAddButtonPosition().left,
                 }}
               >
-                <button
+                <Button
                   onClick={(e) => { e.stopPropagation(); handleAddElement(); }}
-                  className="btn btn-primary px-3 py-1.5 text-[11px] shadow-lg"
+                  variant="default"
+                  className="px-3 py-1.5 text-[11px] shadow-lg"
                 >
                   + 添加 &lt;{state.selectedElement.tagName}&gt;
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={(e) => { e.stopPropagation(); handleCancelSelection(); }}
-                  className="btn btn-secondary px-2 py-1.5 text-[11px] shadow-lg"
+                  variant="secondary"
+                  className="px-2 py-1.5 text-[11px] shadow-lg"
                 >
                   ✕
-                </button>
+                </Button>
               </div>
             )}
           </div>

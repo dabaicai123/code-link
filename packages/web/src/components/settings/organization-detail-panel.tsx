@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { api, ApiError, OrganizationDetail, OrganizationInvitation, OrgRole, OrganizationMember } from '@/lib/api';
 import { OrganizationMemberList } from '@/components/organization-member-list';
 import { InviteMemberDialog } from '@/components/invite-member-dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface OrganizationDetailPanelProps {
   organization: OrganizationDetail | null;
@@ -149,30 +151,29 @@ export function OrganizationDetailPanel({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {isEditingName ? (
             <>
-              <input
+              <Input
                 type="text"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                className="input"
                 style={{ width: '200px' }}
                 maxLength={100}
               />
-              <button
+              <Button
                 onClick={handleSaveName}
                 disabled={isSaving}
-                className="btn btn-primary"
+                variant="default"
                 style={{ padding: '4px 8px', fontSize: '12px' }}
               >
                 {isSaving ? '保存中...' : '保存'}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleCancelEditName}
                 disabled={isSaving}
-                className="btn btn-secondary"
+                variant="secondary"
                 style={{ padding: '4px 8px', fontSize: '12px' }}
               >
                 取消
-              </button>
+              </Button>
             </>
           ) : (
             <>
@@ -180,31 +181,31 @@ export function OrganizationDetailPanel({
                 {organization.name}
               </h2>
               {isOwner && (
-                <button
+                <Button
                   onClick={handleEditName}
-                  className="btn btn-secondary"
+                  variant="secondary"
                   style={{ padding: '2px 6px', fontSize: '11px' }}
                 >
                   编辑
-                </button>
+                </Button>
               )}
             </>
           )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           {isOwner && (
-            <button onClick={() => setIsInviteDialogOpen(true)} className="btn btn-primary">
+            <Button onClick={() => setIsInviteDialogOpen(true)} variant="default">
               邀请成员
-            </button>
+            </Button>
           )}
           {!isOwner && (
-            <button
+            <Button
               onClick={handleLeaveOrganization}
-              className="btn btn-secondary"
+              variant="secondary"
               style={{ color: 'var(--status-error)' }}
             >
               退出组织
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -247,9 +248,9 @@ export function OrganizationDetailPanel({
             <h3 style={{ color: 'var(--text-primary)', fontSize: '14px', margin: 0 }}>
               待处理邀请 ({invitations.length})
             </h3>
-            <button onClick={() => setShowInvitations(!showInvitations)} className="btn btn-secondary">
+            <Button onClick={() => setShowInvitations(!showInvitations)} variant="secondary">
               {showInvitations ? '收起' : '展开'}
-            </button>
+            </Button>
           </div>
 
           {showInvitations && (
@@ -273,13 +274,13 @@ export function OrganizationDetailPanel({
                       角色: {inv.role} | 邀请时间: {new Date(inv.createdAt).toLocaleDateString('zh-CN')}
                     </div>
                   </div>
-                  <button
+                  <Button
                     onClick={() => handleCancelInvitation(inv.id)}
-                    className="btn btn-secondary"
+                    variant="secondary"
                     style={{ fontSize: '12px', padding: '4px 8px' }}
                   >
                     取消邀请
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
