@@ -11,7 +11,7 @@ import { DatabaseConnection, initSchema, initDefaultAdmin, createSqliteDb } from
 
 // 模块注册
 import { registerAuthModule, createAuthRoutes, AuthController } from './modules/auth/auth.module.js';
-import { registerOrganizationModule, createOrganizationRoutes, OrganizationController } from './modules/organization/organization.module.js';
+import { registerOrganizationModule, createOrganizationRoutes, createInvitationRoutes, OrganizationController } from './modules/organization/organization.module.js';
 import { registerProjectModule, createProjectRoutes, ProjectController } from './modules/project/project.module.js';
 import { registerDraftModule, createDraftRoutes, DraftController } from './modules/draft/draft.module.js';
 import { registerBuildModule, createBuildRoutes, BuildController } from './modules/build/build.module.js';
@@ -87,6 +87,7 @@ export function createApp(): express.Express {
   // 注册路由
   app.use('/api/auth', createAuthRoutes(authController));
   app.use('/api/organizations', createOrganizationRoutes(orgController));
+  app.use('/api/invitations', createInvitationRoutes(orgController));
   app.use('/api/projects', createProjectRoutes(projectController));
   app.use('/api/projects', createContainerRoutes(containerController));
   app.use('/api/drafts', createDraftRoutes(draftController));
@@ -131,6 +132,13 @@ export interface E2EServerInstance {
   close: () => Promise<void>;
 }
 
+// Global E2E server instance for tests to access
+let e2eServerInstance: E2EServerInstance | null = null;
+
+export function getE2EServerInstance(): E2EServerInstance | null {
+  return e2eServerInstance;
+}
+
 export async function startServerForE2E(options?: { port?: number }): Promise<E2EServerInstance> {
   process.env.NODE_ENV = 'test';
   process.env.DB_PATH = ':memory:';
@@ -154,7 +162,7 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
   return new Promise((resolve, reject) => {
     server.listen(options?.port ?? 0, () => {
       const address = server.address() as import('net').AddressInfo;
-      resolve({
+      const instance: E2EServerInstance = {
         server,
         port: address.port,
         baseUrl: `http://localhost:${address.port}`,
@@ -162,10 +170,13 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
         close: () => new Promise<void>((res, rej) => {
           server.close((err) => {
             conn.close();
+            e2eServerInstance = null;
             err ? rej(err) : res();
           });
         }),
-      });
+      };
+      e2eServerInstance = instance;
+      resolve(instance);
     });
     server.on('error', reject);
   });

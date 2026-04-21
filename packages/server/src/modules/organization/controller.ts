@@ -37,4 +37,42 @@ export class OrganizationController {
     await this.service.delete(orgId, req.userId!);
     res.status(204).send();
   }
+
+  // === Invitation Methods ===
+
+  async inviteMember(req: Request, res: Response): Promise<void> {
+    const orgId = parseInt(req.params.id as string, 10);
+    const result = await this.service.inviteMember(orgId, req.userId!, req.body);
+    res.status(201).json(success(result));
+  }
+
+  async getInvitations(req: Request, res: Response): Promise<void> {
+    const orgId = parseInt(req.params.id as string, 10);
+    const result = await this.service.getInvitations(orgId, req.userId!);
+    res.json(success(result));
+  }
+
+  async cancelInvitation(req: Request, res: Response): Promise<void> {
+    const orgId = parseInt(req.params.id as string, 10);
+    const invId = parseInt(req.params.invId as string, 10);
+    await this.service.cancelInvitation(orgId, invId, req.userId!);
+    res.status(204).send();
+  }
+
+  async getMyInvitations(req: Request, res: Response): Promise<void> {
+    const result = await this.service.getMyInvitations(req.userId!);
+    res.json(success(result));
+  }
+
+  async acceptInvitation(req: Request, res: Response): Promise<void> {
+    const invId = parseInt(req.params.invId as string, 10);
+    const result = await this.service.acceptInvitation(invId, req.userId!);
+    res.json(success(result));
+  }
+
+  async declineInvitation(req: Request, res: Response): Promise<void> {
+    const invId = parseInt(req.params.invId as string, 10);
+    await this.service.declineInvitation(invId, req.userId!);
+    res.status(204).send();
+  }
 }

@@ -4,8 +4,8 @@ import { OrganizationRepository } from './repository.js';
 import { AuthRepository } from '../auth/repository.js';
 import { ParamError, NotFoundError, PermissionError, ConflictError } from '../../core/errors/index.js';
 import { getConfig } from '../../core/config.js';
-import type { CreateOrganizationInput, UpdateOrganizationInput } from './schemas.js';
-import type { OrganizationWithRole, OrganizationDetail } from './types.js';
+import type { CreateOrganizationInput, UpdateOrganizationInput, InviteMemberInput } from './schemas.js';
+import type { OrganizationWithRole, OrganizationDetail, OrganizationInvitationWithUser } from './types.js';
 
 @singleton()
 export class OrganizationService {
@@ -23,16 +23,7 @@ export class OrganizationService {
       throw new ParamError('组织名称不能超过 100 个字符');
     }
 
-    // 检查用户是否有权创建组织（超管或现有组织的 owner）
-    const config = getConfig();
-    const userEmail = await this.userRepo.findEmailById(userId);
-    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
-    const isOrgOwner = await this.repo.isOwnerOfAny(userId);
-
-    if (!isAdmin && !isOrgOwner) {
-      throw new PermissionError('只有组织 owner 或管理员可以创建组织');
-    }
-
+    // 任何已登录用户都可以创建组织
     const org = await this.repo.createWithOwner(trimmedName, userId);
     return {
       ...org,
@@ -61,9 +52,11 @@ export class OrganizationService {
     }
 
     const members = await this.repo.findMembers(orgId);
+    const role = membership?.role ?? (isAdmin ? 'owner' as const : 'member' as const);
     return {
       ...org,
       createdAt: org.createdAt ?? new Date().toISOString(),
+      role,
       members,
     };
   }
@@ -99,5 +92,77 @@ export class OrganizationService {
     }
 
     await this.repo.delete(orgId);
+  }
+
+  // === Invitation Methods ===
+
+  async inviteMember(orgId: number, userId: number, input: InviteMemberInput): Promise<{ id: number; organizationId: number; email: string; role: string; status: string; createdAt: string }> {
+    const membership = await this.repo.findUserMembership(orgId, userId);
+    const userEmail = await this.userRepo.findEmailById(userId);
+    const config = getConfig();
+    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
+
+    if (!isAdmin && (!membership || membership.role !== 'owner')) {
+      throw new PermissionError('只有组织 owner 可以邀请成员');
+    }
+
+    const exists = await this.repo.hasPendingInvitation(orgId, input.email);
+    if (exists) {
+      throw new ConflictError('该邮箱已有待处理邀请');
+    }
+
+    const inv = await this.repo.createInvitation(orgId, input.email, input.role, userId);
+    return { ...inv, createdAt: inv.createdAt ?? new Date().toISOString() };
+  }
+
+  async getInvitations(orgId: number, userId: number): Promise<OrganizationInvitationWithUser[]> {
+    const membership = await this.repo.findUserMembership(orgId, userId);
+    const userEmail = await this.userRepo.findEmailById(userId);
+    const config = getConfig();
+    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
+
+    if (!isAdmin && !membership) {
+      throw new PermissionError('您不是该组织的成员');
+    }
+
+    return this.repo.findInvitationsByOrgId(orgId);
+  }
+
+  async cancelInvitation(orgId: number, invId: number, userId: number): Promise<void> {
+    const membership = await this.repo.findUserMembership(orgId, userId);
+    const userEmail = await this.userRepo.findEmailById(userId);
+    const config = getConfig();
+    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
+
+    if (!isAdmin && (!membership || membership.role !== 'owner')) {
+      throw new PermissionError('只有组织 owner 可以取消邀请');
+    }
+
+    await this.repo.cancelInvitation(invId);
+  }
+
+  async getMyInvitations(userId: number): Promise<OrganizationInvitationWithUser[]> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new NotFoundError('用户');
+    return this.repo.findPendingInvitationsForEmail(user.email);
+  }
+
+  async acceptInvitation(invId: number, userId: number): Promise<{ organizationId: number; organizationName: string }> {
+    const inv = await this.repo.findInvitationById(invId);
+    if (!inv) throw new NotFoundError('邀请');
+    if (inv.status !== 'pending') throw new ConflictError('邀请已处理');
+
+    await this.repo.acceptInvitation(invId, userId);
+
+    const org = await this.repo.findById(inv.organizationId);
+    return { organizationId: inv.organizationId, organizationName: org?.name ?? '' };
+  }
+
+  async declineInvitation(invId: number, userId: number): Promise<void> {
+    const inv = await this.repo.findInvitationById(invId);
+    if (!inv) throw new NotFoundError('邀请');
+    if (inv.status !== 'pending') throw new ConflictError('邀请已处理');
+
+    await this.repo.declineInvitation(invId);
   }
 }

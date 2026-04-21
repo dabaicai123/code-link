@@ -9,41 +9,50 @@ export const authKeys = {
 };
 
 export function useCurrentUser() {
-  const { user, isAuthenticated } = useAuthStore();
-  const setUser = useAuthStore((s) => s.setUser);
+  const { user, token, initialized } = useAuthStore();
+  const setAuth = useAuthStore((s) => s.setAuth);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: authKeys.current,
-    queryFn: () => api.get<User>('/auth/me'),
-    enabled: !isAuthenticated,
+    queryFn: async () => {
+      const user = await api.get<User>('/auth/me');
+      // Update auth store with user info
+      const currentToken = useAuthStore.getState().token;
+      if (currentToken) {
+        setAuth(currentToken, user);
+      }
+      return user;
+    },
+    enabled: !!token && !user, // Only fetch if we have token but no user
     retry: false,
   });
+
+  return {
+    ...query,
+    isLoading: !initialized || query.isLoading,
+  };
 }
 
 export function useLogin() {
-  const setToken = useAuthStore((s) => s.setToken);
-  const setUser = useAuthStore((s) => s.setUser);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   return useMutation({
     mutationFn: (input: LoginInput) =>
       api.post<{ token: string; user: User }>('/auth/login', input),
     onSuccess: (data) => {
-      setToken(data.token);
-      setUser(data.user);
+      setAuth(data.token, data.user);
     },
   });
 }
 
 export function useRegister() {
-  const setToken = useAuthStore((s) => s.setToken);
-  const setUser = useAuthStore((s) => s.setUser);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   return useMutation({
     mutationFn: (input: RegisterInput) =>
       api.post<{ token: string; user: User }>('/auth/register', input),
     onSuccess: (data) => {
-      setToken(data.token);
-      setUser(data.user);
+      setAuth(data.token, data.user);
     },
   });
 }

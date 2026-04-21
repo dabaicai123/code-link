@@ -18,6 +18,8 @@ export interface OrganizationMemberWithUser {
 
 export interface OrganizationInvitationWithUser {
   id: number;
+  organizationId: number;
+  organizationName?: string;
   email: string;
   role: OrgRole;
   invitedBy: number;
@@ -31,5 +33,6 @@ export interface OrganizationDetail {
   name: string;
   createdBy: number;
   createdAt: string;
+  role: OrgRole;
   members: OrganizationMemberWithUser[];
 }

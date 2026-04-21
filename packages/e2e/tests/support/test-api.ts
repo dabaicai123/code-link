@@ -1,5 +1,5 @@
 // packages/e2e/tests/support/test-api.ts
-import type { TestUser, TestOrganization, TestProject } from './types';
+import type { TestUser, TestOrganization, TestOrganizationDetail, TestProject } from './types';
 
 interface ApiResponse<T> {
   code: number;
@@ -42,8 +42,8 @@ export class TestApi {
     return orgs.find((o) => o.name === name);
   }
 
-  async getOrganizationById(id: number): Promise<TestOrganization | undefined> {
-    const response = await this.get<ApiResponse<TestOrganization>>(`/organizations/${id}`);
+  async getOrganizationById(id: number): Promise<TestOrganizationDetail | undefined> {
+    const response = await this.get<ApiResponse<TestOrganizationDetail>>(`/organizations/${id}`);
     return response.data;
   }
 

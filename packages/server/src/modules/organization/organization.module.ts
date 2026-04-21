@@ -13,7 +13,7 @@ export function registerOrganizationModule(): void {
 export { OrganizationRepository } from './repository.js';
 export { OrganizationService } from './service.js';
 export { OrganizationController } from './controller.js';
-export { createOrganizationRoutes } from './routes.js';
+export { createOrganizationRoutes, createInvitationRoutes } from './routes.js';
 export {
   createOrganizationSchema,
   updateOrganizationSchema,

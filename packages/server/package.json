@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "migrate": "tsx src/migrate.ts",
     "build": "tsc",
+    "start": "node dist/index.js",
+    "migrate": "tsx src/migrate.ts",
     "build:templates": "./scripts/build-templates.sh",
     "test": "vitest run --project unit",
     "test:container": "vitest run --project container-integration",
