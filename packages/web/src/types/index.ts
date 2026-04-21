@@ -18,3 +18,6 @@ export * from './build';
 
 // Claude 消息
 export * from './claude-message';
+
+// Chat
+export * from './chat';
