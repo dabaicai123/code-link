@@ -150,8 +150,13 @@ export async function completeExecution(
   const session = activeExecutions.get(terminalSessionId);
   if (!session) return null;
 
+  // Guard against double-completion: mark immediately to prevent race
+  if (session.status === 'completed' || session.status === 'failed') return null;
   const status = success ? 'completed' : 'failed';
   session.status = status;
+
+  // Remove from map before async work to prevent concurrent access
+  activeExecutions.delete(terminalSessionId);
 
   // 合并所有输出
   const fullOutput = session.output.join('\n');
@@ -163,9 +168,6 @@ export async function completeExecution(
     summary: summary ?? fullOutput.slice(0, 200),
     title: generateCardTitle(session.cardType, summary),
   });
-
-  // 清理会话
-  activeExecutions.delete(terminalSessionId);
 
   logger.info(`Execution completed: ${session.id}`, { success, cardId: session.cardId });
 

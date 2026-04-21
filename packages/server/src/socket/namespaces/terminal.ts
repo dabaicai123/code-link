@@ -122,7 +122,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
           const execution = getExecutionByTerminal(sessionId);
           if (execution) {
             const fullOutput = execution.output.join('\n');
-            const success = !fullOutput.toLowerCase().includes('error') && !fullOutput.toLowerCase().includes('failed');
+            const success = isSuccessfulOutput(fullOutput);
             const summary = extractSummary(fullOutput);
 
             const card = await completeExecution(sessionId, success, summary);
@@ -347,17 +347,21 @@ export function setupTerminalNamespace(namespace: Namespace): void {
               success: false,
               summary: '连接断开',
             });
+            // 释放驾驶权
+            try {
+              await releaseCodingLock({
+                projectId: execution.projectId,
+                draftId: execution.draftId,
+                userId,
+              });
+              namespace.emit('codingLockReleased', {
+                projectId: execution.projectId,
+                draftId: execution.draftId,
+              });
+            } catch {
+              // Lock may have already been released by exit handler
+            }
           }
-          // 释放驾驶权
-          await releaseCodingLock({
-            projectId: execution.projectId,
-            draftId: execution.draftId,
-            userId,
-          });
-          namespace.emit('codingLockReleased', {
-            projectId: execution.projectId,
-            draftId: execution.draftId,
-          });
         }
 
         terminalManager.closeSession(currentSessionId);
@@ -404,4 +408,19 @@ function extractSummary(output: string): string {
   // 取最后几行非空内容作为摘要
   const meaningfulLines = lines.filter(l => l.trim().length > 0).slice(-3);
   return meaningfulLines.join('\n').slice(0, 200);
+}
+
+/**
+ * 判断输出是否表示成功执行
+ * 匹配常见的错误行首标记，避免误判包含 "error" 单词的正常输出
+ */
+function isSuccessfulOutput(output: string): boolean {
+  const lines = output.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^error:/i.test(trimmed) || /^failed\b/i.test(trimmed) || /^\[error\]/i.test(trimmed)) {
+      return false;
+    }
+  }
+  return true;
 }
