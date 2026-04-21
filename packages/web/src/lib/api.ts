@@ -287,4 +287,8 @@ export const api = {
     messageId: number
   ): Promise<{ confirmations: Array<{ userId: number; userName: string; type: string; comment: string | null }> }> =>
     apiClient(`/drafts/${draftId}/messages/${messageId}/confirmations`),
+
+  // Skills 相关 API
+  getSkills: (): Promise<{ skills: Array<{ name: string; description: string }> }> =>
+    apiClient<{ skills: Array<{ name: string; description: string }> }>('/skills'),
 };
