@@ -28,9 +28,17 @@ export interface TerminalSession {
 }
 
 export interface TerminalMessage {
-  type: 'output' | 'exit' | 'error';
+  type: 'output' | 'exit' | 'error' | 'claudeStream' | 'toolStart' | 'toolEnd' | 'claudeDone' | 'claudeError' | 'cost';
   data?: string;
   message?: string;
+  sessionId?: string;
+  text?: string;
+  toolUseId?: string;
+  name?: string;
+  input?: string;
+  kind?: string;
+  result?: string;
+  cost?: { inputTokens: number; outputTokens: number; totalCost: number };
 }
 
 class TerminalManagerImpl {
@@ -74,10 +82,14 @@ class TerminalManagerImpl {
 
       // 监听容器输出
       execSession.stream.on('data', (data: Buffer) => {
+        // Send raw terminal output (backward compat)
         this.sendToWebSocket(ws, {
           type: 'output',
           data: data.toString('base64'),
         });
+        // Parse Claude CLI JSONL output for structured events
+        const text = data.toString('utf-8');
+        this.parseClaudeOutput(ws, sessionId, text);
       });
 
       // 监听 stream 错误
@@ -254,6 +266,69 @@ class TerminalManagerImpl {
   private sendToWebSocket(ws: WebSocketLike, msg: TerminalMessage): void {
     if (ws.readyState === ws.OPEN) {
       ws.send(JSON.stringify(msg));
+    }
+  }
+
+  /**
+   * Parse Claude CLI JSONL output for structured events
+   */
+  private parseClaudeOutput(ws: WebSocketLike, sessionId: string, text: string): void {
+    const lines = text.split('\n').filter(line => line.trim());
+    for (const line of lines) {
+      try {
+        const event = JSON.parse(line);
+        switch (event.type) {
+          case 'assistant':
+            if (event.message?.content) {
+              for (const block of event.message.content) {
+                if (block.type === 'text') {
+                  this.sendToWebSocket(ws, {
+                    type: 'claudeStream',
+                    sessionId,
+                    text: block.text,
+                  });
+                } else if (block.type === 'tool_use') {
+                  this.sendToWebSocket(ws, {
+                    type: 'toolStart',
+                    sessionId,
+                    toolUseId: block.id,
+                    name: block.name,
+                    input: JSON.stringify(block.input),
+                  });
+                }
+              }
+            }
+            break;
+          case 'tool_result':
+            this.sendToWebSocket(ws, {
+              type: 'toolEnd',
+              sessionId,
+              toolUseId: event.tool_use_id,
+              result: event.content,
+            });
+            break;
+          case 'result':
+            this.sendToWebSocket(ws, {
+              type: 'claudeDone',
+              sessionId,
+              cost: event.cost_usd ? {
+                inputTokens: event.input_tokens ?? 0,
+                outputTokens: event.output_tokens ?? 0,
+                totalCost: event.cost_usd,
+              } : undefined,
+            });
+            break;
+          case 'error':
+            this.sendToWebSocket(ws, {
+              type: 'claudeError',
+              sessionId,
+              message: event.message || 'Unknown error',
+            });
+            break;
+        }
+      } catch {
+        // Not JSON - skip, it's raw terminal output
+      }
     }
   }
 }

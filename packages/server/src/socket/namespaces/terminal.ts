@@ -146,9 +146,10 @@ export function setupTerminalNamespace(namespace: Namespace): void {
       const parsed = TerminalEvents.claudeMessage.safeParse(data);
       if (!parsed.success || !currentSessionId) return;
 
-      const { sessionId, data: encodedMessage } = parsed.data;
+      const { sessionId, data: encodedMessage, mode, agent } = parsed.data;
       if (sessionId !== currentSessionId) return;
 
+      // Mode and agent are handled by CLI itself via message format
       terminalManager.sendToTerminal(sessionId, encodedMessage);
     });
 

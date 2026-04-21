@@ -124,12 +124,52 @@ export const TerminalEvents = {
   input: z.object({ sessionId: z.string(), data: z.string() }),
   resize: z.object({ sessionId: z.string(), cols: z.number(), rows: z.number() }),
   ping: z.object({}),
+  claudeMessage: z.object({
+    sessionId: z.string(),
+    data: z.string(),
+    mode: z.enum(['default', 'plan', 'yolo']).optional(),
+    agent: z.enum(['claude', 'codex']).optional(),
+  }),
 
   started: z.object({ sessionId: z.string() }),
   output: z.object({ data: z.string() }),
   exit: z.object({}),
   error: z.object({ message: z.string() }),
   pong: z.object({}),
+  claudeStream: z.object({
+    sessionId: z.string(),
+    text: z.string(),
+  }),
+  toolStart: z.object({
+    sessionId: z.string(),
+    toolUseId: z.string(),
+    name: z.string(),
+    input: z.string(),
+    kind: z.string().optional(),
+  }),
+  toolEnd: z.object({
+    sessionId: z.string(),
+    toolUseId: z.string(),
+    result: z.string().optional(),
+  }),
+  claudeDone: z.object({
+    sessionId: z.string(),
+    cost: z.object({
+      inputTokens: z.number(),
+      outputTokens: z.number(),
+      totalCost: z.number(),
+    }).optional(),
+  }),
+  claudeError: z.object({
+    sessionId: z.string(),
+    message: z.string(),
+  }),
+  cost: z.object({
+    sessionId: z.string(),
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    totalCost: z.number(),
+  }),
 };
 
 // 类型导出
@@ -143,3 +183,10 @@ export type DraftOnlineUser = { userId: number; userName: string };
 
 export type TerminalStartEvent = z.infer<typeof TerminalEvents.start>;
 export type TerminalOutputEvent = z.infer<typeof TerminalEvents.output>;
+export type TerminalClaudeMessageEvent = z.infer<typeof TerminalEvents.claudeMessage>;
+export type TerminalClaudeStreamEvent = z.infer<typeof TerminalEvents.claudeStream>;
+export type TerminalToolStartEvent = z.infer<typeof TerminalEvents.toolStart>;
+export type TerminalToolEndEvent = z.infer<typeof TerminalEvents.toolEnd>;
+export type TerminalClaudeDoneEvent = z.infer<typeof TerminalEvents.claudeDone>;
+export type TerminalClaudeErrorEvent = z.infer<typeof TerminalEvents.claudeError>;
+export type TerminalCostEvent = z.infer<typeof TerminalEvents.cost>;

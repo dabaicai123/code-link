@@ -132,6 +132,8 @@ export const TerminalEvents = {
   claudeMessage: z.object({
     sessionId: z.string(),
     data: z.string(), // Base64 编码
+    mode: z.enum(['default', 'plan', 'yolo']).optional(),
+    agent: z.enum(['claude', 'codex']).optional(),
   }),
 
   // 服务端 -> 客户端
@@ -146,6 +148,40 @@ export const TerminalEvents = {
     message: z.string(),
   }),
   pong: z.object({}),
+  claudeStream: z.object({
+    sessionId: z.string(),
+    text: z.string(),
+  }),
+  toolStart: z.object({
+    sessionId: z.string(),
+    toolUseId: z.string(),
+    name: z.string(),
+    input: z.string(),
+    kind: z.string().optional(),
+  }),
+  toolEnd: z.object({
+    sessionId: z.string(),
+    toolUseId: z.string(),
+    result: z.string().optional(),
+  }),
+  claudeDone: z.object({
+    sessionId: z.string(),
+    cost: z.object({
+      inputTokens: z.number(),
+      outputTokens: z.number(),
+      totalCost: z.number(),
+    }).optional(),
+  }),
+  claudeError: z.object({
+    sessionId: z.string(),
+    message: z.string(),
+  }),
+  cost: z.object({
+    sessionId: z.string(),
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    totalCost: z.number(),
+  }),
 };
 
 // ==================== 类型导出 ====================
@@ -162,6 +198,12 @@ export type TerminalStartEvent = z.infer<typeof TerminalEvents.start>;
 export type TerminalInputEvent = z.infer<typeof TerminalEvents.input>;
 export type TerminalOutputEvent = z.infer<typeof TerminalEvents.output>;
 export type TerminalClaudeMessageEvent = z.infer<typeof TerminalEvents.claudeMessage>;
+export type TerminalClaudeStreamEvent = z.infer<typeof TerminalEvents.claudeStream>;
+export type TerminalToolStartEvent = z.infer<typeof TerminalEvents.toolStart>;
+export type TerminalToolEndEvent = z.infer<typeof TerminalEvents.toolEnd>;
+export type TerminalClaudeDoneEvent = z.infer<typeof TerminalEvents.claudeDone>;
+export type TerminalClaudeErrorEvent = z.infer<typeof TerminalEvents.claudeError>;
+export type TerminalCostEvent = z.infer<typeof TerminalEvents.cost>;
 
 // Socket 数据类型
 export interface SocketData {
