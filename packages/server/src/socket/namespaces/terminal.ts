@@ -2,7 +2,6 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
 import type { Namespace, Socket } from 'socket.io';
-import { z } from 'zod';
 import path from 'path';
 import { createLogger } from '../../core/logger/index.js';
 import { TerminalEvents } from '../types.js';
@@ -313,7 +312,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
 
     // 恢复 AI 执行
     socket.on('resumeAIExecution', async (data: unknown) => {
-      const parsed = z.object({ newCommand: z.string() }).safeParse(data);
+      const parsed = TerminalEvents.resumeAIExecution.safeParse(data);
       if (!parsed.success || !currentSessionId) return;
 
       await resumeExecution(currentSessionId, parsed.data.newCommand);
