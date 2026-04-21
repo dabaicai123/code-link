@@ -86,6 +86,9 @@ export interface DiscussionFile {
   projectId: number;
   draftTitle: string;
   status: string;
+  createdBy: number;
+  createdByName: string;
+  createdAt: string;
   messages: Array<{
     id: number;
     userName: string;
@@ -100,7 +103,9 @@ export interface DiscussionFile {
     cardStatus: CardStatus;
     title: string;
     parentCardId: string | null;
+    createdAt: string;
   }>;
   mainCardId: string | null;
   codingLock: CodingLock | null;
+  updatedAt: string;
 }
