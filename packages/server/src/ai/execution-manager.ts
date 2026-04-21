@@ -227,11 +227,16 @@ function generateCardTitle(cardType: CardType, summary?: string): string {
 /**
  * 清理过期会话
  */
-export function cleanupExpiredSessions(): void {
+export async function cleanupExpiredSessions(): Promise<void> {
   const now = new Date();
   for (const [sessionId, session] of activeExecutions) {
     const elapsed = now.getTime() - session.startedAt.getTime();
     if (elapsed > 60 * 60 * 1000) {
+      try {
+        await updateCard(session.projectId, session.draftId, session.cardId, { cardStatus: 'failed' });
+      } catch (error) {
+        logger.error(`Failed to mark expired card as failed: ${session.cardId}`, { error });
+      }
       activeExecutions.delete(sessionId);
       logger.warn(`Cleaned up expired execution: ${sessionId}`);
     }
