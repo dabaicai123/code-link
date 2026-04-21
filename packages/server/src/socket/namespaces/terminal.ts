@@ -2,6 +2,8 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
 import type { Namespace, Socket } from 'socket.io';
+import { z } from 'zod';
+import path from 'path';
 import { createLogger } from '../../core/logger/index.js';
 import { TerminalEvents } from '../types.js';
 import { getTerminalManager } from '../../modules/container/lib/terminal-manager.js';
@@ -11,6 +13,11 @@ import { ProjectRepository } from '../../modules/project/repository.js';
 import { ClaudeConfigRepository } from '../../modules/claude-config/repository.js';
 import { OrganizationRepository } from '../../modules/organization/repository.js';
 import { sanitizeErrorMessage } from '../utils/error-sanitize.js';
+import { startExecutionSession, getExecutionByTerminal, updateExecutionStatus, pauseExecution, resumeExecution } from '../../ai/execution-manager.js';
+import { buildAIExecutionContext, generateClaudeCodePrompt } from '../../ai/context-builder.js';
+import { parseSuperpowersCommand, parseFreeChatCommand } from '../../modules/draft/lib/commands.js';
+import { acquireCodingLock, releaseCodingLock } from '../../ai/transcript.js';
+import { CardType } from '../../modules/draft/file-types.js';
 
 const logger = createLogger('socket-terminal');
 
@@ -21,7 +28,7 @@ const dockerService = container.resolve(DockerService);
 
 export function setupTerminalNamespace(namespace: Namespace): void {
   namespace.on('connection', async (socket) => {
-    const { userId } = socket.data;
+    const { userId, userName } = socket.data;
     logger.info(`Terminal socket connected: userId=${userId}`);
 
     let currentSessionId: string | null = null;
@@ -156,6 +163,138 @@ export function setupTerminalNamespace(namespace: Namespace): void {
     // Ping
     socket.on('ping', () => {
       socket.emit('pong', {});
+    });
+
+    // 执行 AI 指令
+    socket.on('executeAI', async (data: unknown) => {
+      const parsed = TerminalEvents.executeAI.safeParse(data);
+      if (!parsed.success || !currentSessionId) {
+        socket.emit('error', { message: 'Invalid executeAI data' });
+        return;
+      }
+
+      const { projectId, draftId, command, args, contextCardId } = parsed.data;
+      const { userId, userName } = socket.data;
+
+      try {
+        // 1. Acquire coding lock first
+        const lockResult = await acquireCodingLock({
+          projectId, draftId, userId, userName, cardId: contextCardId,
+        });
+
+        if (!lockResult.success) {
+          socket.emit('aiExecutionError', {
+            sessionId: currentSessionId,
+            message: lockResult.error || '驾驶权获取失败',
+          });
+          return;
+        }
+
+        // Notify all clients that lock was acquired
+        namespace.emit('codingLockAcquired', {
+          projectId, draftId, holderId: userId, holderName: userName,
+          cardId: contextCardId ?? null,
+        });
+
+        // 2. Parse command to determine cardType
+        const parsedCmd = parseSuperpowersCommand(`${command} ${args}`);
+        const freeChatCmd = parseFreeChatCommand(`${command} ${args}`);
+
+        let cardType: CardType;
+        let effectiveCommand: string;
+
+        if (parsedCmd) {
+          cardType = parsedCmd.skill as CardType;
+          effectiveCommand = `${parsedCmd.skill} ${parsedCmd.args}`;
+        } else if (freeChatCmd) {
+          cardType = 'free_chat';
+          effectiveCommand = freeChatCmd.prompt;
+        } else {
+          throw new Error('无效的助手指令');
+        }
+
+        // 3. Create execution session
+        const session = await startExecutionSession({
+          projectId, draftId,
+          terminalSessionId: currentSessionId,
+          userId, userName, cardType,
+          command: effectiveCommand,
+          parentCardId: contextCardId,
+        });
+
+        // Notify client execution started
+        socket.emit('aiExecutionStarted', {
+          sessionId: currentSessionId,
+          projectId, draftId,
+          cardId: session.cardId,
+        });
+
+        // Update status to running
+        await updateExecutionStatus(currentSessionId, 'running');
+
+        // Build context
+        const context = await buildAIExecutionContext({
+          projectId, draftId, command, args, contextCardId,
+        });
+
+        // Generate full prompt
+        let fullPrompt: string;
+        if (cardType === 'free_chat') {
+          const containerDiscussionPath = `/workspace/transcripts/${projectId}/${draftId}/discussion.json`;
+          const parts = [`@${containerDiscussionPath}`];
+          if (contextCardId && context.transcriptPath) {
+            const filename = path.basename(context.transcriptPath);
+            const containerTranscriptPath = `/workspace/transcripts/${projectId}/${draftId}/${filename}`;
+            parts.push(`@${containerTranscriptPath}`);
+          }
+          parts.push(effectiveCommand);
+          fullPrompt = parts.join(' ');
+        } else {
+          fullPrompt = generateClaudeCodePrompt(context);
+        }
+
+        // Send to Terminal
+        terminalManager.sendToTerminal(
+          currentSessionId,
+          Buffer.from(fullPrompt + '\n').toString('base64')
+        );
+
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '执行失败';
+        socket.emit('aiExecutionError', {
+          sessionId: currentSessionId,
+          message,
+        });
+      }
+    });
+
+    // 暂停 AI 执行
+    socket.on('pauseAIExecution', async () => {
+      if (!currentSessionId) return;
+      await pauseExecution(currentSessionId);
+      const session = getExecutionByTerminal(currentSessionId);
+      socket.emit('aiExecutionPaused', {
+        sessionId: currentSessionId,
+        cardId: session?.cardId,
+      });
+    });
+
+    // 恢复 AI 执行
+    socket.on('resumeAIExecution', async (data: unknown) => {
+      const parsed = z.object({ newCommand: z.string() }).safeParse(data);
+      if (!parsed.success || !currentSessionId) return;
+
+      await resumeExecution(currentSessionId, parsed.data.newCommand);
+      const session = getExecutionByTerminal(currentSessionId);
+      socket.emit('aiExecutionResumed', {
+        sessionId: currentSessionId,
+        cardId: session?.cardId,
+      });
+
+      terminalManager.sendToTerminal(
+        currentSessionId,
+        Buffer.from(parsed.data.newCommand + '\n').toString('base64')
+      );
     });
 
     // 断开连接
