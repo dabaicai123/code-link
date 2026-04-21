@@ -301,4 +301,215 @@ a:hover { color: var(--accent-light); }
   .input:focus {
     border-color: var(--accent-primary);
   }
+
+  /* Chat Input - cc-web 风格 */
+  .chat-input-container {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-default);
+    padding: 10px 16px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom, 14px));
+  }
+
+  .attachment-tray {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 800px;
+    margin: 0 auto 10px;
+  }
+
+  .attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    padding: 7px 10px;
+    border: 1px solid rgba(217, 119, 87, 0.2);
+    border-radius: 12px;
+    background: rgba(26, 26, 26, 0.96);
+    color: var(--text-primary);
+    font-size: 12px;
+  }
+
+  .input-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  /* Slash Command Menu - cc-web 风格 */
+  .cmd-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    padding: 6px;
+    min-width: 280px;
+    max-width: 360px;
+    max-height: 280px;
+    overflow: auto;
+    z-index: 50;
+  }
+
+  .cmd-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+
+  .cmd-item:hover,
+  .cmd-item.active {
+    background: var(--bg-hover);
+  }
+
+  .cmd-item-cmd {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--accent-primary);
+    white-space: nowrap;
+  }
+
+  .cmd-item-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .attach-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .attach-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-light);
+  }
+
+  /* 响应式适配 */
+  @media (max-width: 768px) {
+    .cmd-menu {
+      left: 10px;
+      right: 10px;
+      min-width: auto;
+      max-width: none;
+      transform: none;
+    }
+
+    .input-wrapper {
+      padding: 6px 10px;
+      border-radius: 12px;
+    }
+
+    .attach-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+    }
+  }
+
+  /* Washi theme — Chat area overrides */
+  .chat-washi .panel-container {
+    background-color: #faf6f0;
+  }
+
+  .chat-washi .panel-header {
+    background-color: #f2ebe2;
+    border-bottom-color: #ddd0c0;
+  }
+
+  .chat-washi .msg-bubble {
+    border-radius: 16px;
+  }
+
+  .chat-washi .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+
+  .chat-washi .typing-indicator span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #c0553a;
+    animation: blink 1.4s infinite;
+  }
+
+  .chat-washi .typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .chat-washi .typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  .chat-washi .code-block-wrapper {
+    margin: 8px 0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .chat-washi .code-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: #eee8d5;
+    font-size: 12px;
+    color: #6b5a4d;
+  }
+
+  .chat-washi .code-copy-btn {
+    background: transparent;
+    border: 1px solid #ddd0c0;
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    color: #6b5a4d;
+    font-size: 12px;
+  }
+
+  .chat-washi .code-copy-btn:hover {
+    background: #e9e0d4;
+  }
+
+  .chat-washi .code-block-wrapper pre {
+    background: #eee8d5;
+    padding: 12px;
+    margin: 0;
+    border-radius: 0 0 8px 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .chat-washi ::-webkit-scrollbar-thumb {
+    background: #c9baa9;
+  }
+
+  .chat-washi ::-webkit-scrollbar-thumb:hover {
+    background: #ddd0c0;
+  }
 }
