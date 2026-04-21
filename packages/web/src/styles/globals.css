@@ -6,63 +6,67 @@
 
 @layer base {
   :root {
-    /* 背景色 */
-    --bg-primary: #0d0d0d;
-    --bg-secondary: #141414;
-    --bg-card: #1a1a1a;
-    --bg-hover: #242424;
-    --bg-active: #2a2a2a;
+    /* 背景色 — 和风暖色调 */
+    --bg-primary: #faf6f0;
+    --bg-secondary: #f2ebe2;
+    --bg-card: rgba(255, 249, 242, 0.72);
+    --bg-hover: #e9e0d4;
+    --bg-active: #f5ddd4;
 
     /* 强调色 */
-    --accent-primary: #d97757;
-    --accent-hover: #c55a3b;
-    --accent-light: #f0a080;
+    --accent-primary: #c0553a;
+    --accent-hover: #a84530;
+    --accent-light: #f5ddd4;
 
     /* 文本色 */
-    --text-primary: #e0e0e0;
-    --text-secondary: #909090;
-    --text-muted: #606060;
+    --text-primary: #2d1f14;
+    --text-secondary: #6b5a4d;
+    --text-muted: #9a8b7d;
 
     /* 状态色 */
-    --status-running: #4ade80;
-    --status-stopped: #f87171;
-    --status-warning: #fbbf24;
+    --status-running: #5d8a54;
+    --status-stopped: #c0553a;
+    --status-warning: #e8be5c;
 
     /* 边框色 */
-    --border-default: #2a2a2a;
-    --border-light: #3a3a3a;
+    --border-default: #ddd0c0;
+    --border-light: #eee8d5;
 
     /* 尺寸 */
     --sidebar-width: 250px;
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
-    --radius: 0.5rem;
+    --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius: 0.75rem;
 
     /* 字体 */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans CJK SC', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', Menlo, Monaco, monospace;
 
-    /* Shadcn 主题变量 */
-    --background: 0 0% 5%;
-    --foreground: 0 0% 88%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 88%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 88%;
-    --primary: 16 65% 59%;
+    /* 阴影 */
+    --shadow-warm: 0 8px 32px rgba(45, 31, 20, 0.08);
+    --shadow-warm-sm: 0 4px 16px rgba(45, 31, 20, 0.04);
+
+    /* Shadcn 主题变量 — 和风暖色调 HSL */
+    --background: 30 33% 96%;
+    --foreground: 15 35% 13%;
+    --card: 30 40% 97%;
+    --card-foreground: 15 35% 13%;
+    --popover: 30 40% 97%;
+    --popover-foreground: 15 35% 13%;
+    --primary: 14 60% 47%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 8%;
-    --secondary-foreground: 0 0% 88%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 56%;
-    --accent: 16 65% 59%;
+    --secondary: 30 23% 90%;
+    --secondary-foreground: 15 35% 13%;
+    --muted: 30 20% 87%;
+    --muted-foreground: 25 18% 52%;
+    --accent: 14 60% 47%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 16%;
-    --input: 0 0% 12%;
-    --ring: 16 65% 59%;
+    --border: 30 22% 82%;
+    --input: 30 22% 82%;
+    --ring: 14 60% 47%;
 
     /* 向后兼容别名 */
     --accent-color: var(--accent-primary);
