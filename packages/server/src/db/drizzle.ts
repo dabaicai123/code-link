@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import * as schema from './schema/index.js';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -19,8 +20,12 @@ export function getDefaultDbPath(): string {
  * 创建 SQLite 数据库连接（用于 DI 容器外部场景）
  */
 export function createSqliteDb(dbPath?: string): Database.Database {
-  const path = dbPath || getDefaultDbPath();
-  const db = new Database(path);
+  const resolvedPath = dbPath || getDefaultDbPath();
+  const dir = path.dirname(resolvedPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const db = new Database(resolvedPath);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   return db;

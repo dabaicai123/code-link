@@ -70,3 +70,5 @@ docs/superpowers/
 packages/server/dist-tests/
 test-results/
 data/
+.agents
+.claude/skills

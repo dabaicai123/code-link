@@ -8,8 +8,14 @@ set -e
 echo "启动 code-link 开发环境..."
 
 # 杀掉可能存在的旧进程
-pkill -f "next dev" 2>/dev/null || true
-pkill -f "node.*dist/index" 2>/dev/null || true
+echo "清理旧进程..."
+for pidfile in /tmp/code-link-backend.pid /tmp/code-link-frontend.pid; do
+  if [ -f "$pidfile" ]; then
+    kill $(cat "$pidfile") 2>/dev/null || true
+  fi
+done
+# killall 按进程名杀，WSL2 下 lsof/fuser 可能无法获取 PID
+killall node 2>/dev/null || true
 sleep 1
 
 # 构建后端
