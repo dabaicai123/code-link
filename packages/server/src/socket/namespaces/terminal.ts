@@ -13,7 +13,7 @@ import { ProjectRepository } from '../../modules/project/repository.js';
 import { ClaudeConfigRepository } from '../../modules/claude-config/repository.js';
 import { OrganizationRepository } from '../../modules/organization/repository.js';
 import { sanitizeErrorMessage } from '../utils/error-sanitize.js';
-import { startExecutionSession, getExecutionByTerminal, updateExecutionStatus, pauseExecution, resumeExecution } from '../../ai/execution-manager.js';
+import { startExecutionSession, getExecutionByTerminal, updateExecutionStatus, appendExecutionOutput, completeExecution, pauseExecution, resumeExecution } from '../../ai/execution-manager.js';
 import { buildAIExecutionContext, generateClaudeCodePrompt } from '../../ai/context-builder.js';
 import { parseSuperpowersCommand, parseFreeChatCommand } from '../../modules/draft/lib/commands.js';
 import { acquireCodingLock, releaseCodingLock } from '../../ai/transcript.js';
@@ -109,13 +109,46 @@ export function setupTerminalNamespace(namespace: Namespace): void {
         // 使用 Socket.IO 的二进制传输
         const sessionId = await terminalManager.createSession(
           project.containerId,
-          createSocketIOWriter(socket),
+          createSocketIOWriter(socket, () => currentSessionId),
           cols || 80,
           rows || 24,
           userEnv
         );
         currentSessionId = sessionId;
         socket.emit('started', { sessionId });
+
+        // 监听 Terminal 进程退出事件
+        socket.on('exit', async () => {
+          const execution = getExecutionByTerminal(sessionId);
+          if (execution) {
+            const fullOutput = execution.output.join('\n');
+            const success = !fullOutput.toLowerCase().includes('error') && !fullOutput.toLowerCase().includes('failed');
+            const summary = extractSummary(fullOutput);
+
+            const card = await completeExecution(sessionId, success, summary);
+            if (card) {
+              socket.emit('aiExecutionComplete', {
+                sessionId,
+                projectId: execution.projectId,
+                draftId: execution.draftId,
+                cardId: card.id,
+                success,
+                summary,
+              });
+            }
+
+            // 释放驾驶权
+            await releaseCodingLock({
+              projectId: execution.projectId,
+              draftId: execution.draftId,
+              userId,
+            });
+            namespace.emit('codingLockReleased', {
+              projectId: execution.projectId,
+              draftId: execution.draftId,
+            });
+          }
+        });
       } catch (error) {
         const message = sanitizeErrorMessage(error);
         socket.emit('error', { message });
@@ -174,7 +207,6 @@ export function setupTerminalNamespace(namespace: Namespace): void {
       }
 
       const { projectId, draftId, command, args, contextCardId } = parsed.data;
-      const { userId, userName } = socket.data;
 
       try {
         // 1. Acquire coding lock first
@@ -298,9 +330,36 @@ export function setupTerminalNamespace(namespace: Namespace): void {
     });
 
     // 断开连接
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       logger.info(`Terminal socket disconnected: userId=${userId}`);
+
       if (currentSessionId) {
+        // 如果有活跃的 AI 执行，先完成它（标记为失败，因为连接断开）
+        const execution = getExecutionByTerminal(currentSessionId);
+        if (execution && (execution.status === 'running' || execution.status === 'pending' || execution.status === 'paused')) {
+          const card = await completeExecution(currentSessionId, false, '连接断开');
+          if (card) {
+            socket.emit('aiExecutionComplete', {
+              sessionId: currentSessionId,
+              projectId: execution.projectId,
+              draftId: execution.draftId,
+              cardId: card.id,
+              success: false,
+              summary: '连接断开',
+            });
+          }
+          // 释放驾驶权
+          await releaseCodingLock({
+            projectId: execution.projectId,
+            draftId: execution.draftId,
+            userId,
+          });
+          namespace.emit('codingLockReleased', {
+            projectId: execution.projectId,
+            draftId: execution.draftId,
+          });
+        }
+
         terminalManager.closeSession(currentSessionId);
         currentSessionId = null;
       }
@@ -309,16 +368,40 @@ export function setupTerminalNamespace(namespace: Namespace): void {
 }
 
 // 创建 Socket.IO 写入器适配器
-function createSocketIOWriter(socket: Socket): { readyState: number; send: (data: string) => void; on: (event: string, handler: () => void) => void; OPEN: number } {
+// 使用闭包引用 currentSessionId，因为 sessionId 在创建后才可用
+function createSocketIOWriter(socket: Socket, getCurrentSessionId: () => string | null): { readyState: number; send: (data: string) => void; on: (event: string, handler: () => void) => void; OPEN: number } {
   return {
     readyState: 1, // OPEN
     OPEN: 1,
     send: (data: string) => {
       const msg = JSON.parse(data);
       socket.emit(msg.type, msg);
+
+      // AI 执行期间拦截输出，记录到卡片
+      const sessionId = getCurrentSessionId();
+      if (sessionId && msg.type === 'output') {
+        const execution = getExecutionByTerminal(sessionId);
+        if (execution && execution.status === 'running') {
+          appendExecutionOutput(sessionId, msg.data || '');
+          socket.emit('aiExecutionOutput', {
+            sessionId,
+            chunk: msg.data || '',
+          });
+        }
+      }
     },
     on: (event: string, handler: () => void) => {
       socket.on(event, handler);
     },
   };
+}
+
+/**
+ * 从输出中提取摘要
+ */
+function extractSummary(output: string): string {
+  const lines = output.trim().split('\n');
+  // 取最后几行非空内容作为摘要
+  const meaningfulLines = lines.filter(l => l.trim().length > 0).slice(-3);
+  return meaningfulLines.join('\n').slice(0, 200);
 }
