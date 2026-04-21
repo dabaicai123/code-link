@@ -59,15 +59,15 @@ export function SlashCommandMenu({ filter, onSelect, onClose }: SlashCommandMenu
   }
 
   return (
-    <div ref={menuRef} className="cmd-menu">
+    <div ref={menuRef} className="absolute bottom-full left-0 mb-2 bg-bg-card border border-border-default rounded-xl shadow-warm p-1.5 min-w-[280px] max-w-[360px] max-h-[280px] overflow-auto z-50">
       {filtered.map((c, i) => (
         <div
           key={c.cmd}
-          className={cn('cmd-item', i === activeIndex && 'active')}
+          className={cn('flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-bg-hover', i === activeIndex && 'active')}
           onClick={() => onSelect(c.cmd)}
         >
-          <span className="cmd-item-cmd">{c.cmd}</span>
-          <span className="cmd-item-desc">{c.desc}</span>
+          <span className="font-semibold text-sm text-accent-primary whitespace-nowrap">{c.cmd}</span>
+          <span className="text-[13px] text-text-secondary flex-1 overflow-hidden text-ellipsis">{c.desc}</span>
         </div>
       ))}
     </div>

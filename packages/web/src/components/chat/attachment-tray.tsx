@@ -36,9 +36,9 @@ export function AttachmentTray({ attachments, onAdd, onRemove, maxCount = 4 }: A
         onChange={handleFileSelect}
       />
       {attachments.length > 0 && (
-        <div className="attachment-tray" data-testid="attachment-tray">
+        <div className="flex flex-wrap gap-2 max-w-[800px] mx-auto mb-2.5" data-testid="attachment-tray">
           {attachments.map((att, index) => (
-            <div key={att.id} className="attachment-chip" data-index={index} data-testid={`attachment-${index}`}>
+            <div key={att.id} className="inline-flex items-center gap-2 max-w-full px-2.5 py-1.5 border border-accent-primary/20 rounded-xl bg-bg-card/96 text-text-primary text-xs" data-index={index} data-testid={`attachment-${index}`}>
               <img src={att.url} alt={att.name} className="w-8 h-8 rounded object-cover" />
               <span className="truncate max-w-[120px]">{att.name}</span>
               {att.status === 'error' && <span className="text-[#c0553a] text-xs">失败</span>}
@@ -53,7 +53,7 @@ export function AttachmentTray({ attachments, onAdd, onRemove, maxCount = 4 }: A
         </div>
       )}
       <button
-        className="attach-btn"
+        className="w-11 h-11 rounded-xl bg-transparent border border-border-default text-text-secondary cursor-pointer transition-all flex items-center justify-center hover:bg-bg-hover hover:text-text-primary hover:border-border-light"
         onClick={() => fileInputRef.current?.click()}
         title="添加图片"
         type="button"

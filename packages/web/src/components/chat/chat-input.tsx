@@ -74,7 +74,7 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
   }, []);
 
   return (
-    <div data-testid="chat-input" className="chat-input-container relative bg-[#faf6f0]">
+    <div data-testid="chat-input" className="relative bg-[#faf6f0] bg-bg-secondary border-t border-border-default px-4 pb-[max(14px,env(safe-area-inset-bottom,14px))] pt-2.5">
       {showCmdMenu && cmdFilter && (
         <SlashCommandMenu
           filter={cmdFilter}
@@ -89,7 +89,7 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
         onRemove={handleRemoveAttachment}
       />
 
-      <div className="input-wrapper">
+      <div className="flex gap-2 items-end max-w-[800px] mx-auto">
         {elements.map((el) => (
           <span key={el.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-accent-primary/15 border border-accent-primary rounded-sm font-mono text-[11px] text-accent-primary whitespace-nowrap">
             &lt;{el.tagName}&gt;
