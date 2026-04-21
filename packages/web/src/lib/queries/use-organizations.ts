@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, Organization, OrganizationDetail } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { Organization, OrganizationDetail } from '@/types/organization';
 import { useOrganizationStore } from '@/lib/stores';
 
 export const organizationKeys = {

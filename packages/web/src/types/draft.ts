@@ -105,6 +105,6 @@ export const DRAFT_STATUS_COLORS: Record<DraftStatus, string> = {
   brainstorming: 'var(--accent-color)',
   reviewing: 'var(--status-warning)',
   developing: 'var(--status-success)',
-  confirmed: '#22c55e',
+  confirmed: 'var(--color-success)',
   archived: 'var(--text-secondary)',
 };

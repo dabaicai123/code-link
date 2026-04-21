@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, OrganizationInvitation, OrgRole } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { OrganizationInvitation } from '@/types/invitation';
+import type { OrgRole } from '@/types/user';
 import { organizationKeys } from './use-organizations';
 
 export const invitationKeys = {

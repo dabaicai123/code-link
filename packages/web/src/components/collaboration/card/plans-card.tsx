@@ -22,7 +22,7 @@ export function PlansCard({ card, onClick, onContextMenu, onStartCoding }: Plans
               e.stopPropagation();
               onStartCoding();
             }}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-green-500 rounded hover:bg-green-600"
+            className="px-3 py-1.5 text-sm font-medium text-white bg-success rounded hover:bg-success"
           >
             开始编码
           </button>

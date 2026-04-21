@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { OrganizationInvitation } from '@/lib/api';
+import type { OrganizationInvitation } from '@/types/invitation';
 
 const ROLE_OPTIONS = [
   { value: 'member', label: '成员', description: '可以查看项目和聊天记录' },

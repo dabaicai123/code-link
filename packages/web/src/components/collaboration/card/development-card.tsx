@@ -27,13 +27,13 @@ export function DevelopmentCard({
     <CardContainer card={card} onClick={onClick} onContextMenu={onContextMenu}>
       {isRunning && (
         <div className="mt-2 flex items-center gap-2">
-          <div className="text-xs text-green-600 animate-pulse flex-1">
+          <div className="text-xs text-success animate-pulse flex-1">
             正在执行开发任务...
           </div>
           {onPause && (
             <button
               onClick={(e) => { e.stopPropagation(); onPause(); }}
-              className="px-2 py-1 text-xs text-orange-600 border border-orange-300 rounded hover:bg-orange-50"
+              className="px-2 py-1 text-xs text-warning border border-warning rounded hover:bg-warning/10"
             >
               暂停
             </button>
@@ -42,13 +42,13 @@ export function DevelopmentCard({
       )}
       {isPaused && (
         <div className="mt-2 flex items-center gap-2">
-          <div className="text-xs text-orange-600 flex-1">
+          <div className="text-xs text-warning flex-1">
             开发任务已暂停
           </div>
           {onResume && (
             <button
               onClick={(e) => { e.stopPropagation(); onResume(); }}
-              className="px-2 py-1 text-xs text-white bg-green-500 rounded hover:bg-green-600"
+              className="px-2 py-1 text-xs text-white bg-success rounded hover:bg-success"
             >
               继续
             </button>
@@ -56,7 +56,7 @@ export function DevelopmentCard({
           {onAbort && (
             <button
               onClick={(e) => { e.stopPropagation(); onAbort(); }}
-              className="px-2 py-1 text-xs text-red-500 border border-red-300 rounded hover:bg-red-50"
+              className="px-2 py-1 text-xs text-destructive border border-destructive rounded hover:bg-destructive/10"
             >
               放弃
             </button>

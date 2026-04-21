@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Organization } from '@/lib/api';
+import type { Organization } from '@/types/organization';
 import { storage } from '@/lib/storage';
 
 interface OrganizationState {

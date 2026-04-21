@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { api, ApiError, OrganizationInvitation, OrgRole } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
+import type { OrganizationInvitation } from '@/types/invitation';
+import type { OrgRole } from '@/types/user';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 

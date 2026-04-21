@@ -9,7 +9,7 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 import { useOrganizationStore } from '@/lib/stores';
 import { Sidebar } from '@/components/sidebar';
 import { Workspace } from '@/components/workspace';
-import { CreateProjectDialog } from '@/components/create-project-dialog';
+import { CreateProjectDialog } from '@/components/project/create-project-dialog';
 import { Loading } from '@/components/ui/loading';
 import { ApiError } from '@/lib/api';
 

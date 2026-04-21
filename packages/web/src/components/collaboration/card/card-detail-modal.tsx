@@ -39,34 +39,34 @@ export function CardDetailModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl w-[600px] max-h-[80vh] flex flex-col shadow-lg"
+        className="bg-background rounded-xl w-[600px] max-h-[80vh] flex flex-col shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-muted">
           <div className="flex items-start gap-3">
             <span
               className="w-2.5 h-2.5 rounded-full mt-1"
               style={{ backgroundColor: STATUS_COLORS[card.cardStatus] }}
             />
             <div className="flex-1">
-              <div className="text-base font-semibold text-gray-900 leading-snug break-words">
+              <div className="text-base font-semibold text-foreground leading-snug break-words">
                 {card.title}
               </div>
-              <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+              <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                 <span style={{ color: CARD_TYPE_COLORS[card.cardType] }}>
                   {CARD_TYPE_LABELS[card.cardType]}
                 </span>
                 <span>{card.createdByName}</span>
                 <span>{new Date(card.createdAt).toLocaleString('zh-CN')}</span>
                 {card.parentCardId && (
-                  <span className="text-blue-500">↑ @{card.shortId}</span>
+                  <span className="text-primary">↑ @{card.shortId}</span>
                 )}
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl"
+              className="text-muted-foreground hover:text-muted-foreground text-xl"
             >
               ✕
             </button>
@@ -74,20 +74,20 @@ export function CardDetailModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-4 bg-gray-50">
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+        <div className="flex-1 overflow-auto p-4 bg-muted">
+          <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
             {card.result}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="p-4 border-t border-gray-200 flex gap-2">
+        <div className="p-4 border-t border-muted flex gap-2">
           {isCompleted && (
             <>
               {isBrainstorming && onExecutePlan && (
                 <button
                   onClick={() => onExecutePlan(card)}
-                  className="px-5 py-2 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600"
+                  className="px-5 py-2 text-sm font-medium text-primary-foreground bg-primary rounded hover:bg-primary"
                 >
                   执行计划
                 </button>
@@ -95,7 +95,7 @@ export function CardDetailModal({
               {isWritingPlans && onStartCoding && (
                 <button
                   onClick={() => onStartCoding(card)}
-                  className="px-5 py-2 text-sm font-medium text-white bg-green-500 rounded hover:bg-green-600"
+                  className="px-5 py-2 text-sm font-medium text-success-foreground bg-success rounded hover:bg-success"
                 >
                   开始编码
                 </button>
@@ -103,7 +103,7 @@ export function CardDetailModal({
               {!isBrainstorming && !isWritingPlans && onConfirm && (
                 <button
                   onClick={() => onConfirm(card)}
-                  className="px-5 py-2 text-sm font-medium text-white bg-blue-500 rounded hover:bg-blue-600"
+                  className="px-5 py-2 text-sm font-medium text-primary-foreground bg-primary rounded hover:bg-primary"
                 >
                   确认继续
                 </button>
@@ -111,7 +111,7 @@ export function CardDetailModal({
               {onReference && (
                 <button
                   onClick={() => onReference(card)}
-                  className="px-5 py-2 text-sm font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200"
+                  className="px-5 py-2 text-sm font-medium text-muted-foreground bg-muted border border-muted rounded hover:bg-muted"
                 >
                   引用迭代
                 </button>
@@ -124,7 +124,7 @@ export function CardDetailModal({
               {onResume && (
                 <button
                   onClick={() => onResume(card)}
-                  className="px-5 py-2 text-sm font-medium text-white bg-green-500 rounded hover:bg-green-600"
+                  className="px-5 py-2 text-sm font-medium text-success-foreground bg-success rounded hover:bg-success"
                 >
                   继续执行
                 </button>
@@ -132,7 +132,7 @@ export function CardDetailModal({
               {onAbort && (
                 <button
                   onClick={() => onAbort(card)}
-                  className="px-5 py-2 text-sm font-medium text-red-500 border border-red-300 rounded hover:bg-red-50"
+                  className="px-5 py-2 text-sm font-medium text-destructive border border-destructive rounded hover:bg-destructive/10"
                 >
                   放弃
                 </button>
@@ -144,13 +144,13 @@ export function CardDetailModal({
             <>
               <button
                 onClick={() => onReference(card)}
-                className="px-5 py-2 text-sm font-medium text-white bg-green-500 rounded hover:bg-green-600"
+                className="px-5 py-2 text-sm font-medium text-success-foreground bg-success rounded hover:bg-success"
               >
                 继续执行
               </button>
               <button
                 onClick={() => onAbort?.(card)}
-                className="px-5 py-2 text-sm font-medium text-red-500 border border-red-300 rounded hover:bg-red-50"
+                className="px-5 py-2 text-sm font-medium text-destructive border border-destructive rounded hover:bg-destructive/10"
               >
                 放弃
               </button>

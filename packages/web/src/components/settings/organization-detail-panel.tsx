@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { api, ApiError, OrganizationDetail, OrganizationInvitation, OrgRole, OrganizationMember } from '@/lib/api';
-import { OrganizationMemberList } from '@/components/organization-member-list';
-import { InviteMemberDialog } from '@/components/invite-member-dialog';
+import { api, ApiError } from '@/lib/api';
+import type { OrganizationDetail, OrganizationMember } from '@/types/organization';
+import type { OrganizationInvitation } from '@/types/invitation';
+import type { OrgRole } from '@/types/user';
+import { InviteMemberDialog } from '@/components/organization/invite-member-dialog';
+import { MembersTab } from './members-tab';
+import { InvitationsTab } from './invitations-tab';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -29,7 +33,6 @@ export function OrganizationDetailPanel({
   const [error, setError] = useState<string | null>(null);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 
-  // 当 organization 变化时，重置状态并加载邀请
   useEffect(() => {
     if (organization) {
       setOrgName(organization.name);
@@ -51,16 +54,7 @@ export function OrganizationDetailPanel({
 
   if (!organization) {
     return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--text-secondary)',
-          fontSize: '14px',
-        }}
-      >
+      <div className="flex-1 flex items-center justify-center text-text-secondary text-sm">
         选择一个组织查看详情
       </div>
     );
@@ -68,36 +62,20 @@ export function OrganizationDetailPanel({
 
   const isOwner = organization.role === 'owner';
 
-  const handleEditName = () => {
-    setIsEditingName(true);
-    setError(null);
-  };
-
   const handleSaveName = async () => {
-    if (!orgName.trim()) {
-      setError('组织名称不能为空');
-      return;
-    }
-
+    if (!orgName.trim()) { setError('组织名称不能为空'); return; }
     setIsSaving(true);
     setError(null);
-
     try {
       await api.updateOrganization(organization.id, orgName.trim());
       await onRefresh();
       setIsEditingName(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '修改组织名称失败');
-    } finally {
-      setIsSaving(false);
-    }
+    } finally { setIsSaving(false); }
   };
 
-  const handleCancelEditName = () => {
-    setIsEditingName(false);
-    setOrgName(organization.name);
-    setError(null);
-  };
+  const handleCancelEditName = () => { setIsEditingName(false); setOrgName(organization.name); setError(null); };
 
   const handleInviteSuccess = (invitation: OrganizationInvitation) => {
     setIsInviteDialogOpen(false);
@@ -106,7 +84,6 @@ export function OrganizationDetailPanel({
 
   const handleCancelInvitation = async (invId: number) => {
     if (!confirm('确定要取消这个邀请吗？')) return;
-
     try {
       await api.cancelInvitation(organization.id, invId);
       setInvitations(invitations.filter((inv) => inv.id !== invId));
@@ -117,7 +94,6 @@ export function OrganizationDetailPanel({
 
   const handleLeaveOrganization = async () => {
     if (!confirm('确定要退出该组织吗？')) return;
-
     try {
       await api.removeMember(organization.id, currentUserId);
       onClose();
@@ -128,188 +104,42 @@ export function OrganizationDetailPanel({
   };
 
   return (
-    <div
-      style={{
-        flex: 1,
-        padding: '24px',
-        overflow: 'auto',
-        borderLeft: '1px solid var(--border-color)',
-        backgroundColor: 'var(--bg-primary)',
-      }}
-    >
-      {/* 头部：名称 + 邀请按钮 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '20px',
-          paddingBottom: '16px',
-          borderBottom: '1px solid var(--border-color)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div className="flex-1 p-6 overflow-auto border-l border-border-default bg-bg-primary">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5 pb-4 border-b border-border-default">
+        <div className="flex items-center gap-2">
           {isEditingName ? (
             <>
-              <Input
-                type="text"
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                style={{ width: '200px' }}
-                maxLength={100}
-              />
-              <Button
-                onClick={handleSaveName}
-                disabled={isSaving}
-                variant="default"
-                style={{ padding: '4px 8px', fontSize: '12px' }}
-              >
-                {isSaving ? '保存中...' : '保存'}
-              </Button>
-              <Button
-                onClick={handleCancelEditName}
-                disabled={isSaving}
-                variant="secondary"
-                style={{ padding: '4px 8px', fontSize: '12px' }}
-              >
-                取消
-              </Button>
+              <Input type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="w-[200px]" maxLength={100} />
+              <Button onClick={handleSaveName} disabled={isSaving} variant="default" className="py-1 px-2 text-xs">{isSaving ? '保存中...' : '保存'}</Button>
+              <Button onClick={handleCancelEditName} disabled={isSaving} variant="secondary" className="py-1 px-2 text-xs">取消</Button>
             </>
           ) : (
             <>
-              <h2 style={{ color: 'var(--text-primary)', fontSize: '18px', margin: 0 }}>
-                {organization.name}
-              </h2>
-              {isOwner && (
-                <Button
-                  onClick={handleEditName}
-                  variant="secondary"
-                  style={{ padding: '2px 6px', fontSize: '11px' }}
-                >
-                  编辑
-                </Button>
-              )}
+              <h2 className="text-foreground text-lg m-0">{organization.name}</h2>
+              {isOwner && <Button onClick={() => setIsEditingName(true)} variant="secondary" className="py-0.5 px-1.5 text-[11px]">编辑</Button>}
             </>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {isOwner && (
-            <Button onClick={() => setIsInviteDialogOpen(true)} variant="default">
-              邀请成员
-            </Button>
-          )}
-          {!isOwner && (
-            <Button
-              onClick={handleLeaveOrganization}
-              variant="secondary"
-              style={{ color: 'var(--status-error)' }}
-            >
-              退出组织
-            </Button>
-          )}
+        <div className="flex gap-2">
+          {isOwner && <Button onClick={() => setIsInviteDialogOpen(true)} variant="default">邀请成员</Button>}
+          {!isOwner && <Button onClick={handleLeaveOrganization} variant="secondary" className="text-destructive">退出组织</Button>}
         </div>
       </div>
 
       {error && (
-        <div
-          style={{
-            padding: '12px',
-            backgroundColor: 'rgba(248, 113, 113, 0.1)',
-            border: '1px solid var(--status-error)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--status-error)',
-            fontSize: '13px',
-            marginBottom: '16px',
-          }}
-        >
-          {error}
-        </div>
+        <div className="bg-destructive/10 border border-destructive rounded-md p-3 text-destructive text-[13px] mb-4">{error}</div>
       )}
 
-      {/* 待处理邀请（Owner 可见） */}
-      {isOwner && invitations.length > 0 && (
-        <div
-          style={{
-            backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-md)',
-            padding: '16px',
-            marginBottom: '16px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '12px',
-            }}
-          >
-            <h3 style={{ color: 'var(--text-primary)', fontSize: '14px', margin: 0 }}>
-              待处理邀请 ({invitations.length})
-            </h3>
-            <Button onClick={() => setShowInvitations(!showInvitations)} variant="secondary">
-              {showInvitations ? '收起' : '展开'}
-            </Button>
-          </div>
+      <InvitationsTab
+        invitations={invitations}
+        show={showInvitations}
+        onToggle={() => setShowInvitations(!showInvitations)}
+        onCancel={handleCancelInvitation}
+      />
 
-          {showInvitations && (
-            <div style={{ display: 'grid', gap: '8px' }}>
-              {invitations.map((inv) => (
-                <div
-                  key={inv.id}
-                  style={{
-                    padding: '10px',
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-md)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div>
-                    <div style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{inv.email}</div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
-                      角色: {inv.role} | 邀请时间: {new Date(inv.createdAt).toLocaleDateString('zh-CN')}
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => handleCancelInvitation(inv.id)}
-                    variant="secondary"
-                    style={{ fontSize: '12px', padding: '4px 8px' }}
-                  >
-                    取消邀请
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <MembersTab organization={organization} currentUserId={currentUserId} onRefresh={onRefresh} />
 
-      {/* 成员列表 */}
-      <div
-        style={{
-          backgroundColor: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-md)',
-          padding: '16px',
-        }}
-      >
-        <h3 style={{ color: 'var(--text-primary)', fontSize: '14px', margin: '0 0 12px 0' }}>
-          成员列表
-        </h3>
-        <OrganizationMemberList
-          organizationId={organization.id}
-          members={organization.members}
-          currentUserId={currentUserId}
-          currentUserRole={organization.role || 'member'}
-          onRefresh={onRefresh}
-        />
-      </div>
-
-      {/* 邀请成员弹窗 */}
       <InviteMemberDialog
         organizationId={organization.id}
         isOpen={isInviteDialogOpen}

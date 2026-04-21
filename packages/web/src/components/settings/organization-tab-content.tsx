@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { api, ApiError, Organization, OrganizationDetail, OrgRole } from '@/lib/api';
-import { CreateOrganizationDialog } from '@/components/create-organization-dialog';
+import { api, ApiError } from '@/lib/api';
+import type { Organization, OrganizationDetail } from '@/types/organization';
+import type { OrgRole } from '@/types/user';
+import { CreateOrganizationDialog } from '@/components/organization/create-organization-dialog';
 import { OrganizationDetailPanel } from './organization-detail-panel';
 import { Button } from '@/components/ui/button';
 
@@ -14,7 +16,7 @@ const ROLE_LABELS: Record<OrgRole, string> = {
 };
 
 const ROLE_COLORS: Record<OrgRole, string> = {
-  owner: 'var(--accent-color)',
+  owner: 'var(--accent-primary)',
   developer: 'var(--status-success)',
   member: 'var(--text-secondary)',
 };
@@ -30,9 +32,7 @@ export function OrganizationTabContent({ currentUserId }: OrganizationTabContent
   const [error, setError] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  useEffect(() => {
-    fetchOrganizations();
-  }, []);
+  useEffect(() => { fetchOrganizations(); }, []);
 
   const fetchOrganizations = async () => {
     setLoading(true);
@@ -42,9 +42,7 @@ export function OrganizationTabContent({ currentUserId }: OrganizationTabContent
       setOrganizations(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '加载组织列表失败');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const fetchOrganizationDetail = async (orgId: number) => {
@@ -56,122 +54,73 @@ export function OrganizationTabContent({ currentUserId }: OrganizationTabContent
     }
   };
 
-  const handleSelectOrg = (org: Organization) => {
-    fetchOrganizationDetail(org.id);
-  };
+  const handleSelectOrg = (org: Organization) => { fetchOrganizationDetail(org.id); };
 
   const handleCreateSuccess = (org: Organization) => {
     setIsCreateDialogOpen(false);
     fetchOrganizations();
-    // 自动选中新创建的组织
     fetchOrganizationDetail(org.id);
   };
 
-  const handleCloseDetail = () => {
-    setSelectedOrg(null);
-  };
+  const handleCloseDetail = () => { setSelectedOrg(null); };
 
   const handleRefresh = async () => {
     await fetchOrganizations();
-    if (selectedOrg) {
-      await fetchOrganizationDetail(selectedOrg.id);
-    }
+    if (selectedOrg) await fetchOrganizationDetail(selectedOrg.id);
   };
 
   if (loading) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--text-secondary)',
-        }}
-      >
-        加载中...
-      </div>
-    );
+    return <div className="flex-1 flex items-center justify-center text-text-secondary">加载中...</div>;
   }
 
   if (error) {
     return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--status-error)',
-          padding: '20px',
-        }}
-      >
+      <div className="flex-1 flex items-center justify-center text-destructive p-5">
         {error}
-        <Button onClick={fetchOrganizations} variant="secondary" style={{ marginLeft: '12px' }}>
-          重试
-        </Button>
+        <Button onClick={fetchOrganizations} variant="secondary" className="ml-3">重试</Button>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+    <div className="flex flex-1 overflow-hidden">
       {/* 左侧组织列表 */}
-      <div
-        style={{
-          width: '280px',
-          borderRight: '1px solid var(--border-color)',
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: 'var(--bg-secondary)',
-        }}
-      >
-        <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
-          <Button onClick={() => setIsCreateDialogOpen(true)} variant="default" style={{ width: '100%' }}>
-            + 创建组织
-          </Button>
+      <div className="w-[280px] border-r border-border-default flex flex-col bg-bg-secondary">
+        <div className="p-4 border-b border-border-default">
+          <Button onClick={() => setIsCreateDialogOpen(true)} variant="default" className="w-full">+ 创建组织</Button>
         </div>
 
-        <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
+        <div className="flex-1 overflow-auto p-3">
           {organizations.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-secondary)' }}>
-              您尚未加入任何组织
-            </div>
+            <div className="text-center py-10 px-4 text-text-secondary">您尚未加入任何组织</div>
           ) : (
-            <div style={{ display: 'grid', gap: '8px' }}>
+            <div className="grid gap-2">
               {organizations.map((org) => (
                 <div
                   key={org.id}
                   onClick={() => handleSelectOrg(org)}
-                  style={{
-                    padding: '12px',
-                    backgroundColor: selectedOrg?.id === org.id ? 'var(--bg-primary)' : 'var(--bg-card)',
-                    border: `1px solid ${selectedOrg?.id === org.id ? 'var(--accent-color)' : 'var(--border-color)'}`,
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`p-3 border rounded-md cursor-pointer transition-all duration-150 ${
+                    selectedOrg?.id === org.id
+                      ? 'bg-bg-primary border-accent-primary'
+                      : 'bg-bg-card border-border-default'
+                  }`}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500 }}>
-                      {org.name}
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-foreground text-sm font-medium">{org.name}</span>
                     {org.role && (
                       <span
+                        className="py-0.5 px-1.5 rounded-md text-[10px]"
                         style={{
-                          padding: '2px 6px',
                           backgroundColor: `${ROLE_COLORS[org.role]}20`,
                           border: `1px solid ${ROLE_COLORS[org.role]}`,
-                          borderRadius: 'var(--radius-sm)',
                           color: ROLE_COLORS[org.role],
-                          fontSize: '10px',
                         }}
                       >
                         {ROLE_LABELS[org.role]}
                       </span>
                     )}
                   </div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '4px' }}>
+                  <div className="text-text-secondary text-[11px] mt-1">
                     创建于 {new Date(org.createdAt).toLocaleDateString('zh-CN')}
                   </div>
                 </div>
@@ -189,7 +138,6 @@ export function OrganizationTabContent({ currentUserId }: OrganizationTabContent
         onClose={handleCloseDetail}
       />
 
-      {/* 创建组织弹窗 */}
       <CreateOrganizationDialog
         isOpen={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}

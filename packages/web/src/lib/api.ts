@@ -1,28 +1,5 @@
-/**
- * API 错误类
- */
-export class ApiError extends Error {
-  status: number;
-  code: number;
+import { apiClient, ApiError, apiClientMethods, setToken, removeToken } from './api-client';
 
-  constructor(status: number, code: number, message: string) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = code;
-  }
-}
-
-/**
- * API 客户端配置
- */
-interface RequestOptions extends RequestInit {
-  skipAuth?: boolean;
-}
-
-const API_BASE = '/api';
-
-import { storage } from './storage';
 import type {
   Draft,
   DraftMember,
@@ -32,123 +9,15 @@ import type {
   DraftStatus,
   ConfirmationType,
 } from '@/types/draft';
-
-// 导入统一类型
 import type { OrgRole } from '@/types/user';
 import type { Organization, OrganizationDetail, OrganizationMember } from '@/types/organization';
 import type { Repo } from '@/types/repo';
 import type { OrganizationInvitation } from '@/types/invitation';
 
-// 重新导出类型以保持向后兼容
-export type { OrgRole } from '@/types/user';
-export type { Organization, OrganizationDetail, OrganizationMember } from '@/types/organization';
-export type { Repo } from '@/types/repo';
-export type { OrganizationInvitation } from '@/types/invitation';
+export { ApiError, setToken, removeToken };
 
-/**
- * 从 localStorage 获取 token
- */
-function getToken(): string | null {
-  return storage.getToken();
-}
-
-/**
- * 保存 token 到 localStorage
- */
-export function setToken(token: string): void {
-  storage.setToken(token);
-}
-
-/**
- * 移除 token
- */
-export function removeToken(): void {
-  storage.removeToken();
-}
-
-/**
- * API 客户端函数
- */
-export async function apiClient<T = unknown>(
-  endpoint: string,
-  options: RequestOptions = {}
-): Promise<T> {
-  const { skipAuth = false, headers = {}, ...rest } = options;
-
-  const requestHeaders: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...headers,
-  };
-
-  // 自动添加 Authorization header
-  if (!skipAuth) {
-    const token = getToken();
-    if (token) {
-      (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-    }
-  }
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...rest,
-    headers: requestHeaders,
-  });
-
-  // 处理响应
-  const contentType = response.headers.get('content-type');
-  const isJson = contentType && contentType.includes('application/json');
-
-  if (!response.ok) {
-    let errorMessage = '请求失败';
-    let errorCode = 10001;
-    if (isJson) {
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-        errorCode = errorData.code || errorCode;
-      } catch {
-        // ignore
-      }
-    }
-    throw new ApiError(response.status, errorCode, errorMessage);
-  }
-
-  // 处理空响应
-  if (!isJson) {
-    return {} as T;
-  }
-
-  const result = await response.json();
-
-  // 适配新格式：直接返回 data 字段
-  // 兼容旧格式：如果 code 不存在，直接返回结果
-  if (result.code === 0 && 'data' in result) {
-    return result.data as T;
-  }
-
-  return result as T;
-}
-
-// 便捷方法
 export const api = {
-  get: <T = unknown>(endpoint: string, options?: RequestOptions) =>
-    apiClient<T>(endpoint, { ...options, method: 'GET' }),
-
-  post: <T = unknown>(endpoint: string, body?: unknown, options?: RequestOptions) =>
-    apiClient<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-
-  put: <T = unknown>(endpoint: string, body?: unknown, options?: RequestOptions) =>
-    apiClient<T>(endpoint, {
-      ...options,
-      method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-
-  delete: <T = unknown>(endpoint: string, options?: RequestOptions) =>
-    apiClient<T>(endpoint, { ...options, method: 'DELETE' }),
+  ...apiClientMethods,
 
   // 仓库相关 API
   addRepo: (projectId: number, url: string): Promise<Repo> =>
@@ -252,15 +121,9 @@ export const api = {
     options?: { parentId?: number; limit?: number; before?: string }
   ): Promise<{ messages: DraftMessage[] }> => {
     const params = new URLSearchParams();
-    if (options?.parentId !== undefined) {
-      params.set('parentId', String(options.parentId));
-    }
-    if (options?.limit) {
-      params.set('limit', String(options.limit));
-    }
-    if (options?.before) {
-      params.set('before', options.before);
-    }
+    if (options?.parentId !== undefined) params.set('parentId', String(options.parentId));
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.before) params.set('before', options.before);
     const query = params.toString();
     return apiClient<{ messages: DraftMessage[] }>(`/drafts/${draftId}/messages${query ? `?${query}` : ''}`);
   },

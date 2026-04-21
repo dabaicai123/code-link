@@ -26,7 +26,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { toast } from 'sonner';
-import type { Organization } from '@/lib/api';
+import type { Organization } from '@/types/organization';
 
 interface CreateOrganizationDialogProps {
   isOpen: boolean;

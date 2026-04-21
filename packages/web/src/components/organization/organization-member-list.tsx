@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { api, ApiError, OrganizationMember, OrgRole } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
+import type { OrganizationMember } from '@/types/organization';
+import type { OrgRole } from '@/types/user';
 import { ROLE_LABELS, ROLE_COLORS, ROLE_OPTIONS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

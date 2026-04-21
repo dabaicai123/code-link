@@ -272,7 +272,7 @@ export function ChatPanel({ draft, currentUserId, currentUserName }: ChatPanelPr
         <span
           className={cn(
             'w-2 h-2 rounded-full',
-            isConnected ? 'bg-green-500' : 'bg-red-500'
+            isConnected ? 'bg-success' : 'bg-destructive'
           )}
         />
         <span className="text-xs text-muted-foreground">

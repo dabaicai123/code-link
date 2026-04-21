@@ -40,14 +40,8 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-      return;
-    }
-
-    if (user) {
-      loadConfig();
-    }
+    if (!authLoading && !user) { router.push('/login'); return; }
+    if (user) loadConfig();
   }, [user, authLoading, router]);
 
   const loadConfig = async () => {
@@ -60,32 +54,16 @@ export default function SettingsPage() {
     } catch (err) {
       setError('加载配置失败');
       console.error('Failed to load config:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
   const handleSave = async () => {
     setError(null);
     setSuccess(null);
-
     let config: typeof DEFAULT_CONFIG;
-    try {
-      config = JSON.parse(configText);
-    } catch {
-      setError('JSON 格式无效');
-      return;
-    }
-
-    if (!config.env || typeof config.env !== 'object') {
-      setError('config.env 必须是对象');
-      return;
-    }
-
-    if (!config.env.ANTHROPIC_AUTH_TOKEN) {
-      setError('ANTHROPIC_AUTH_TOKEN 不能为空');
-      return;
-    }
+    try { config = JSON.parse(configText); } catch { setError('JSON 格式无效'); return; }
+    if (!config.env || typeof config.env !== 'object') { setError('config.env 必须是对象'); return; }
+    if (!config.env.ANTHROPIC_AUTH_TOKEN) { setError('ANTHROPIC_AUTH_TOKEN 不能为空'); return; }
 
     setIsSaving(true);
     try {
@@ -93,11 +71,8 @@ export default function SettingsPage() {
       setHasConfig(true);
       setSuccess('配置保存成功');
     } catch (err) {
-      const message = err instanceof Error ? err.message : '保存配置失败';
-      setError(message);
-    } finally {
-      setIsSaving(false);
-    }
+      setError(err instanceof Error ? err.message : '保存配置失败');
+    } finally { setIsSaving(false); }
   };
 
   const handleReset = () => {
@@ -106,197 +81,70 @@ export default function SettingsPage() {
     setSuccess(null);
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
+  const handleLogout = () => { logout(); router.push('/login'); };
 
   if (authLoading || !user) {
-    return (
-      <div
-        style={{
-          height: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'var(--bg-primary)',
-          color: 'var(--text-secondary)',
-        }}
-      >
-        加载中...
-      </div>
-    );
+    return <div className="h-screen flex items-center justify-center bg-bg-primary text-text-secondary">加载中...</div>;
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-primary)' }}>
+    <div className="h-screen flex flex-col bg-bg-primary">
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 24px',
-          borderBottom: '1px solid var(--border-color)',
-          backgroundColor: 'var(--bg-secondary)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div className="flex items-center justify-between px-6 py-3 border-b border-border-default bg-bg-secondary">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => router.push('/dashboard')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
+            className="bg-none border-none text-text-secondary cursor-pointer text-sm flex items-center gap-1"
           >
             ← 返回
           </button>
-          <h1 style={{ color: 'var(--text-primary)', fontSize: '18px', margin: 0 }}>设置</h1>
+          <h1 className="text-foreground text-lg m-0">设置</h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              backgroundColor: 'var(--accent-primary)',
-              borderRadius: 'var(--radius-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontSize: '12px',
-              fontWeight: 500,
-            }}
-          >
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-accent-primary rounded-md flex items-center justify-center text-white text-xs font-medium">
             {user.name.charAt(0).toUpperCase()}
           </div>
-          <span style={{ color: 'var(--text-primary)', fontSize: '14px' }}>{user.name}</span>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontSize: '13px',
-              marginLeft: '8px',
-            }}
-          >
-            退出
-          </button>
+          <span className="text-foreground text-sm">{user.name}</span>
+          <button onClick={handleLogout} className="bg-none border-none text-text-secondary cursor-pointer text-[13px] ml-2">退出</button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className="flex flex-1 overflow-hidden">
         <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
         {activeTab === 'organization' && <OrganizationTabContent currentUserId={user.id} />}
 
         {activeTab === 'claude-code' && (
-          <div style={{ flex: 1, padding: '24px', overflow: 'auto' }}>
-            <div
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)',
-                padding: '24px',
-                maxWidth: '800px',
-              }}
-            >
-              <div style={{ marginBottom: '16px' }}>
-                <h2 style={{ color: 'var(--text-primary)', fontSize: '16px', margin: '0 0 8px 0' }}>
-                  配置信息
-                </h2>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>
+          <div className="flex-1 p-6 overflow-auto">
+            <div className="bg-bg-card border border-border-default rounded-md p-6 max-w-[800px]">
+              <div className="mb-4">
+                <h2 className="text-foreground text-base mb-2">配置信息</h2>
+                <p className="text-text-secondary text-[13px]">
                   此配置将用于所有项目的 Claude Code 环境。
                   {hasConfig ? ' 您已保存自定义配置。' : ' 您尚未配置，使用默认模板。'}
                 </p>
               </div>
 
-              {error && (
-                <div
-                  style={{
-                    backgroundColor: 'rgba(248, 113, 113, 0.1)',
-                    color: 'var(--status-error)',
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    marginBottom: '16px',
-                    fontSize: '14px',
-                  }}
-                >
-                  {error}
-                </div>
-              )}
-
-              {success && (
-                <div
-                  style={{
-                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    color: 'var(--status-running)',
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    marginBottom: '16px',
-                    fontSize: '14px',
-                  }}
-                >
-                  {success}
-                </div>
-              )}
+              {error && <div className="bg-destructive/10 text-destructive p-3 rounded-md mb-4 text-sm">{error}</div>}
+              {success && <div className="bg-success/10 text-success p-3 rounded-md mb-4 text-sm">{success}</div>}
 
               {isLoading ? (
-                <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '40px' }}>
-                  加载中...
-                </div>
+                <div className="text-text-secondary text-center py-10">加载中...</div>
               ) : (
                 <>
-                  <div style={{ marginBottom: '16px' }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        color: 'var(--text-primary)',
-                        fontSize: '14px',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      JSON 配置
-                    </label>
+                  <div className="mb-4">
+                    <label className="block text-foreground text-sm mb-2">JSON 配置</label>
                     <textarea
                       value={configText}
-                      onChange={(e) => {
-                        setConfigText(e.target.value);
-                        setError(null);
-                        setSuccess(null);
-                      }}
-                      style={{
-                        width: '100%',
-                        height: '400px',
-                        backgroundColor: 'var(--bg-primary)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 'var(--radius-md)',
-                        padding: '12px',
-                        color: 'var(--text-primary)',
-                        fontSize: '13px',
-                        fontFamily: 'monospace',
-                        resize: 'vertical',
-                        outline: 'none',
-                      }}
+                      onChange={(e) => { setConfigText(e.target.value); setError(null); setSuccess(null); }}
+                      className="w-full h-[400px] bg-bg-primary border border-border-default rounded-md p-3 text-foreground text-[13px] font-mono resize-y outline-none"
                       spellCheck={false}
                     />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      variant="default"
-                    >
+                  <div className="flex gap-3">
+                    <Button onClick={handleSave} disabled={isSaving} variant="default">
                       {isSaving ? '保存中...' : '保存配置'}
                     </Button>
                     <Button onClick={handleReset} disabled={isSaving} variant="secondary">

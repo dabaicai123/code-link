@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, Repo } from '@/lib/api';
+import { api } from '@/lib/api';
+import type { Repo } from '@/types/repo';
 
 export const repoKeys = {
   all: ['repos'] as const,
