@@ -43,7 +43,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
   };
 
   return (
-    <div className="sidebar-container">
+    <div className="w-[var(--sidebar-width)] h-full bg-bg-secondary flex flex-col border-r border-border-default">
       <div className="p-3.5 border-b border-border">
         <div className="text-primary font-medium text-[13px]">Code Link</div>
         <div className="text-muted-foreground text-[11px] mt-0.5">v1.0.0</div>

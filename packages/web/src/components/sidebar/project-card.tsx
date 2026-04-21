@@ -71,8 +71,9 @@ export const ProjectCard = memo(function ProjectCard({
     <>
       <div
         className={cn(
-          'project-card',
-          isActive && 'active'
+          'py-2.5 px-3 rounded-lg cursor-pointer mb-1.5 transition-all border border-transparent',
+          isActive && 'bg-accent-light/80 border-accent-primary/20',
+          !isActive && 'hover:bg-bg-hover'
         )}
         onClick={onClick}
       >
@@ -91,9 +92,9 @@ export const ProjectCard = memo(function ProjectCard({
           </span>
           <span
             className={cn(
-              'status-dot ml-auto',
-              isRunning && 'status-dot-running animate-pulse',
-              !isRunning && 'status-dot-stopped'
+              'ml-auto w-1.5 h-1.5 rounded-full inline-block',
+              isRunning && 'bg-status-running animate-pulse',
+              !isRunning && 'bg-status-stopped'
             )}
           />
         </div>
