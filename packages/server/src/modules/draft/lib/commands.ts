@@ -5,6 +5,11 @@ import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('ai-commands');
 
+// New command patterns for AI collaboration
+const ASSISTANT_PATTERN = /@助手\s+(.*)/i;
+const SUPERPOWERS_PATTERN = /@助手\s+\/superpowers:(\w+)\s*(.*)/i;
+const CARD_REFERENCE_PATTERN = /@卡片([a-f0-9-]+)/gi;
+
 export type AICommandType =
   | 'generate'
   | 'analyze'
@@ -28,6 +33,19 @@ export interface AICommandResult {
   error?: string;
 }
 
+export interface SuperpowersCommand {
+  type: 'superpowers';
+  skill: string;
+  args: string;
+  rawContent: string;
+}
+
+export interface FreeChatCommand {
+  type: 'free_chat';
+  prompt: string;
+  rawContent: string;
+}
+
 const COMMAND_PATTERNS: Record<AICommandType, RegExp> = {
   generate: /@AI\s+generate\s+(.+)/i,
   analyze: /@AI\s+analyze\s+(.+)/i,
@@ -39,9 +57,55 @@ const COMMAND_PATTERNS: Record<AICommandType, RegExp> = {
 };
 
 /**
- * Parse AI command from content
+ * Parse superpowers command from content
  */
-export function parseAICommand(content: string): AICommand | null {
+export function parseSuperpowersCommand(content: string): SuperpowersCommand | null {
+  const match = content.match(SUPERPOWERS_PATTERN);
+  if (!match) return null;
+  return {
+    type: 'superpowers',
+    skill: match[1],
+    args: match[2].trim(),
+    rawContent: content,
+  };
+}
+
+/**
+ * Check if content is a superpowers command
+ */
+export function isSuperpowersCommand(content: string): boolean {
+  return SUPERPOWERS_PATTERN.test(content);
+}
+
+/**
+ * Parse free chat command from content
+ */
+export function parseFreeChatCommand(content: string): FreeChatCommand | null {
+  const match = content.match(ASSISTANT_PATTERN);
+  if (!match) return null;
+  // Exclude superpowers commands
+  if (SUPERPOWERS_PATTERN.test(content)) return null;
+  return {
+    type: 'free_chat',
+    prompt: match[1].trim(),
+    rawContent: content,
+  };
+}
+
+/**
+ * Parse AI command from content
+ * Priority: superpowers > free_chat > legacy AI commands
+ */
+export function parseAICommand(content: string): AICommand | SuperpowersCommand | FreeChatCommand | null {
+  // superpowers 指令优先
+  const superpowersCmd = parseSuperpowersCommand(content);
+  if (superpowersCmd) return superpowersCmd;
+
+  // 自由对话次优先
+  const freeChatCmd = parseFreeChatCommand(content);
+  if (freeChatCmd) return freeChatCmd;
+
+  // 旧指令逻辑不变
   for (const [type, pattern] of Object.entries(COMMAND_PATTERNS)) {
     const match = content.match(pattern);
     if (match) {
@@ -138,6 +202,26 @@ export async function executeAICommand(
  * Check if content is an AI command
  */
 export function isAICommand(content: string): boolean {
-  return content.trim().startsWith('@AI');
+  return content.trim().startsWith('@助手');
+}
+
+/**
+ * Parse all card reference IDs from content
+ */
+export function parseCardReferenceIds(content: string): string[] {
+  const ids: string[] = [];
+  const matches = content.matchAll(CARD_REFERENCE_PATTERN);
+  for (const match of matches) {
+    ids.push(match[1]);
+  }
+  return ids;
+}
+
+/**
+ * Extract the first card reference ID from content
+ */
+export function extractFirstCardReferenceId(content: string): string | undefined {
+  const ids = parseCardReferenceIds(content);
+  return ids[0];
 }
 
