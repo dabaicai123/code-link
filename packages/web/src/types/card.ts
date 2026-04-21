@@ -40,12 +40,12 @@ export interface CardReference {
 
 // 颜色配置
 export const CARD_TYPE_COLORS: Record<CardType, string> = {
-  brainstorming: '#1890ff',
-  writing_plans: '#722ed1',
-  development: '#52c41a',
-  free_chat: '#13c2c2',
-  test: '#fa8c16',
-  archive: '#8c8c8c',
+  brainstorming: 'var(--accent-primary)',
+  writing_plans: 'var(--bg-active)',
+  development: 'var(--status-running)',
+  free_chat: 'var(--accent-light)',
+  test: 'var(--status-warning)',
+  archive: 'var(--text-muted)',
 };
 
 export const CARD_TYPE_LABELS: Record<CardType, string> = {
@@ -58,11 +58,11 @@ export const CARD_TYPE_LABELS: Record<CardType, string> = {
 };
 
 export const STATUS_COLORS: Record<CardStatus, string> = {
-  pending: '#1890ff',
-  running: '#52c41a',
-  completed: '#52c41a',
-  paused: '#faad14',
-  failed: '#ff4d4f',
+  pending: 'var(--accent-primary)',
+  running: 'var(--status-running)',
+  completed: 'var(--status-running)',
+  paused: 'var(--status-warning)',
+  failed: 'var(--status-stopped)',
 };
 
 export const STATUS_LABELS: Record<CardStatus, string> = {

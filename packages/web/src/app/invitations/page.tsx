@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { useLogout, useCurrentUser } from '@/lib/queries';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { api, ApiError, OrganizationInvitation } from '@/lib/api';
@@ -138,7 +139,7 @@ export default function InvitationsPage() {
             color: 'var(--status-error)',
           }}>
             {error}
-            <button onClick={fetchInvitations} className="btn btn-secondary" style={{ marginLeft: '12px' }}>
+            <Button onClick={fetchInvitations} variant="secondary" style={{ marginLeft: '12px' }}>
               重试
             </button>
           </div>

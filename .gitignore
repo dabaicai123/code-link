@@ -1,8 +1,17 @@
 # Worktrees
 .worktrees/
+.claude/worktrees/
+
+# Binary / archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
 
 # Dependencies
 node_modules/
+packages/server/package-lock.json
 
 # Build outputs
 dist/

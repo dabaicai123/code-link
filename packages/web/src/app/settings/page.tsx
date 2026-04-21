@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { useLogout, useCurrentUser } from '@/lib/queries';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { SettingsTabs, SettingsTab } from '@/components/settings/settings-tabs';
@@ -291,16 +292,16 @@ export default function SettingsPage() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
+                    <Button
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="btn btn-primary"
+                      variant="default"
                     >
                       {isSaving ? '保存中...' : '保存配置'}
-                    </button>
-                    <button onClick={handleReset} disabled={isSaving} className="btn btn-secondary">
+                    </Button>
+                    <Button onClick={handleReset} disabled={isSaving} variant="secondary">
                       重置为默认
-                    </button>
+                    </Button>
                   </div>
                 </>
               )}

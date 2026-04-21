@@ -282,7 +282,7 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
   const isSubmitting = form.formState.isSubmitting || isUploading;
 
   return (
-    <div className="bg-bg-secondary border-t border-border-default px-4 pb-[max(14px,env(safe-area-inset-bottom,14px))] pt-2.5 p-2 border-t border-border bg-secondary">
+    <div className="bg-bg-secondary border-t border-border-default px-4 pb-[max(14px,env(safe-area-inset-bottom,14px))] pt-2.5">
       {/* 回复提示 */}
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 p-1.5 bg-background rounded-md">
@@ -295,7 +295,7 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
           <button
             type="button"
             onClick={onCancelReply}
-            className="px-1.5 py-0.5 text-[10px] rounded bg-hover text-muted-foreground hover:text-foreground"
+            className="px-1.5 py-0.5 text-[10px] rounded bg-bg-hover text-text-muted hover:text-text-primary"
           >
             取消
           </button>
@@ -304,9 +304,9 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
 
       {/* 图片预览 */}
       {imagePreviews.length > 0 && (
-        <div className="flex flex-wrap gap-2 max-w-[800px] mx-auto mb-2.5 flex gap-2 mb-2 flex-wrap">
+        <div className="flex flex-wrap gap-2 max-w-[800px] mx-auto mb-2.5">
           {imagePreviews.map(preview => (
-            <div key={preview.id} className="inline-flex items-center gap-2 max-w-full px-2.5 py-1.5 border border-accent-primary/20 rounded-xl bg-bg-card/96 text-text-primary text-xs relative group">
+            <div key={preview.id} className="inline-flex items-center gap-2 max-w-full px-2.5 py-1.5 border border-accent-primary/20 rounded-xl bg-bg-card text-text-primary text-xs relative group">
               <img
                 src={preview.url}
                 alt="预览"
@@ -315,7 +315,7 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
               <button
                 type="button"
                 onClick={() => removeImage(preview.id)}
-                className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -328,7 +328,7 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
         <form onSubmit={form.handleSubmit(handleSubmit)} className="relative">
           {/* 斜杠命令菜单 - cc-web 风格 */}
           {showCommands && (
-            <div className="absolute bottom-full left-0 mb-2 bg-bg-card border border-border-default rounded-xl shadow-warm p-1.5 min-w-[280px] max-w-[360px] max-h-[280px] overflow-auto z-50 absolute bottom-full left-0 mb-2 min-w-[280px] max-w-[360px] bg-popover border border-border rounded-xl shadow-lg overflow-hidden z-50">
+            <div className="absolute bottom-full left-0 mb-2 min-w-[280px] max-w-[360px] bg-bg-card border border-border-default rounded-xl shadow-warm overflow-auto z-50">
               {/* 加载中状态 */}
               {skillsLoading && (
                 <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
@@ -369,16 +369,16 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
                             type="button"
                             onClick={() => selectCommand(cmd)}
                             className={cn(
-                              'flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-bg-hover w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-colors',
+                              'flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg cursor-pointer transition-colors w-full',
                               globalIdx === selectedIndex
-                                ? 'bg-accent text-accent-foreground'
-                                : 'hover:bg-accent/50'
+                                ? 'bg-accent-primary text-text-primary'
+                                : 'hover:bg-bg-hover'
                             )}
                           >
-                            <span className="font-semibold text-sm text-accent-primary whitespace-nowrap font-semibold text-sm text-primary">
+                            <span className="font-semibold text-sm text-accent-primary whitespace-nowrap">
                               {cmd.cmd}
                             </span>
-                            <span className="text-[13px] text-text-secondary flex-1 overflow-hidden text-ellipsis text-xs text-muted-foreground flex-1">
+                            <span className="text-[13px] text-text-secondary flex-1 overflow-hidden text-ellipsis">
                               {cmd.desc}
                             </span>
                           </button>
@@ -401,16 +401,16 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
                             type="button"
                             onClick={() => selectCommand(cmd)}
                             className={cn(
-                              'flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-bg-hover w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-colors',
+                              'flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg cursor-pointer transition-colors w-full',
                               globalIdx === selectedIndex
-                                ? 'bg-accent text-accent-foreground'
-                                : 'hover:bg-accent/50'
+                                ? 'bg-accent-primary text-text-primary'
+                                : 'hover:bg-bg-hover'
                             )}
                           >
-                            <span className="font-semibold text-sm text-accent-primary whitespace-nowrap font-semibold text-sm">
+                            <span className="font-semibold text-sm text-accent-primary whitespace-nowrap">
                               {cmd.cmd}
                             </span>
-                            <span className="text-[13px] text-text-secondary flex-1 overflow-hidden text-ellipsis text-xs text-muted-foreground flex-1">
+                            <span className="text-[13px] text-text-secondary flex-1 overflow-hidden text-ellipsis">
                               {cmd.desc}
                             </span>
                           </button>
@@ -429,7 +429,7 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
               )}
 
               {/* 键盘提示 */}
-              <div className="px-3 py-2 border-t border-border text-[10px] text-muted-foreground flex gap-3">
+              <div className="px-3 py-2 border-t border-border-default text-[10px] text-text-muted flex gap-3">
                 <span>↑↓ 选择</span>
                 <span>Tab/Enter 确认</span>
                 <span>Esc 关闭</span>
@@ -437,7 +437,7 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
             </div>
           )}
 
-          <div className="flex gap-2 items-end max-w-[800px] mx-auto flex gap-2 items-end">
+          <div className="flex gap-2 items-end max-w-[800px] mx-auto">
             <div className="flex-1 relative">
               <FormField
                 name="content"
@@ -497,7 +497,7 @@ export function ChatInput({ draftId, replyTo, onSend, onCancelReply, onCommand }
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-11 h-11 rounded-xl bg-transparent border border-border-default text-text-secondary cursor-pointer transition-all flex items-center justify-center hover:bg-bg-hover hover:text-text-primary hover:border-border-light p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          className="w-11 h-11 rounded-xl border border-border-default text-text-secondary cursor-pointer transition-all flex items-center justify-center hover:bg-bg-hover hover:text-text-primary hover:border-border-light"
           title="上传图片 (支持粘贴)"
         >
           <ImageIcon className="w-4 h-4" />

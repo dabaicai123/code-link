@@ -108,30 +108,49 @@ const mockMessages: Message[] = [
   { id: 9, userName: 'AI', content: '', messageType: 'document_card', cardId: 'card-3', createdAt: '2026-04-20T11:30:00Z' },
 ];
 
-// 钉钉风格色彩（浅色友好）
+// 语义化色彩（使用 CSS 变量）
 const colors = {
-  bgPrimary: '#f5f5f5',
-  bgSecondary: '#fff',
-  bgCard: '#fff',
-  bgHover: '#e8e8e8',
-  bgActive: '#d9d9d9',
-  accentPrimary: '#1890ff',
-  accentSuccess: '#52c41a',
-  accentWarning: '#faad14',
-  accentError: '#ff4d4f',
-  textPrimary: '#262626',
-  textSecondary: '#595959',
-  textMuted: '#8c8c8c',
-  border: '#d9d9d9',
-  borderLight: '#f0f0f0',
+  bg: {
+    primary: 'var(--bg-primary)',
+    card: 'var(--bg-card)',
+    hover: 'var(--bg-hover)',
+  },
+  accent: {
+    primary: 'var(--accent-primary)',
+    success: 'var(--status-running)',
+    warning: 'var(--status-warning)',
+    error: 'var(--status-stopped)',
+  },
+  status: {
+    running: 'var(--status-running)',
+    warning: 'var(--status-warning)',
+    stopped: 'var(--status-stopped)',
+  },
+  text: {
+    primary: 'var(--text-primary)',
+    secondary: 'var(--text-secondary)',
+    muted: 'var(--text-muted)',
+  },
+  border: {
+    default: 'var(--border-default)',
+    light: 'var(--border-light)',
+  },
+  cardType: {
+    brainstorming: 'var(--accent-primary)',
+    writing_plans: 'var(--bg-active)',
+    development: 'var(--status-running)',
+    free_chat: 'var(--accent-light)',
+    test: 'var(--status-warning)',
+    archive: 'var(--text-muted)',
+  },
 };
 
 const STATUS_COLORS: Record<CardStatus, string> = {
-  pending: colors.accentPrimary,
-  running: colors.accentSuccess,
-  completed: colors.accentSuccess,
-  paused: colors.accentWarning,
-  failed: colors.accentError,
+  pending: colors.accent.primary,
+  running: colors.accent.success,
+  completed: colors.accent.success,
+  paused: colors.accent.warning,
+  failed: colors.accent.error,
 };
 
 const STATUS_LABELS: Record<CardStatus, string> = {
@@ -142,13 +161,7 @@ const STATUS_LABELS: Record<CardStatus, string> = {
   failed: '失败',
 };
 
-const CARD_TYPE_COLORS: Record<CardType, string> = {
-  brainstorming: '#1890ff',
-  writing_plans: '#722ed1',
-  development: '#52c41a',
-  test: '#fa8c16',
-  archive: '#8c8c8c',
-};
+const CARD_TYPE_COLORS = colors.cardType;
 
 const CARD_TYPE_LABELS: Record<CardType, string> = {
   brainstorming: '头脑风暴',
@@ -162,14 +175,14 @@ const CARD_TYPE_LABELS: Record<CardType, string> = {
 function MarkdownRenderer({ content }: { content: string }) {
   const lines = content.split('\n');
   return (
-    <div style={{ fontSize: '14px', lineHeight: '1.6', color: colors.textPrimary }}>
+    <div style={{ fontSize: '14px', lineHeight: '1.6', color: colors.text.primary }}>
       {lines.map((line, i) => {
-        if (line.startsWith('## ')) return <h2 key={i} style={{ fontSize: '16px', fontWeight: 600, marginTop: '16px', marginBottom: '8px', color: colors.textPrimary }}>{line.slice(3)}</h2>;
-        if (line.startsWith('### ')) return <h3 key={i} style={{ fontSize: '14px', fontWeight: 600, marginTop: '12px', marginBottom: '6px', color: colors.textPrimary }}>{line.slice(4)}</h3>;
-        if (line.startsWith('- ')) return <div key={i} style={{ marginLeft: '16px', marginBottom: '4px', color: colors.textSecondary }}>• {line.slice(2)}</div>;
+        if (line.startsWith('## ')) return <h2 key={i} style={{ fontSize: '16px', fontWeight: 600, marginTop: '16px', marginBottom: '8px', color: colors.text.primary }}>{line.slice(3)}</h2>;
+        if (line.startsWith('### ')) return <h3 key={i} style={{ fontSize: '14px', fontWeight: 600, marginTop: '12px', marginBottom: '6px', color: colors.text.primary }}>{line.slice(4)}</h3>;
+        if (line.startsWith('- ')) return <div key={i} style={{ marginLeft: '16px', marginBottom: '4px', color: colors.text.secondary }}>• {line.slice(2)}</div>;
         if (line.startsWith('**') && line.endsWith('**')) return <div key={i} style={{ fontWeight: 600, marginBottom: '4px' }}>{line.slice(2, -2)}</div>;
         if (line.trim() === '') return <div key={i} style={{ height: '8px' }} />;
-        return <div key={i} style={{ marginBottom: '4px', color: colors.textSecondary }}>{line}</div>;
+        return <div key={i} style={{ marginBottom: '4px', color: colors.text.secondary }}>{line}</div>;
       })}
     </div>
   );
@@ -193,10 +206,10 @@ export function CollaborationPrototype() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", fontSize: '14px', background: colors.bgPrimary, color: colors.textPrimary }}>
+    <div style={{ display: 'flex', height: '100vh', fontFamily: "'PingFang SC', 'Microsoft YaHei', sans-serif", fontSize: '14px', background: colors.bg.primary, color: colors.text.primary }}>
       {/* 左侧 - Draft 列表 */}
-      <div style={{ width: '240px', borderRight: `1px solid ${colors.border}`, background: colors.bgSecondary, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '16px', borderBottom: `1px solid ${colors.borderLight}`, fontWeight: 600, fontSize: '16px', color: colors.textPrimary }}>
+      <div style={{ width: '240px', borderRight: `1px solid ${colors.border.default}`, background: colors.bg.card, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '16px', borderBottom: `1px solid ${colors.border.light}`, fontWeight: 600, fontSize: '16px', color: colors.text.primary }}>
           Draft 列表
         </div>
 
@@ -207,8 +220,8 @@ export function CollaborationPrototype() {
             padding: '8px 16px',
             borderRadius: '4px',
             border: 'none',
-            background: colors.accentPrimary,
-            color: '#fff',
+            background: colors.accent.primary,
+            color: 'var(--accent-foreground)',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: 500,
@@ -222,66 +235,66 @@ export function CollaborationPrototype() {
           <div style={{
             padding: '12px 16px',
             borderRadius: '8px',
-            background: colors.bgHover,
+            background: colors.bg.hover,
             marginBottom: '8px',
             cursor: 'pointer',
-            borderLeft: `3px solid ${colors.accentPrimary}`,
+            borderLeft: `3px solid ${colors.accent.primary}`,
           }}>
             <div style={{ fontWeight: 500, marginBottom: '6px', fontSize: '14px' }}>登录功能需求讨论</div>
-            <div style={{ fontSize: '12px', color: colors.textMuted, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ padding: '2px 6px', borderRadius: '4px', background: CARD_TYPE_COLORS.writing_plans, color: '#fff', fontSize: '11px' }}>实现计划</span>
+            <div style={{ fontSize: '12px', color: colors.text.muted, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ padding: '2px 6px', borderRadius: '4px', background: colors.cardType.writing_plans, color: 'var(--accent-foreground)', fontSize: '11px' }}>实现计划</span>
               <span>3 个卡片</span>
             </div>
-            <div style={{ fontSize: '11px', color: colors.textMuted, marginTop: '4px' }}>更新于 5 分钟前</div>
+            <div style={{ fontSize: '11px', color: colors.text.muted, marginTop: '4px' }}>更新于 5 分钟前</div>
           </div>
 
           {/* 其他 Draft */}
           <div style={{
             padding: '12px 16px',
             borderRadius: '8px',
-            background: colors.bgSecondary,
+            background: colors.bg.card,
             marginBottom: '8px',
             cursor: 'pointer',
-            border: `1px solid ${colors.border}`,
+            border: `1px solid ${colors.border.default}`,
           }}>
             <div style={{ fontWeight: 500, marginBottom: '6px', fontSize: '14px' }}>用户注册流程</div>
-            <div style={{ fontSize: '12px', color: colors.textMuted, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ padding: '2px 6px', borderRadius: '4px', background: CARD_TYPE_COLORS.brainstorming, color: '#fff', fontSize: '11px' }}>头脑风暴</span>
+            <div style={{ fontSize: '12px', color: colors.text.muted, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ padding: '2px 6px', borderRadius: '4px', background: colors.cardType.brainstorming, color: 'var(--accent-foreground)', fontSize: '11px' }}>头脑风暴</span>
               <span>1 个卡片</span>
             </div>
           </div>
 
           {/* 已归档 */}
-          <div style={{ marginTop: '16px', padding: '12px 16px', borderRadius: '8px', background: colors.bgSecondary, border: `1px solid ${colors.border}`, opacity: 0.7 }}>
-            <div style={{ fontWeight: 500, color: colors.textMuted, fontSize: '13px', marginBottom: '4px' }}>📦 已归档 (2)</div>
-            <div style={{ fontSize: '12px', color: colors.textMuted }}>支付功能、搜索优化</div>
+          <div style={{ marginTop: '16px', padding: '12px 16px', borderRadius: '8px', background: colors.bg.card, border: `1px solid ${colors.border.default}`, opacity: 0.7 }}>
+            <div style={{ fontWeight: 500, color: colors.text.muted, fontSize: '13px', marginBottom: '4px' }}>📦 已归档 (2)</div>
+            <div style={{ fontSize: '12px', color: colors.text.muted }}>支付功能、搜索优化</div>
           </div>
         </div>
       </div>
 
       {/* 中间 - 聊天区 */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: colors.bgPrimary }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: colors.bg.primary }}>
         {/* Header */}
         <div style={{
           padding: '16px 20px',
-          borderBottom: `1px solid ${colors.border}`,
+          borderBottom: `1px solid ${colors.border.default}`,
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          background: colors.bgSecondary,
+          background: colors.bg.card,
         }}>
           <span style={{ fontWeight: 600, fontSize: '16px' }}>登录功能需求讨论</span>
           <span style={{
             padding: '4px 12px',
             borderRadius: '4px',
-            background: CARD_TYPE_COLORS.writing_plans,
-            color: '#fff',
+            background: colors.cardType.writing_plans,
+            color: 'var(--accent-foreground)',
             fontSize: '12px',
             fontWeight: 500,
           }}>
             实现计划
           </span>
-          <div style={{ marginLeft: 'auto', fontSize: '12px', color: colors.textMuted }}>
+          <div style={{ marginLeft: 'auto', fontSize: '12px', color: colors.text.muted }}>
             产品张三、研发李四、测试王五
           </div>
         </div>
@@ -297,24 +310,24 @@ export function CollaborationPrototype() {
                     width: '36px',
                     height: '36px',
                     borderRadius: '4px',
-                    background: colors.bgHover,
+                    background: colors.bg.hover,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '14px',
-                    color: colors.textSecondary,
+                    color: colors.text.secondary,
                     fontWeight: 500,
                   }}>
                     {msg.userName.charAt(0)}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 500, fontSize: '14px', color: colors.textPrimary }}>{msg.userName}</span>
-                      <span style={{ fontSize: '12px', color: colors.textMuted }}>
+                      <span style={{ fontWeight: 500, fontSize: '14px', color: colors.text.primary }}>{msg.userName}</span>
+                      <span style={{ fontSize: '12px', color: colors.text.muted }}>
                         {new Date(msg.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <div style={{ fontSize: '14px', color: colors.textSecondary, lineHeight: '1.5' }}>{msg.content}</div>
+                    <div style={{ fontSize: '14px', color: colors.text.secondary, lineHeight: '1.5' }}>{msg.content}</div>
                   </div>
                 </div>
               )}
@@ -325,28 +338,28 @@ export function CollaborationPrototype() {
                     width: '36px',
                     height: '36px',
                     borderRadius: '4px',
-                    background: colors.accentPrimary,
+                    background: colors.accent.primary,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '12px',
-                    color: '#fff',
+                    color: 'var(--accent-foreground)',
                     fontWeight: 600,
                   }}>
                     AI
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 500, fontSize: '14px', color: colors.accentPrimary }}>{msg.userName}</span>
+                      <span style={{ fontWeight: 500, fontSize: '14px', color: colors.accent.primary }}>{msg.userName}</span>
                     </div>
                     <div style={{
                       padding: '10px 14px',
-                      background: colors.bgSecondary,
+                      background: colors.bg.card,
                       borderRadius: '8px',
-                      borderLeft: `3px solid ${colors.accentPrimary}`,
+                      borderLeft: `3px solid ${colors.accent.primary}`,
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '13px',
-                      color: colors.textPrimary,
+                      color: colors.text.primary,
                     }}>
                       {msg.content}
                     </div>
@@ -363,24 +376,24 @@ export function CollaborationPrototype() {
                       width: '36px',
                       height: '36px',
                       borderRadius: '4px',
-                      background: CARD_TYPE_COLORS[card.cardType],
+                      background: colors.cardType[card.cardType],
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '12px',
-                      color: '#fff',
+                      color: 'var(--accent-foreground)',
                       fontWeight: 600,
                     }}>
                       {CARD_TYPE_LABELS[card.cardType].charAt(0)}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ marginBottom: '6px', fontSize: '12px', color: colors.textMuted }}>
+                      <div style={{ marginBottom: '6px', fontSize: '12px', color: colors.text.muted }}>
                         {card.userName} 生成了一个文档卡片
                       </div>
                       <div
                         style={{
-                          background: colors.bgSecondary,
-                          border: `1px solid ${colors.border}`,
+                          background: colors.bg.card,
+                          border: `1px solid ${colors.border.default}`,
                           borderRadius: '8px',
                           padding: '14px 16px',
                           cursor: 'pointer',
@@ -404,12 +417,12 @@ export function CollaborationPrototype() {
                               fontSize: '14px',
                               lineHeight: '1.4',
                               wordBreak: 'break-word',
-                              color: colors.textPrimary,
+                              color: colors.text.primary,
                             }}>
                               {card.title}
                             </div>
-                            <div style={{ fontSize: '12px', color: colors.textMuted, marginTop: '4px', display: 'flex', gap: '8px' }}>
-                              <span style={{ color: CARD_TYPE_COLORS[card.cardType] }}>{CARD_TYPE_LABELS[card.cardType]}</span>
+                            <div style={{ fontSize: '12px', color: colors.text.muted, marginTop: '4px', display: 'flex', gap: '8px' }}>
+                              <span style={{ color: colors.cardType[card.cardType] }}>{CARD_TYPE_LABELS[card.cardType]}</span>
                               <span>{STATUS_LABELS[card.cardStatus]}</span>
                             </div>
                           </div>
@@ -418,9 +431,9 @@ export function CollaborationPrototype() {
                         {/* 卡片摘要 */}
                         <div style={{
                           fontSize: '13px',
-                          color: colors.textSecondary,
+                          color: colors.text.secondary,
                           padding: '10px 12px',
-                          background: colors.bgPrimary,
+                          background: colors.bg.primary,
                           borderRadius: '4px',
                           lineHeight: '1.5',
                         }}>
@@ -429,7 +442,7 @@ export function CollaborationPrototype() {
 
                         {/* 引用标记 */}
                         {card.parentCardId && (
-                          <div style={{ fontSize: '12px', color: colors.accentPrimary, marginTop: '8px' }}>
+                          <div style={{ fontSize: '12px', color: colors.accent.primary, marginTop: '8px' }}>
                             ↑ 引用自 @{card.parentCardId}
                           </div>
                         )}
@@ -446,31 +459,31 @@ export function CollaborationPrototype() {
         {/* 输入区 */}
         <div style={{
           padding: '12px 20px',
-          borderTop: `1px solid ${colors.border}`,
-          background: colors.bgSecondary,
+          borderTop: `1px solid ${colors.border.default}`,
+          background: colors.bg.card,
         }}>
           {/* 引用提示 */}
           {inputValue.includes('@卡片') && (
             <div style={{
               marginBottom: '8px',
               padding: '8px 12px',
-              background: colors.bgPrimary,
+              background: colors.bg.primary,
               borderRadius: '4px',
               fontSize: '13px',
               display: 'flex',
               alignItems: 'center',
-              borderLeft: `3px solid ${colors.accentPrimary}`,
+              borderLeft: `3px solid ${colors.accent.primary}`,
             }}>
-              <span style={{ color: colors.accentPrimary, fontWeight: 500 }}>引用:</span>
+              <span style={{ color: colors.accent.primary, fontWeight: 500 }}>引用:</span>
               {(() => {
                 const match = inputValue.match(/@卡片([a-z0-9-]+)/);
                 if (match) {
                   const card = getCard(match[1]);
-                  return card ? <span style={{ marginLeft: '8px', color: colors.textSecondary }}>{card.title}</span> : null;
+                  return card ? <span style={{ marginLeft: '8px', color: colors.text.secondary }}>{card.title}</span> : null;
                 }
                 return null;
               })()}
-              <button onClick={() => setInputValue(inputValue.replace(/@卡片[a-z0-9-]+\s?/, ''))} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: colors.textMuted }}>✕</button>
+              <button onClick={() => setInputValue(inputValue.replace(/@卡片[a-z0-9-]+\s?/, ''))} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: colors.text.muted }}>✕</button>
             </div>
           )}
 
@@ -488,12 +501,12 @@ export function CollaborationPrototype() {
                 flex: 1,
                 padding: '10px 14px',
                 borderRadius: '4px',
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${colors.border.default}`,
                 resize: 'none',
                 height: '40px',
                 outline: 'none',
-                background: colors.bgPrimary,
-                color: colors.textPrimary,
+                background: colors.bg.primary,
+                color: colors.text.primary,
                 fontSize: '14px',
                 lineHeight: '1.4',
               }}
@@ -501,8 +514,8 @@ export function CollaborationPrototype() {
             <button style={{
               padding: '10px 20px',
               borderRadius: '4px',
-              background: colors.accentPrimary,
-              color: '#fff',
+              background: colors.accent.primary,
+              color: 'var(--accent-foreground)',
               border: 'none',
               cursor: 'pointer',
               fontSize: '14px',
@@ -517,9 +530,9 @@ export function CollaborationPrototype() {
             <button style={{
               padding: '4px 12px',
               borderRadius: '4px',
-              background: colors.bgPrimary,
-              color: colors.textSecondary,
-              border: `1px solid ${colors.border}`,
+              background: colors.bg.primary,
+              color: colors.text.secondary,
+              border: `1px solid ${colors.border.default}`,
               cursor: 'pointer',
               fontSize: '13px',
             }}>
@@ -528,9 +541,9 @@ export function CollaborationPrototype() {
             <button style={{
               padding: '4px 12px',
               borderRadius: '4px',
-              background: colors.bgPrimary,
-              color: colors.textSecondary,
-              border: `1px solid ${colors.border}`,
+              background: colors.bg.primary,
+              color: colors.text.secondary,
+              border: `1px solid ${colors.border.default}`,
               cursor: 'pointer',
               fontSize: '13px',
             }}>
@@ -548,8 +561,8 @@ export function CollaborationPrototype() {
             position: 'fixed',
             left: contextMenu.x,
             top: contextMenu.y,
-            background: colors.bgSecondary,
-            border: `1px solid ${colors.border}`,
+            background: colors.bg.card,
+            border: `1px solid ${colors.border.default}`,
             borderRadius: '8px',
             padding: '8px 0',
             zIndex: 200,
@@ -560,7 +573,7 @@ export function CollaborationPrototype() {
               padding: '8px 16px',
               cursor: 'pointer',
               fontSize: '14px',
-              color: colors.textPrimary,
+              color: colors.text.primary,
               background: 'transparent',
             }}>
               📋 引用此卡片
@@ -569,7 +582,7 @@ export function CollaborationPrototype() {
               padding: '8px 16px',
               cursor: 'pointer',
               fontSize: '14px',
-              color: colors.textPrimary,
+              color: colors.text.primary,
               background: 'transparent',
             }}>
               👁 查看详情
@@ -590,7 +603,7 @@ export function CollaborationPrototype() {
           zIndex: 100,
         }} onClick={() => setSelectedCard(null)}>
           <div style={{
-            background: colors.bgSecondary,
+            background: colors.bg.card,
             borderRadius: '12px',
             width: '600px',
             maxHeight: '80vh',
@@ -601,7 +614,7 @@ export function CollaborationPrototype() {
             {/* Header */}
             <div style={{
               padding: '16px 20px',
-              borderBottom: `1px solid ${colors.border}`,
+              borderBottom: `1px solid ${colors.border.default}`,
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                 <span style={{
@@ -616,22 +629,22 @@ export function CollaborationPrototype() {
                     fontSize: '16px',
                     lineHeight: '1.4',
                     wordBreak: 'break-word',
-                    color: colors.textPrimary,
+                    color: colors.text.primary,
                   }}>
                     {selectedCard.title}
                   </div>
                   <div style={{
                     fontSize: '13px',
-                    color: colors.textMuted,
+                    color: colors.text.muted,
                     marginTop: '6px',
                     display: 'flex',
                     gap: '12px',
                   }}>
-                    <span style={{ color: CARD_TYPE_COLORS[selectedCard.cardType] }}>{CARD_TYPE_LABELS[selectedCard.cardType]}</span>
+                    <span style={{ color: colors.cardType[selectedCard.cardType] }}>{CARD_TYPE_LABELS[selectedCard.cardType]}</span>
                     <span>{selectedCard.userName}</span>
                     <span>{new Date(selectedCard.createdAt).toLocaleString('zh-CN')}</span>
                     {selectedCard.parentCardId && (
-                      <span style={{ color: colors.accentPrimary }}>↑ @{selectedCard.parentCardId}</span>
+                      <span style={{ color: colors.accent.primary }}>↑ @{selectedCard.parentCardId}</span>
                     )}
                   </div>
                 </div>
@@ -640,24 +653,24 @@ export function CollaborationPrototype() {
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '20px',
-                  color: colors.textMuted,
+                  color: colors.text.muted,
                   padding: '4px',
                 }}>✕</button>
               </div>
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '20px', background: colors.bgPrimary }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '20px', background: colors.bg.primary }}>
               <MarkdownRenderer content={selectedCard.result} />
             </div>
 
             {/* Actions */}
             <div style={{
               padding: '16px 20px',
-              borderTop: `1px solid ${colors.border}`,
+              borderTop: `1px solid ${colors.border.default}`,
               display: 'flex',
               gap: '10px',
-              background: colors.bgSecondary,
+              background: colors.bg.card,
             }}>
               {selectedCard.cardStatus === 'completed' && (
                 <>
@@ -665,8 +678,8 @@ export function CollaborationPrototype() {
                     <button style={{
                       padding: '10px 20px',
                       borderRadius: '4px',
-                      background: colors.accentSuccess,
-                      color: '#fff',
+                      background: colors.accent.success,
+                      color: 'var(--accent-foreground)',
                       border: 'none',
                       cursor: 'pointer',
                       fontSize: '14px',
@@ -678,8 +691,8 @@ export function CollaborationPrototype() {
                     <button style={{
                       padding: '10px 20px',
                       borderRadius: '4px',
-                      background: colors.accentPrimary,
-                      color: '#fff',
+                      background: colors.accent.primary,
+                      color: 'var(--accent-foreground)',
                       border: 'none',
                       cursor: 'pointer',
                       fontSize: '14px',
@@ -691,9 +704,9 @@ export function CollaborationPrototype() {
                   <button onClick={() => handleReference(selectedCard)} style={{
                     padding: '10px 20px',
                     borderRadius: '4px',
-                    background: colors.bgPrimary,
-                    color: colors.textSecondary,
-                    border: `1px solid ${colors.border}`,
+                    background: colors.bg.primary,
+                    color: colors.text.secondary,
+                    border: `1px solid ${colors.border.default}`,
                     cursor: 'pointer',
                     fontSize: '14px',
                   }}>
@@ -707,8 +720,8 @@ export function CollaborationPrototype() {
                   <button onClick={() => handleReference(selectedCard)} style={{
                     padding: '10px 20px',
                     borderRadius: '4px',
-                    background: colors.accentSuccess,
-                    color: '#fff',
+                    background: colors.accent.success,
+                    color: 'var(--accent-foreground)',
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: '14px',
@@ -720,8 +733,8 @@ export function CollaborationPrototype() {
                     padding: '10px 20px',
                     borderRadius: '4px',
                     background: 'transparent',
-                    color: colors.accentError,
-                    border: `1px solid ${colors.accentError}`,
+                    color: colors.accent.error,
+                    border: `1px solid ${colors.accent.error}`,
                     cursor: 'pointer',
                     fontSize: '14px',
                   }}>
