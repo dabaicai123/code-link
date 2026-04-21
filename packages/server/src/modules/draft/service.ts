@@ -6,6 +6,7 @@ import { AuthRepository } from '../auth/repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { ParamError, NotFoundError, PermissionError } from '../../core/errors/index.js';
 import { parseAICommand, executeAICommand, isAICommand } from './lib/commands.js';
+import type { AICommand, SuperpowersCommand, FreeChatCommand } from './lib/commands.js';
 import type { SelectDraft, InsertDraftMessage } from '../../db/schema/index.js';
 import type { CreateDraftInput, CreateDraftMessageInput, ConfirmMessageInput } from './schemas.js';
 import type { DraftDetail, DraftMessageWithUser, MessageConfirmationWithUser } from './types.js';
@@ -232,8 +233,17 @@ export class DraftService {
       messageType: 'ai_command',
     });
 
-    // Execute AI command
-    const result = await executeAICommand(draftId, command, userId);
+    // superpowers/free_chat go through Terminal Socket (Claude Code), not executeAICommand
+    if (command.type === 'superpowers' || command.type === 'free_chat') {
+      return {
+        success: true,
+        response: '请通过终端执行此指令',
+        error: undefined,
+      };
+    }
+
+    // Execute legacy AI command via Anthropic API
+    const result = await executeAICommand(draftId, command as AICommand, userId);
 
     // Create AI response message (using userId of the user who triggered the command)
     if (result.success && result.response) {

@@ -46,7 +46,9 @@ export interface FreeChatCommand {
   rawContent: string;
 }
 
-const COMMAND_PATTERNS: Record<AICommandType, RegExp> = {
+type LegacyCommandType = 'generate' | 'analyze' | 'suggest' | 'explain' | 'review' | 'refactor' | 'test';
+
+const COMMAND_PATTERNS: Record<LegacyCommandType, RegExp> = {
   generate: /@AI\s+generate\s+(.+)/i,
   analyze: /@AI\s+analyze\s+(.+)/i,
   suggest: /@AI\s+suggest\s+(.+)/i,
@@ -133,7 +135,7 @@ export function parseAICommand(content: string): AICommand | SuperpowersCommand 
 }
 
 /**
- * Execute AI command
+ * Execute AI command (legacy commands only — superpowers/free_chat go through Claude Code)
  */
 export async function executeAICommand(
   draftId: number,
@@ -224,4 +226,3 @@ export function extractFirstCardReferenceId(content: string): string | undefined
   const ids = parseCardReferenceIds(content);
   return ids[0];
 }
-

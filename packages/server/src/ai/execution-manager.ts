@@ -237,7 +237,7 @@ export async function cleanupExpiredSessions(): Promise<void> {
       try {
         await updateCard(session.projectId, session.draftId, session.cardId, { cardStatus: 'failed' });
       } catch (error) {
-        logger.error(`Failed to mark expired card as failed: ${session.cardId}`, { error });
+        logger.error(`Failed to mark expired card as failed: ${session.cardId}`, error instanceof Error ? error : new Error(String(error)));
       }
       activeExecutions.delete(sessionId);
       logger.warn(`Cleaned up expired execution: ${sessionId}`);
