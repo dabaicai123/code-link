@@ -62,10 +62,14 @@ const config: Config = {
         'accent-hover': 'var(--accent-hover)',
         'accent-light': 'var(--accent-light)',
       },
+      boxShadow: {
+        warm: 'var(--shadow-warm)',
+        'warm-sm': 'var(--shadow-warm-sm)',
+      },
       borderRadius: {
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        md: 'var(--radius-md)',
+        sm: 'var(--radius-sm)',
       },
     },
   },
