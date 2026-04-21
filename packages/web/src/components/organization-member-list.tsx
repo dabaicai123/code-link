@@ -129,7 +129,7 @@ export function OrganizationMemberList({
                   fontWeight: 500,
                 }}
               >
-                {member.name.charAt(0).toUpperCase()}
+                {(member.name || '?').charAt(0).toUpperCase()}
               </div>
 
               {/* Info */}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useLogout, useCurrentUser, useProjects, useStartContainer } from '@/lib/queries';
+import { useLogout, useCurrentUser, useProjects, useStartContainer, useOrganizations } from '@/lib/queries';
 import type { Project } from '@/types';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useOrganizationStore } from '@/lib/stores';
@@ -19,6 +19,9 @@ export default function DashboardPage() {
   const logout = useLogout();
   const { isLoading: authLoading } = useCurrentUser();
   const currentOrg = useOrganizationStore((s) => s.currentOrganization);
+
+  // 获取组织列表
+  useOrganizations();
 
   // 使用 TanStack Query
   const { data: projects, isLoading: projectsLoading } = useProjects();
