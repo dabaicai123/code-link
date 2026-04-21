@@ -4,16 +4,24 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { getTerminalSocket } from './index';
 import { formatClaudeMessage, type ClaudeMessage, type SelectedElement } from '@/types/claude-message';
+import type { PermissionMode, AgentType } from '@/types/chat';
 
 interface UseTerminalSocketOptions {
   projectId: number | null;
   onOutput?: (data: string) => void;
   onExit?: () => void;
   onError?: (message: string) => void;
+  // New chat event callbacks
+  onClaudeStream?: (text: string) => void;
+  onToolStart?: (data: { toolUseId: string; name: string; input: string; kind?: string }) => void;
+  onToolEnd?: (data: { toolUseId: string; result?: string }) => void;
+  onClaudeDone?: (data: { cost?: { inputTokens: number; outputTokens: number; totalCost: number } }) => void;
+  onClaudeError?: (message: string) => void;
+  onCost?: (data: { inputTokens: number; outputTokens: number; totalCost: number }) => void;
 }
 
 export function useTerminalSocket(options: UseTerminalSocketOptions) {
-  const { projectId, onOutput, onExit, onError } = options;
+  const { projectId, onOutput, onExit, onError, onClaudeStream, onToolStart, onToolEnd, onClaudeDone, onClaudeError, onCost } = options;
   const [isConnected, setIsConnected] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
   const sessionIdRef = useRef<string | null>(null);
@@ -66,18 +74,54 @@ export function useTerminalSocket(options: UseTerminalSocketOptions) {
       onError?.(data.message);
     };
 
+    const handleClaudeStream = (data: { sessionId: string; text: string }) => {
+      onClaudeStream?.(data.text);
+    };
+
+    const handleToolStart = (data: { sessionId: string; toolUseId: string; name: string; input: string; kind?: string }) => {
+      onToolStart?.(data);
+    };
+
+    const handleToolEnd = (data: { sessionId: string; toolUseId: string; result?: string }) => {
+      onToolEnd?.(data);
+    };
+
+    const handleClaudeDone = (data: { sessionId: string; cost?: { inputTokens: number; outputTokens: number; totalCost: number } }) => {
+      onClaudeDone?.(data);
+    };
+
+    const handleClaudeError = (data: { sessionId: string; message: string }) => {
+      onClaudeError?.(data.message);
+    };
+
+    const handleCost = (data: { sessionId: string; inputTokens: number; outputTokens: number; totalCost: number }) => {
+      onCost?.(data);
+    };
+
     socket.on('started', handleStarted);
     socket.on('output', handleOutput);
     socket.on('exit', handleExit);
     socket.on('error', handleError);
+    socket.on('claude-stream', handleClaudeStream);
+    socket.on('tool-start', handleToolStart);
+    socket.on('tool-end', handleToolEnd);
+    socket.on('claude-done', handleClaudeDone);
+    socket.on('claude-error', handleClaudeError);
+    socket.on('cost', handleCost);
 
     return () => {
       socket.off('started', handleStarted);
       socket.off('output', handleOutput);
       socket.off('exit', handleExit);
       socket.off('error', handleError);
+      socket.off('claude-stream', handleClaudeStream);
+      socket.off('tool-start', handleToolStart);
+      socket.off('tool-end', handleToolEnd);
+      socket.off('claude-done', handleClaudeDone);
+      socket.off('claude-error', handleClaudeError);
+      socket.off('cost', handleCost);
     };
-  }, [socket, onOutput, onExit, onError]);
+  }, [socket, onOutput, onExit, onError, onClaudeStream, onToolStart, onToolEnd, onClaudeDone, onClaudeError, onCost]);
 
   const start = useCallback(
     (cols: number, rows: number) => {
@@ -112,7 +156,7 @@ export function useTerminalSocket(options: UseTerminalSocketOptions) {
   }, [socket]);
 
   const sendClaudeMessage = useCallback(
-    (elements: SelectedElement[], userRequest: string) => {
+    (elements: SelectedElement[], userRequest: string, mode?: PermissionMode, agent?: AgentType) => {
       if (!sessionIdRef.current) {
         console.warn('Terminal session not started');
         return;
@@ -131,6 +175,8 @@ export function useTerminalSocket(options: UseTerminalSocketOptions) {
       socket.emit('claude-message', {
         sessionId: sessionIdRef.current,
         data: encoded,
+        mode,
+        agent,
       });
     },
     [socket]
