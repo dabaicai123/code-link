@@ -116,7 +116,7 @@ export function ChatWorkspace({
 
   if (!project) {
     return (
-      <div className="panel-container items-center justify-center bg-[#faf6f0]">
+      <div data-testid="chat-workspace" className="h-full flex flex-col bg-bg-primary items-center justify-center bg-[#faf6f0]">
         <div className="text-center">
           <div className="text-5xl mb-4 text-[#c0553a] opacity-30">✿</div>
           <div className="text-[#9a8b7d] text-sm">选择一个项目开始对话</div>
@@ -126,7 +126,7 @@ export function ChatWorkspace({
   }
 
   return (
-    <div data-testid="chat-workspace" className="panel-container chat-washi bg-[#faf6f0]">
+    <div data-testid="chat-workspace" className="h-full flex flex-col bg-bg-primary bg-[#faf6f0]">
       <ChatHeader
         project={project}
         agent={state.agent}

@@ -91,7 +91,7 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
 
       <div className="input-wrapper">
         {elements.map((el) => (
-          <span key={el.id} className="element-tag">
+          <span key={el.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-accent-primary/15 border border-accent-primary rounded-sm font-mono text-[11px] text-accent-primary whitespace-nowrap">
             &lt;{el.tagName}&gt;
             <span className="remove" onClick={() => onRemoveElement(el.id)}>✕</span>
           </span>

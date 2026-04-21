@@ -29,11 +29,12 @@ export function ChatHeader({ project, agent, permissionMode, onAgentChange, onMo
   const isRunning = project?.status === 'running';
 
   return (
-    <div className="panel-header justify-between bg-[#f2ebe2] border-b border-[#ddd0c0]">
+    <div className="px-2 py-1.5 bg-bg-secondary border-b border-border-default flex items-center gap-2 justify-between bg-[#f2ebe2] border-b border-[#ddd0c0]">
       <div className="flex items-center gap-2">
         <span className={cn(
-          'status-dot',
-          isRunning ? 'status-dot-running animate-pulse' : 'status-dot-stopped'
+          'w-1.5 h-1.5 rounded-full inline-block',
+          isRunning && 'bg-status-running animate-pulse',
+          !isRunning && 'bg-status-stopped'
         )} />
         <span className="text-[#2d1f14] text-[13px] font-medium">{project?.name || '未选择项目'}</span>
 

@@ -94,9 +94,9 @@ export function CollaborationPanel({
   };
 
   return (
-    <div className="panel-container">
+    <div className="h-full flex flex-col bg-bg-primary">
       {/* 头部导航 */}
-      <div className="panel-header">
+      <div className="px-2 py-1.5 bg-bg-secondary border-b border-border-default flex items-center gap-2">
         {viewMode === 'draft' ? (
           <>
             <Button variant="ghost" size="sm" onClick={handleBackToList}>

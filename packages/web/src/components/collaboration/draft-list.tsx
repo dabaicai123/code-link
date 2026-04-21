@@ -73,7 +73,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
 
   return (
     <div className="h-full flex flex-col">
-      <div className="panel-header justify-between">
+      <div className="px-2 py-1.5 bg-bg-secondary border-b border-border-default flex items-center gap-2 justify-between">
         <span className="text-xs font-medium">
           Draft 列表 ({drafts.length})
         </span>
