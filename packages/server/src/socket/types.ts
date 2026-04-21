@@ -137,6 +137,23 @@ export const TerminalEvents = {
     agent: z.enum(['claude', 'codex']).optional(),
   }),
 
+  // AI 执行事件 — 客户端 -> 服务端
+  executeAI: z.object({
+    sessionId: z.string(),
+    projectId: z.number(),
+    draftId: z.number(),
+    command: z.string(),
+    args: z.string(),
+    contextCardId: z.string().optional(),
+  }),
+  pauseAIExecution: z.object({
+    sessionId: z.string(),
+  }),
+  resumeAIExecution: z.object({
+    sessionId: z.string(),
+    newCommand: z.string(),
+  }),
+
   // 服务端 -> 客户端
   started: z.object({
     sessionId: z.string(),
@@ -183,6 +200,51 @@ export const TerminalEvents = {
     outputTokens: z.number(),
     totalCost: z.number(),
   }),
+
+  // AI 执行事件 — 服务端 -> 客户端
+  aiExecutionStarted: z.object({
+    sessionId: z.string(),
+    projectId: z.number(),
+    draftId: z.number(),
+    cardId: z.string(),
+  }),
+  aiExecutionOutput: z.object({
+    sessionId: z.string(),
+    chunk: z.string(),
+  }),
+  aiExecutionComplete: z.object({
+    sessionId: z.string(),
+    projectId: z.number(),
+    draftId: z.number(),
+    cardId: z.string(),
+    success: z.boolean(),
+    summary: z.string().optional(),
+  }),
+  aiExecutionError: z.object({
+    sessionId: z.string(),
+    message: z.string(),
+  }),
+  aiExecutionPaused: z.object({
+    sessionId: z.string(),
+    cardId: z.string(),
+  }),
+  aiExecutionResumed: z.object({
+    sessionId: z.string(),
+    cardId: z.string(),
+  }),
+
+  // 驾驶权变更通知 — 服务端 -> 客户端
+  codingLockAcquired: z.object({
+    projectId: z.number(),
+    draftId: z.number(),
+    holderId: z.number(),
+    holderName: z.string(),
+    cardId: z.string().nullable(),
+  }),
+  codingLockReleased: z.object({
+    projectId: z.number(),
+    draftId: z.number(),
+  }),
 };
 
 // ==================== 类型导出 ====================
@@ -205,6 +267,17 @@ export type TerminalToolEndEvent = z.infer<typeof TerminalEvents.toolEnd>;
 export type TerminalClaudeDoneEvent = z.infer<typeof TerminalEvents.claudeDone>;
 export type TerminalClaudeErrorEvent = z.infer<typeof TerminalEvents.claudeError>;
 export type TerminalCostEvent = z.infer<typeof TerminalEvents.cost>;
+export type TerminalExecuteAIEvent = z.infer<typeof TerminalEvents.executeAI>;
+export type TerminalPauseAIExecutionEvent = z.infer<typeof TerminalEvents.pauseAIExecution>;
+export type TerminalResumeAIExecutionEvent = z.infer<typeof TerminalEvents.resumeAIExecution>;
+export type TerminalAIExecutionStartedEvent = z.infer<typeof TerminalEvents.aiExecutionStarted>;
+export type TerminalAIExecutionOutputEvent = z.infer<typeof TerminalEvents.aiExecutionOutput>;
+export type TerminalAIExecutionCompleteEvent = z.infer<typeof TerminalEvents.aiExecutionComplete>;
+export type TerminalAIExecutionErrorEvent = z.infer<typeof TerminalEvents.aiExecutionError>;
+export type TerminalAIExecutionPausedEvent = z.infer<typeof TerminalEvents.aiExecutionPaused>;
+export type TerminalAIExecutionResumedEvent = z.infer<typeof TerminalEvents.aiExecutionResumed>;
+export type TerminalCodingLockAcquiredEvent = z.infer<typeof TerminalEvents.codingLockAcquired>;
+export type TerminalCodingLockReleasedEvent = z.infer<typeof TerminalEvents.codingLockReleased>;
 
 // Socket 数据类型
 export interface SocketData {
