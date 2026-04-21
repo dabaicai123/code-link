@@ -116,17 +116,17 @@ export function ChatWorkspace({
 
   if (!project) {
     return (
-      <div data-testid="chat-workspace" className="h-full flex flex-col bg-bg-primary items-center justify-center bg-[#faf6f0]">
+      <div data-testid="chat-workspace" className="h-full flex flex-col bg-bg-primary items-center justify-center">
         <div className="text-center">
-          <div className="text-5xl mb-4 text-[#c0553a] opacity-30">✿</div>
-          <div className="text-[#9a8b7d] text-sm">选择一个项目开始对话</div>
+          <div className="text-5xl mb-4 text-accent-primary opacity-30">✿</div>
+          <div className="text-text-muted text-sm">选择一个项目开始对话</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div data-testid="chat-workspace" className="h-full flex flex-col bg-bg-primary bg-[#faf6f0]">
+    <div data-testid="chat-workspace" className="h-full flex flex-col bg-bg-primary">
       <ChatHeader
         project={project}
         agent={state.agent}

@@ -24,7 +24,7 @@ export function MessageItem({ message, streamingContent }: MessageItemProps) {
       {!isUser && (
         <div className={cn(
           'msg-avatar w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0',
-          isAssistant ? 'bg-[#c0553a]/10 text-[#c0553a]' : 'bg-[#e9e0d4] text-[#2d1f14]'
+          isAssistant ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-hover text-text-primary'
         )}>
           C
         </div>
@@ -33,8 +33,8 @@ export function MessageItem({ message, streamingContent }: MessageItemProps) {
       <div className={cn(
         'msg-bubble max-w-[80%] px-3 py-2 rounded-2xl text-[13px]',
         isUser
-          ? 'bg-[#c0553a] text-white rounded-br-md'
-          : 'bg-[#fff9f2] text-[#2d1f14] border border-[#ddd0c0]/50 rounded-bl-md'
+          ? 'bg-accent-primary text-white rounded-br-md'
+          : 'bg-bg-card text-text-primary border border-border-default/50 rounded-bl-md'
       )}>
         {isUser ? (
           <div className="msg-text whitespace-pre-wrap">
@@ -55,14 +55,14 @@ export function MessageItem({ message, streamingContent }: MessageItemProps) {
         )}
 
         {message.cost && (
-          <div className="text-xs text-[#9a8b7d] mt-1 pt-1 border-t border-[#ddd0c0]/30">
+          <div className="text-xs text-text-muted mt-1 pt-1 border-t border-border-default/30">
             Tokens: {message.cost.inputTokens} → {message.cost.outputTokens} · Cost: ${message.cost.totalCost.toFixed(4)}
           </div>
         )}
       </div>
 
       {isUser && (
-        <div className="msg-avatar w-8 h-8 rounded-full bg-[#c0553a] text-white flex items-center justify-center text-xs font-semibold shrink-0">
+        <div className="msg-avatar w-8 h-8 rounded-full bg-accent-primary text-white flex items-center justify-center text-xs font-semibold shrink-0">
           U
         </div>
       )}

@@ -24,14 +24,14 @@ export function MessageList({ messages, streamingContent, isRunning }: MessageLi
 
   if (messages.length === 0 && !isRunning) {
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto bg-[#faf6f0]">
+      <div className="flex-1 min-h-0 overflow-y-auto bg-bg-primary">
         <WelcomeScreen />
       </div>
     );
   }
 
   return (
-    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto bg-[#faf6f0] px-4 py-3">
+    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto bg-bg-primary px-4 py-3">
       {messages.map((msg) => (
         <MessageItem
           key={msg.id}

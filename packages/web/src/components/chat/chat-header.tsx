@@ -29,18 +29,18 @@ export function ChatHeader({ project, agent, permissionMode, onAgentChange, onMo
   const isRunning = project?.status === 'running';
 
   return (
-    <div className="px-2 py-1.5 bg-bg-secondary border-b border-border-default flex items-center gap-2 justify-between bg-[#f2ebe2] border-b border-[#ddd0c0]">
+    <div className="px-2 py-1.5 bg-bg-secondary border-b border-border-default flex items-center gap-2 justify-between">
       <div className="flex items-center gap-2">
         <span className={cn(
           'w-1.5 h-1.5 rounded-full inline-block',
           isRunning && 'bg-status-running animate-pulse',
           !isRunning && 'bg-status-stopped'
         )} />
-        <span className="text-[#2d1f14] text-[13px] font-medium">{project?.name || '未选择项目'}</span>
+        <span className="text-text-primary text-[13px] font-medium">{project?.name || '未选择项目'}</span>
 
         <button
           onClick={() => onAgentChange(agent === 'claude' ? 'codex' : 'claude')}
-          className="chat-agent-btn px-2 py-1 rounded-md bg-[#e9e0d4] text-[#2d1f14] text-[12px] font-semibold hover:bg-[#ddd0c0] transition-colors"
+          className="chat-agent-btn px-2 py-1 rounded-md bg-bg-hover text-text-primary text-[12px] font-semibold hover:bg-border-default transition-colors"
           type="button"
         >
           {AGENT_LABELS[agent]}
@@ -49,7 +49,7 @@ export function ChatHeader({ project, agent, permissionMode, onAgentChange, onMo
         <select
           value={permissionMode}
           onChange={(e) => onModeChange(e.target.value as PermissionMode)}
-          className="mode-select px-2 py-1 rounded-md bg-[#e9e0d4] text-[#2d1f14] text-[12px] border border-[#ddd0c0] outline-none cursor-pointer"
+          className="mode-select px-2 py-1 rounded-md bg-bg-hover text-text-primary text-[12px] border border-border-default outline-none cursor-pointer"
         >
           {Object.entries(MODE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
@@ -61,7 +61,7 @@ export function ChatHeader({ project, agent, permissionMode, onAgentChange, onMo
         <button
           onClick={onRestart}
           type="button"
-          className="px-2.5 py-1 rounded-md bg-[#e9e0d4] text-[#2d1f14] text-[11px] hover:bg-[#ddd0c0] transition-colors"
+          className="px-2.5 py-1 rounded-md bg-bg-hover text-text-primary text-[11px] hover:bg-border-default transition-colors"
         >
           重启
         </button>

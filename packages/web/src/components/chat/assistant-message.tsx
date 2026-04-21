@@ -44,7 +44,7 @@ export function AssistantMessage({ content, isStreaming }: AssistantMessageProps
 
   return (
     <div
-      className="msg-text text-[#2d1f14] leading-relaxed"
+      className="msg-text text-text-primary leading-relaxed"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

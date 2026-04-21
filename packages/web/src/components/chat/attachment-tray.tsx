@@ -41,9 +41,9 @@ export function AttachmentTray({ attachments, onAdd, onRemove, maxCount = 4 }: A
             <div key={att.id} className="inline-flex items-center gap-2 max-w-full px-2.5 py-1.5 border border-accent-primary/20 rounded-xl bg-bg-card/96 text-text-primary text-xs" data-index={index} data-testid={`attachment-${index}`}>
               <img src={att.url} alt={att.name} className="w-8 h-8 rounded object-cover" />
               <span className="truncate max-w-[120px]">{att.name}</span>
-              {att.status === 'error' && <span className="text-[#c0553a] text-xs">失败</span>}
+              {att.status === 'error' && <span className="text-accent-primary text-xs">失败</span>}
               <span
-                className="cursor-pointer text-[#9a8b7d] hover:text-[#c0553a] ml-1"
+                className="cursor-pointer text-text-muted hover:text-accent-primary ml-1"
                 onClick={() => onRemove(att.id)}
               >
                 ✕

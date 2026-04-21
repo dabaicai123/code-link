@@ -74,7 +74,7 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
   }, []);
 
   return (
-    <div data-testid="chat-input" className="relative bg-[#faf6f0] bg-bg-secondary border-t border-border-default px-4 pb-[max(14px,env(safe-area-inset-bottom,14px))] pt-2.5">
+    <div data-testid="chat-input" className="relative bg-bg-secondary border-t border-border-default px-4 pb-[max(14px,env(safe-area-inset-bottom,14px))] pt-2.5">
       {showCmdMenu && cmdFilter && (
         <SlashCommandMenu
           filter={cmdFilter}
@@ -111,11 +111,11 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
           onKeyDown={handleKeyDown}
           placeholder={elements.length > 0 ? '描述修改...' : '输入消息… 输入 / 查看指令'}
           rows={1}
-          className="flex-1 min-w-[60px] bg-transparent border-none outline-none text-[#2d1f14] text-[13px] placeholder:text-[#9a8b7d] resize-none py-2"
+          className="flex-1 min-w-[60px] bg-transparent border-none outline-none text-text-primary text-[13px] placeholder:text-text-muted resize-none py-2"
         />
 
         {isRunning ? (
-          <button onClick={onAbort} type="button" className="send-btn w-[44px] h-[44px] rounded-xl bg-[#c0553a] text-white flex items-center justify-center">
+          <button onClick={onAbort} type="button" className="send-btn w-[44px] h-[44px] rounded-xl bg-accent-primary text-white flex items-center justify-center">
             ⏹
           </button>
         ) : (
@@ -126,8 +126,8 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
             className={cn(
               'send-btn w-[44px] h-[44px] rounded-xl flex items-center justify-center transition-colors',
               text.trim() || elements.length > 0
-                ? 'bg-[#c0553a] text-white'
-                : 'bg-[#e9e0d4] text-[#9a8b7d]'
+                ? 'bg-accent-primary text-white'
+                : 'bg-bg-hover text-text-muted'
             )}
           >
             ➤

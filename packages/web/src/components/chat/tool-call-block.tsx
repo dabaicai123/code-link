@@ -56,35 +56,35 @@ export function ToolCallBlock({ toolCall }: ToolCallBlockProps) {
       onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
       className={cn(
         'tool-call rounded-lg border mb-2',
-        toolCall.status === 'running' && 'border-[#5b7ea1]/40 bg-[#f5f0e8]',
-        toolCall.status === 'completed' && 'border-[#ddd0c0] bg-[#faf6f0]',
-        toolCall.status === 'error' && 'border-[#c0553a]/40 bg-[#f5ddd4]',
+        toolCall.status === 'running' && 'border-border-default/40 bg-bg-secondary',
+        toolCall.status === 'completed' && 'border-border-default bg-bg-primary',
+        toolCall.status === 'error' && 'border-accent-primary/40 bg-bg-active',
       )}
     >
       <summary data-action="toggle" className="flex items-center gap-3 px-3 py-2 cursor-pointer select-none text-[13px]">
         <span className={cn(
           'tool-call-icon w-2 h-2 rounded-full',
-          toolCall.status === 'running' ? 'bg-[#5b7ea1] animate-pulse' : 'bg-[#5d8a54]',
+          toolCall.status === 'running' ? 'bg-accent-primary animate-pulse' : 'bg-status-running',
         )} />
         <span className="tool-call-summary-main flex-1 min-w-0">
-          <span className="tool-call-label font-semibold text-[#2d1f14]">{toolTitle(toolCall)}</span>
-          {subtitle && <span className="tool-call-subtitle text-[#9a8b7d] ml-2 truncate">{subtitle}</span>}
+          <span className="tool-call-label font-semibold text-text-primary">{toolTitle(toolCall)}</span>
+          {subtitle && <span className="tool-call-subtitle text-text-muted ml-2 truncate">{subtitle}</span>}
         </span>
         <span className={cn(
           'tool-call-state text-xs px-1.5 py-0.5 rounded',
-          toolCall.status === 'running' ? 'text-[#5b7ea1] bg-[#5b7ea1]/10' :
-          toolCall.status === 'completed' ? 'text-[#5d8a54] bg-[#5d8a54]/10' :
-          'text-[#c0553a] bg-[#c0553a]/10',
+          toolCall.status === 'running' ? 'text-accent-primary bg-accent-primary/10' :
+          toolCall.status === 'completed' ? 'text-status-running bg-status-running/10' :
+          'text-accent-primary bg-accent-primary/10',
         )}>
           {stateLabel(toolCall.status)}
         </span>
       </summary>
-      <div className="px-3 pb-3 text-[13px] text-[#2d1f14]">
+      <div className="px-3 pb-3 text-[13px] text-text-primary">
         {toolCall.kind === 'command_execution' ? (
           <div className="space-y-2">
             <div>
-              <span className="text-[#9a8b7d] text-xs">Command</span>
-              <pre className="bg-[#eee8d5] rounded p-2 mt-1 text-[12px] overflow-x-auto font-mono whitespace-pre-wrap">
+              <span className="text-text-muted text-xs">Command</span>
+              <pre className="bg-bg-secondary rounded p-2 mt-1 text-[12px] overflow-x-auto font-mono whitespace-pre-wrap">
                 {(() => {
                   try { return JSON.parse(toolCall.input).command || toolCall.input; } catch { return toolCall.input; }
                 })()}
@@ -92,15 +92,15 @@ export function ToolCallBlock({ toolCall }: ToolCallBlockProps) {
             </div>
             {toolCall.output && (
               <div>
-                <span className="text-[#9a8b7d] text-xs">Output</span>
-                <pre className="bg-[#eee8d5] rounded p-2 mt-1 text-[12px] overflow-x-auto font-mono whitespace-pre-wrap max-h-[200px]">
+                <span className="text-text-muted text-xs">Output</span>
+                <pre className="bg-bg-secondary rounded p-2 mt-1 text-[12px] overflow-x-auto font-mono whitespace-pre-wrap max-h-[200px]">
                   {toolCall.output}
                 </pre>
               </div>
             )}
           </div>
         ) : (
-          <pre className="bg-[#eee8d5] rounded p-2 text-[12px] overflow-x-auto font-mono whitespace-pre-wrap">
+          <pre className="bg-bg-secondary rounded p-2 text-[12px] overflow-x-auto font-mono whitespace-pre-wrap">
             {(() => {
               try { return JSON.stringify(JSON.parse(toolCall.input), null, 2); } catch { return toolCall.input; }
             })()}
