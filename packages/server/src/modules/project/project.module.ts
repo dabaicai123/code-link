@@ -16,13 +16,11 @@ export { ProjectController } from './controller.js';
 export { createProjectRoutes } from './routes.js';
 export {
   createProjectSchema,
-  updateProjectSchema,
   addRepoSchema,
   projectIdParamsSchema,
 } from './schemas.js';
 export type {
   CreateProjectInput,
-  UpdateProjectInput,
   AddRepoInput,
 } from './schemas.js';
 export type {

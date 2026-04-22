@@ -15,7 +15,6 @@ const logger = createLogger('transcript');
 
 const TRANSCRIPTS_DIR = process.env.TRANSCRIPTS_DIR || path.join(process.cwd(), 'transcripts');
 
-// ==================== 路径工具 ====================
 
 function getProjectDir(projectId: number): string {
   return path.join(TRANSCRIPTS_DIR, String(projectId));
@@ -41,7 +40,6 @@ async function ensureDir(dir: string): Promise<void> {
   await fs.mkdir(dir, { recursive: true });
 }
 
-// ==================== Draft 列表 ====================
 
 /**
  * 列出项目的所有 Draft（从文件读取）
@@ -84,7 +82,6 @@ export async function listDrafts(projectId: number): Promise<DraftListItem[]> {
   }
 }
 
-// ==================== Discussion 文件 ====================
 
 /**
  * 创建 Discussion 文件（新建 Draft 时调用）
@@ -171,7 +168,6 @@ export async function deleteDraft(projectId: number, draftId: number): Promise<v
   logger.info(`Draft deleted: ${draftDir}`);
 }
 
-// ==================== 卡片管理 ====================
 
 /**
  * 创建卡片（同时写入 discussion 索引）
@@ -329,7 +325,6 @@ export async function appendTranscript(
   await fs.writeFile(transcriptPath, JSON.stringify(transcript, null, 2));
 }
 
-// ==================== 驾驶权管理 ====================
 
 /**
  * 获取驾驶权
@@ -423,7 +418,6 @@ export async function resumeCodingLock(input: {
   await updateDiscussion(input.projectId, input.draftId, { codingLock: discussion.codingLock });
 }
 
-// ==================== 消息管理 ====================
 
 /**
  * 添加消息到 discussion
@@ -473,7 +467,6 @@ export async function addCardIndex(
   await updateDiscussion(projectId, draftId, { cards: discussion.cards });
 }
 
-// ==================== 卡片引用解析 ====================
 
 /**
  * 解析卡片引用，支持 shortId（8位）和 fullId（UUID）
@@ -511,6 +504,5 @@ export async function resolveCardReferences(
   return refs;
 }
 
-// ==================== 路径导出 ====================
 
 export { getDiscussionPath, getCardPath, getTranscriptPath };

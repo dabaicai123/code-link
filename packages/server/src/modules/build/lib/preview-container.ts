@@ -1,5 +1,4 @@
 import { singleton, inject } from 'tsyringe';
-import Docker from 'dockerode';
 import { DockerService } from '../../container/lib/docker.service.js';
 import { getPortManager } from './port-manager.js';
 import { createLogger } from '../../../core/logger/index.js';
@@ -17,10 +16,13 @@ interface PreviewContainer {
 @singleton()
 export class PreviewContainerManager {
   private containers: Map<string, PreviewContainer> = new Map();
-  private docker: Docker;
 
-  constructor() {
-    this.docker = new Docker();
+  constructor(
+    @inject(DockerService) private readonly dockerService: DockerService
+  ) {}
+
+  private getDocker() {
+    return this.dockerService.getClient();
   }
 
   async createPreviewContainer(
@@ -39,7 +41,7 @@ export class PreviewContainerManager {
     // 创建并启动容器
     let container;
     try {
-      container = await this.docker.createContainer({
+      container = await this.getDocker().createContainer({
         name: `${PREVIEW_CONTAINER_PREFIX}${projectId}`,
         Image: imageId,
         ExposedPorts: {
@@ -77,7 +79,7 @@ export class PreviewContainerManager {
 
     if (info) {
       try {
-        const container = this.docker.getContainer(info.containerId);
+        const container = this.getDocker().getContainer(info.containerId);
         await container.stop();
         await container.remove();
       } catch (error) {
@@ -90,7 +92,7 @@ export class PreviewContainerManager {
     } else {
       // 尝试通过名称查找
       try {
-        const container = this.docker.getContainer(`${PREVIEW_CONTAINER_PREFIX}${projectId}`);
+        const container = this.getDocker().getContainer(`${PREVIEW_CONTAINER_PREFIX}${projectId}`);
         const containerInfo = await container.inspect();
         await container.stop();
         await container.remove();
@@ -120,7 +122,7 @@ export class PreviewContainerManager {
 
     for (const [projectId, info] of this.containers) {
       try {
-        const container = this.docker.getContainer(info.containerId);
+        const container = this.getDocker().getContainer(info.containerId);
         await container.stop();
         await container.remove();
       } catch (error) {
@@ -135,7 +137,3 @@ export class PreviewContainerManager {
   }
 }
 
-// 重置实例（用于测试）
-export function resetPreviewContainerManagerInstance(): void {
-  // PreviewContainerManager is now a singleton managed by DI
-}

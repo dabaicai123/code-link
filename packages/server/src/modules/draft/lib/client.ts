@@ -1,27 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createLogger } from '../../../core/logger/index.js';
+import type { AIResponse, AIMessage, AIRequestOptions } from '../../../core/interfaces/ai.interface.js';
 
 const logger = createLogger('ai-client');
-
-export interface AIResponse {
-  content: string;
-  stopReason: string | null;
-  usage: {
-    inputTokens: number;
-    outputTokens: number;
-  };
-}
-
-export interface AIMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-export interface AIRequestOptions {
-  system?: string;
-  maxTokens?: number;
-  temperature?: number;
-}
 
 let anthropicClient: Anthropic | null = null;
 
@@ -62,7 +43,6 @@ export async function sendAIMessage(
       })),
     });
 
-    // 提取文本内容
     const textContent = response.content
       .filter(block => block.type === 'text')
       .map(block => block.text)

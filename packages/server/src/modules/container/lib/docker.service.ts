@@ -21,6 +21,10 @@ export class DockerService implements IDockerService {
     this.client = new Docker();
   }
 
+  getClient(): Docker {
+    return this.client;
+  }
+
   async createProjectContainer(
     projectId: number,
     templateType: TemplateType,
@@ -75,12 +79,25 @@ export class DockerService implements IDockerService {
     return info.State.Status;
   }
 
+  async getProjectContainerInfo(projectId: number): Promise<{ container: Docker.Container; id: string; status: string } | null> {
+    const containerName = `${CONTAINER_NAME_PREFIX}${projectId}`;
+
+    try {
+      const container = this.client.getContainer(containerName);
+      const info = await container.inspect();
+      return { container, id: info.Id, status: info.State.Status };
+    } catch {
+      return null;
+    }
+  }
+
   async getProjectContainer(projectId: number): Promise<Docker.Container | null> {
     const containerName = `${CONTAINER_NAME_PREFIX}${projectId}`;
 
     try {
-      await this.client.getContainer(containerName).inspect();
-      return this.client.getContainer(containerName);
+      const container = this.client.getContainer(containerName);
+      await container.inspect();
+      return container;
     } catch {
       return null;
     }

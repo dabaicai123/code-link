@@ -1,7 +1,6 @@
 // packages/server/src/socket/types.ts
 import { z } from 'zod';
 
-// ==================== Project 命名空间 ====================
 
 export const ProjectEvents = {
   // 客户端 -> 服务端
@@ -55,7 +54,6 @@ export const ProjectEvents = {
   }),
 };
 
-// ==================== Draft 命名空间 ====================
 
 export const DraftEvents = {
   // 客户端 -> 服务端
@@ -111,7 +109,6 @@ export const DraftEvents = {
   }),
 };
 
-// ==================== Terminal 命名空间 ====================
 
 export const TerminalEvents = {
   // 客户端 -> 服务端
@@ -247,7 +244,6 @@ export const TerminalEvents = {
   }),
 };
 
-// ==================== 类型导出 ====================
 
 export type ProjectSubscribeEvent = z.infer<typeof ProjectEvents.subscribe>;
 export type ProjectChatEvent = z.infer<typeof ProjectEvents.chat>;

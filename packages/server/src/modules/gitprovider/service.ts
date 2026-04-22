@@ -1,4 +1,3 @@
-// src/modules/gitprovider/service.ts
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
 import { GitProviderRepository } from './repository.js';
@@ -18,6 +17,23 @@ export class GitProviderService {
   constructor(
     @inject(GitProviderRepository) private readonly repo: GitProviderRepository
   ) {}
+
+  private async getAuthorizedToken(userId: number, provider: GitProvider): Promise<string> {
+    const token = await this.repo.findByUserAndProvider(userId, provider);
+    if (!token) {
+      throw new Error(`${provider === 'github' ? 'GitHub' : 'GitLab'} 未授权`);
+    }
+    return token.accessToken;
+  }
+
+  private async getGitHubClient(userId: number): Promise<GitHubClient> {
+    return new GitHubClient(await this.getAuthorizedToken(userId, 'github'));
+  }
+
+  private async getGitLabClient(userId: number): Promise<GitLabClient> {
+    const config = getOAuthConfig();
+    return new GitLabClient(config.gitlabBaseUrl, await this.getAuthorizedToken(userId, 'gitlab'));
+  }
 
   getOAuthUrl(provider: GitProvider): string {
     const config = getOAuthConfig();
@@ -60,75 +76,37 @@ export class GitProviderService {
   }
 
   async getGitHubRepos(userId: number): Promise<GitHubRepo[]> {
-    const token = await this.repo.findByUserAndProvider(userId, 'github');
-    if (!token) {
-      throw new Error('GitHub 未授权');
-    }
-
-    const client = new GitHubClient(token.accessToken);
+    const client = await this.getGitHubClient(userId);
     return client.getUserRepos();
   }
 
   async getGitHubRepo(userId: number, owner: string, repo: string): Promise<GitHubRepo> {
-    const token = await this.repo.findByUserAndProvider(userId, 'github');
-    if (!token) {
-      throw new Error('GitHub 未授权');
-    }
-
-    const client = new GitHubClient(token.accessToken);
+    const client = await this.getGitHubClient(userId);
     return client.getRepo(owner, repo);
   }
 
   async getGitHubBranches(userId: number, owner: string, repo: string) {
-    const token = await this.repo.findByUserAndProvider(userId, 'github');
-    if (!token) {
-      throw new Error('GitHub 未授权');
-    }
-
-    const client = new GitHubClient(token.accessToken);
+    const client = await this.getGitHubClient(userId);
     return client.getRepoBranches(owner, repo);
   }
 
   async createGitHubWebhook(userId: number, owner: string, repo: string, webhookUrl: string) {
-    const token = await this.repo.findByUserAndProvider(userId, 'github');
-    if (!token) {
-      throw new Error('GitHub 未授权');
-    }
-
-    const client = new GitHubClient(token.accessToken);
+    const client = await this.getGitHubClient(userId);
     return client.createWebhook(owner, repo, webhookUrl);
   }
 
   async getGitLabProjects(userId: number): Promise<GitLabProject[]> {
-    const token = await this.repo.findByUserAndProvider(userId, 'gitlab');
-    if (!token) {
-      throw new Error('GitLab 未授权');
-    }
-
-    const config = getOAuthConfig();
-    const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
+    const client = await this.getGitLabClient(userId);
     return client.getUserProjects();
   }
 
   async getGitLabProject(userId: number, projectId: number): Promise<GitLabProject> {
-    const token = await this.repo.findByUserAndProvider(userId, 'gitlab');
-    if (!token) {
-      throw new Error('GitLab 未授权');
-    }
-
-    const config = getOAuthConfig();
-    const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
+    const client = await this.getGitLabClient(userId);
     return client.getProject(projectId);
   }
 
   async getGitLabBranches(userId: number, projectId: number) {
-    const token = await this.repo.findByUserAndProvider(userId, 'gitlab');
-    if (!token) {
-      throw new Error('GitLab 未授权');
-    }
-
-    const config = getOAuthConfig();
-    const client = new GitLabClient(config.gitlabBaseUrl, token.accessToken);
+    const client = await this.getGitLabClient(userId);
     return client.getProjectBranches(projectId);
   }
 

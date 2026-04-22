@@ -21,7 +21,6 @@ export class DraftService {
     @inject(PermissionService) private readonly permissionService: PermissionService
   ) {}
 
-  // ==================== Draft CRUD ====================
 
   async create(userId: number, input: CreateDraftInput): Promise<SelectDraft> {
     // Validate title
@@ -107,7 +106,6 @@ export class DraftService {
     await this.draftRepo.delete(draftId);
   }
 
-  // ==================== Member Management ====================
 
   async addMember(draftId: number, userId: number, newUserId: number): Promise<void> {
     await this.checkDraftAccess(draftId, userId);
@@ -126,7 +124,6 @@ export class DraftService {
     await this.draftRepo.removeMember(draftId, memberId);
   }
 
-  // ==================== Message Management ====================
 
   async createMessage(
     draftId: number,
@@ -164,7 +161,6 @@ export class DraftService {
     return this.draftRepo.findMessages(draftId, limit);
   }
 
-  // ==================== Confirmation Management ====================
 
   async confirmMessage(
     draftId: number,
@@ -208,7 +204,6 @@ export class DraftService {
     return this.draftRepo.findConfirmations(messageId);
   }
 
-  // ==================== Card Management ====================
 
   async findCards(draftId: number, userId: number): Promise<Array<import('../draft/file-types.js').CardData>> {
     await this.checkDraftAccess(draftId, userId);
@@ -221,7 +216,6 @@ export class DraftService {
     return listCards(draft.projectId, draftId);
   }
 
-  // ==================== AI Command Handling ====================
 
   async handleAICommand(
     draftId: number,
@@ -286,7 +280,6 @@ export class DraftService {
     return isAICommand(content);
   }
 
-  // ==================== Utility Methods ====================
 
   async isMember(draftId: number, userId: number): Promise<boolean> {
     const member = await this.draftRepo.findMember(draftId, userId);
@@ -303,7 +296,6 @@ export class DraftService {
     return draft?.projectId ?? null;
   }
 
-  // ==================== Private Helpers ====================
 
   private async checkDraftAccess(draftId: number, userId: number): Promise<void> {
     // Super admin always has access

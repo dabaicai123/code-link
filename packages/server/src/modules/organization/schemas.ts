@@ -13,11 +13,6 @@ export const inviteMemberSchema = z.object({
   role: z.enum(['owner', 'developer', 'member'], { message: '角色必须是 owner, developer 或 member' }),
 });
 
-export const updateMemberRoleSchema = z.object({
-  userId: z.number().int().positive('用户ID必须是正整数'),
-  role: z.enum(['owner', 'developer', 'member'], { message: '角色必须是 owner, developer 或 member' }),
-});
-
 export const orgIdParamsSchema = z.object({
   id: z.string().regex(/^\d+$/, '组织ID必须是数字').transform(Number),
 });
@@ -29,4 +24,3 @@ export const invitationIdParamsSchema = z.object({
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
-export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;

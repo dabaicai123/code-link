@@ -1,9 +1,8 @@
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
 import { OrganizationRepository } from './repository.js';
-import { AuthRepository } from '../auth/repository.js';
+import { PermissionService } from '../../shared/permission.service.js';
 import { ParamError, NotFoundError, PermissionError, ConflictError } from '../../core/errors/index.js';
-import { getConfig } from '../../core/config.js';
 import type { CreateOrganizationInput, UpdateOrganizationInput, InviteMemberInput } from './schemas.js';
 import type { OrganizationWithRole, OrganizationDetail, OrganizationInvitationWithUser } from './types.js';
 
@@ -11,8 +10,20 @@ import type { OrganizationWithRole, OrganizationDetail, OrganizationInvitationWi
 export class OrganizationService {
   constructor(
     @inject(OrganizationRepository) private readonly repo: OrganizationRepository,
-    @inject(AuthRepository) private readonly userRepo: AuthRepository
+    @inject(PermissionService) private readonly permissionService: PermissionService
   ) {}
+
+  private async isAdminOrOwner(orgId: number, userId: number): Promise<boolean> {
+    if (await this.permissionService.isSuperAdmin(userId)) return true;
+    const membership = await this.repo.findUserMembership(orgId, userId);
+    return membership?.role === 'owner';
+  }
+
+  private async isMemberOrAdmin(orgId: number, userId: number): Promise<boolean> {
+    if (await this.permissionService.isSuperAdmin(userId)) return true;
+    const membership = await this.repo.findUserMembership(orgId, userId);
+    return !!membership;
+  }
 
   async create(userId: number, input: CreateOrganizationInput): Promise<{ id: number; name: string; createdBy: number; createdAt: string }> {
     const trimmedName = input.name.trim();
@@ -23,7 +34,6 @@ export class OrganizationService {
       throw new ParamError('组织名称不能超过 100 个字符');
     }
 
-    // 任何已登录用户都可以创建组织
     const org = await this.repo.createWithOwner(trimmedName, userId);
     return {
       ...org,
@@ -41,18 +51,14 @@ export class OrganizationService {
       throw new NotFoundError('组织');
     }
 
-    // 检查用户是否是组织成员
-    const membership = await this.repo.findUserMembership(orgId, userId);
-    const userEmail = await this.userRepo.findEmailById(userId);
-    const config = getConfig();
-    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
-
-    if (!membership && !isAdmin) {
+    if (!await this.isMemberOrAdmin(orgId, userId)) {
       throw new PermissionError('您不是该组织的成员');
     }
 
     const members = await this.repo.findMembers(orgId);
-    const role = membership?.role ?? (isAdmin ? 'owner' as const : 'member' as const);
+    const isSuperAdmin = await this.permissionService.isSuperAdmin(userId);
+    const membership = await this.repo.findUserMembership(orgId, userId);
+    const role = membership?.role ?? (isSuperAdmin ? 'owner' as const : 'member' as const);
     return {
       ...org,
       createdAt: org.createdAt ?? new Date().toISOString(),
@@ -67,13 +73,7 @@ export class OrganizationService {
       throw new ParamError('组织名称不能为空');
     }
 
-    // 检查是否是 owner
-    const membership = await this.repo.findUserMembership(orgId, userId);
-    const userEmail = await this.userRepo.findEmailById(userId);
-    const config = getConfig();
-    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
-
-    if (!isAdmin && (!membership || membership.role !== 'owner')) {
+    if (!await this.isAdminOrOwner(orgId, userId)) {
       throw new PermissionError('只有组织 owner 可以修改名称');
     }
 
@@ -82,27 +82,15 @@ export class OrganizationService {
   }
 
   async delete(orgId: number, userId: number): Promise<void> {
-    const membership = await this.repo.findUserMembership(orgId, userId);
-    const userEmail = await this.userRepo.findEmailById(userId);
-    const config = getConfig();
-    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
-
-    if (!isAdmin && (!membership || membership.role !== 'owner')) {
+    if (!await this.isAdminOrOwner(orgId, userId)) {
       throw new PermissionError('只有组织 owner 可以删除组织');
     }
 
     await this.repo.delete(orgId);
   }
 
-  // === Invitation Methods ===
-
   async inviteMember(orgId: number, userId: number, input: InviteMemberInput): Promise<{ id: number; organizationId: number; email: string; role: string; status: string; createdAt: string }> {
-    const membership = await this.repo.findUserMembership(orgId, userId);
-    const userEmail = await this.userRepo.findEmailById(userId);
-    const config = getConfig();
-    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
-
-    if (!isAdmin && (!membership || membership.role !== 'owner')) {
+    if (!await this.isAdminOrOwner(orgId, userId)) {
       throw new PermissionError('只有组织 owner 可以邀请成员');
     }
 
@@ -116,12 +104,7 @@ export class OrganizationService {
   }
 
   async getInvitations(orgId: number, userId: number): Promise<OrganizationInvitationWithUser[]> {
-    const membership = await this.repo.findUserMembership(orgId, userId);
-    const userEmail = await this.userRepo.findEmailById(userId);
-    const config = getConfig();
-    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
-
-    if (!isAdmin && !membership) {
+    if (!await this.isMemberOrAdmin(orgId, userId)) {
       throw new PermissionError('您不是该组织的成员');
     }
 
@@ -129,12 +112,7 @@ export class OrganizationService {
   }
 
   async cancelInvitation(orgId: number, invId: number, userId: number): Promise<void> {
-    const membership = await this.repo.findUserMembership(orgId, userId);
-    const userEmail = await this.userRepo.findEmailById(userId);
-    const config = getConfig();
-    const isAdmin = userEmail && config.adminEmails?.includes(userEmail);
-
-    if (!isAdmin && (!membership || membership.role !== 'owner')) {
+    if (!await this.isAdminOrOwner(orgId, userId)) {
       throw new PermissionError('只有组织 owner 可以取消邀请');
     }
 
@@ -142,9 +120,9 @@ export class OrganizationService {
   }
 
   async getMyInvitations(userId: number): Promise<OrganizationInvitationWithUser[]> {
-    const user = await this.userRepo.findById(userId);
-    if (!user) throw new NotFoundError('用户');
-    return this.repo.findPendingInvitationsForEmail(user.email);
+    const email = await this.permissionService.getUserEmail(userId);
+    if (!email) throw new NotFoundError('用户');
+    return this.repo.findPendingInvitationsForEmail(email);
   }
 
   async acceptInvitation(invId: number, userId: number): Promise<{ organizationId: number; organizationName: string }> {

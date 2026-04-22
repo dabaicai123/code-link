@@ -1,14 +1,10 @@
-import Docker from 'dockerode';
+import type Docker from 'dockerode';
+import { container } from 'tsyringe';
+import { DockerService } from './docker.service.js';
 import { PassThrough, Transform, TransformCallback } from 'stream';
 
-// Docker client singleton for exec operations
-let dockerInstance: Docker | null = null;
-
-function getDockerClient(): Docker {
-  if (!dockerInstance) {
-    dockerInstance = new Docker();
-  }
-  return dockerInstance;
+function getDockerClient() {
+  return container.resolve(DockerService).getClient();
 }
 
 export interface ExecSession {

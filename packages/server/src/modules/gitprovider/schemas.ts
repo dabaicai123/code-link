@@ -18,13 +18,7 @@ export const webhookCreateSchema = z.object({
   webhookUrl: z.string().url('webhookUrl 必须是有效的 URL'),
 });
 
-export const projectQuerySchema = z.object({
-  userId: z.string().regex(/^\d+$/, '用户ID必须是数字').transform(Number),
-  id: z.string().regex(/^\d+$/, '项目ID必须是数字').transform(Number).optional(),
-});
-
 export type Provider = z.infer<typeof providerEnum>;
 export type OAuthCallbackInput = z.infer<typeof oauthCallbackSchema>;
 export type RepoQueryInput = z.infer<typeof repoQuerySchema>;
 export type WebhookCreateInput = z.infer<typeof webhookCreateSchema>;
-export type ProjectQueryInput = z.infer<typeof projectQuerySchema>;

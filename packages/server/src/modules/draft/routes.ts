@@ -18,7 +18,6 @@ import { authMiddleware } from '../../middleware/auth.js';
 export function createDraftRoutes(controller: DraftController): Router {
   const router = Router();
 
-  // ==================== Draft CRUD ====================
 
   router.post(
     '/',
@@ -55,7 +54,6 @@ export function createDraftRoutes(controller: DraftController): Router {
     asyncHandler((req, res) => controller.delete(req, res))
   );
 
-  // ==================== Card Management ====================
 
   router.get(
     '/:draftId/cards',
@@ -64,7 +62,6 @@ export function createDraftRoutes(controller: DraftController): Router {
     asyncHandler((req, res) => controller.listCards(req, res))
   );
 
-  // ==================== Message Management ====================
 
   router.post(
     '/:draftId/messages',
@@ -82,7 +79,6 @@ export function createDraftRoutes(controller: DraftController): Router {
     asyncHandler((req, res) => controller.listMessages(req, res))
   );
 
-  // ==================== Confirmation Management ====================
 
   router.post(
     '/:draftId/messages/:messageId/confirm',
@@ -99,7 +95,6 @@ export function createDraftRoutes(controller: DraftController): Router {
     asyncHandler((req, res) => controller.listConfirmations(req, res))
   );
 
-  // ==================== Member Management ====================
 
   router.post(
     '/:draftId/members',

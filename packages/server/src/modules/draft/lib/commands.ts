@@ -1,4 +1,5 @@
-import { isAIEnabled, sendAIMessage, type AIMessage } from './client.js';
+import { isAIEnabled, sendAIMessage } from './client.js';
+import type { AIMessage } from '../../../core/interfaces/ai.interface.js';
 import { buildContextForDraft, type DraftContext } from './context.js';
 import { getSystemPrompt, getCommandPrompt } from './prompts.js';
 import { createLogger } from '../../../core/logger/index.js';
@@ -46,9 +47,7 @@ export interface FreeChatCommand {
   rawContent: string;
 }
 
-type LegacyCommandType = 'generate' | 'analyze' | 'suggest' | 'explain' | 'review' | 'refactor' | 'test';
-
-const COMMAND_PATTERNS: Record<LegacyCommandType, RegExp> = {
+const COMMAND_PATTERNS: Record<AICommandType, RegExp> = {
   generate: /@AI\s+generate\s+(.+)/i,
   analyze: /@AI\s+analyze\s+(.+)/i,
   suggest: /@AI\s+suggest\s+(.+)/i,

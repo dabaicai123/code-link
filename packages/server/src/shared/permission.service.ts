@@ -3,15 +3,10 @@ import { singleton, inject } from 'tsyringe';
 import { OrganizationRepository } from '../modules/organization/repository.js';
 import { AuthRepository } from '../modules/auth/repository.js';
 import { ProjectRepository } from '../modules/project/repository.js';
+import { ROLE_HIERARCHY } from '../utils/roles.js';
 import { PermissionError, NotFoundError } from '../core/errors/index.js';
 import { getConfig } from '../core/config.js';
 import type { SelectProject, OrgRole } from '../db/schema/index.js';
-
-const ROLE_HIERARCHY: Record<OrgRole, number> = {
-  owner: 3,
-  developer: 2,
-  member: 1,
-};
 
 @singleton()
 export class PermissionService {
@@ -21,10 +16,13 @@ export class PermissionService {
     @inject(ProjectRepository) private readonly projectRepo: ProjectRepository
   ) {}
 
+  async getUserEmail(userId: number): Promise<string | undefined> {
+    return this.userRepo.findEmailById(userId);
+  }
+
   async isSuperAdmin(userId: number): Promise<boolean> {
-    const config = getConfig();
-    const email = await this.userRepo.findEmailById(userId);
-    return email ? config.adminEmails?.includes(email) ?? false : false;
+    const email = await this.getUserEmail(userId);
+    return email ? getConfig().adminEmails?.includes(email) ?? false : false;
   }
 
   async checkOrgRole(userId: number, orgId: number, minRole: OrgRole): Promise<void> {

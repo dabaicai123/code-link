@@ -30,7 +30,6 @@ export class DraftRepository extends BaseRepository {
     super(db);
   }
 
-  // ==================== Draft Operations ====================
 
   async create(data: InsertDraft): Promise<SelectDraft> {
     return this.db.insert(drafts).values(data).returning().get();
@@ -89,7 +88,6 @@ export class DraftRepository extends BaseRepository {
     });
   }
 
-  // ==================== Member Operations ====================
 
   async findMember(draftId: number, userId: number): Promise<SelectDraftMember | undefined> {
     return this.db
@@ -134,7 +132,6 @@ export class DraftRepository extends BaseRepository {
       .run();
   }
 
-  // ==================== Message Operations ====================
 
   async createMessage(data: InsertDraftMessage): Promise<SelectDraftMessage> {
     return this.db.insert(draftMessages).values(data).returning().get();
@@ -175,7 +172,6 @@ export class DraftRepository extends BaseRepository {
       .all();
   }
 
-  // ==================== Confirmation Operations ====================
 
   async upsertConfirmation(data: InsertMessageConfirmation): Promise<SelectMessageConfirmation> {
     // SQLite doesn't support true upsert with ON CONFLICT DO UPDATE in Drizzle easily
@@ -223,7 +219,6 @@ export class DraftRepository extends BaseRepository {
       .all();
   }
 
-  // ==================== Draft Context ====================
 
   async findDraftContext(draftId: number): Promise<DraftContext | undefined> {
     const draft = this.db

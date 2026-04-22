@@ -59,17 +59,6 @@ export class AuthService {
     return this.sanitizeUser(user);
   }
 
-  async verifyToken(token: string): Promise<number> {
-    const config = getConfig();
-    const payload = jwt.verify(token, config.jwtSecret);
-
-    if (typeof payload !== 'object' || payload === null || typeof (payload as any).userId !== 'number') {
-      throw new AuthError('无效的令牌');
-    }
-
-    return (payload as any).userId;
-  }
-
   private generateToken(userId: number): string {
     const config = getConfig();
     return jwt.sign({ userId }, config.jwtSecret, { expiresIn: '7d' });

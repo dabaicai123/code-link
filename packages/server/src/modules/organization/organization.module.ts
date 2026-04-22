@@ -18,14 +18,12 @@ export {
   createOrganizationSchema,
   updateOrganizationSchema,
   inviteMemberSchema,
-  updateMemberRoleSchema,
   orgIdParamsSchema,
 } from './schemas.js';
 export type {
   CreateOrganizationInput,
   UpdateOrganizationInput,
   InviteMemberInput,
-  UpdateMemberRoleInput,
 } from './schemas.js';
 export type {
   OrganizationWithRole,
