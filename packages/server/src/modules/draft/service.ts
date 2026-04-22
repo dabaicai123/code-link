@@ -6,6 +6,7 @@ import { AuthRepository } from '../auth/repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { ParamError, NotFoundError, PermissionError } from '../../core/errors/index.js';
 import { parseAICommand, executeAICommand, isAICommand } from './lib/commands.js';
+import { listCards } from '../../ai/transcript.js';
 import type { AICommand, SuperpowersCommand, FreeChatCommand } from './lib/commands.js';
 import type { SelectDraft, InsertDraftMessage } from '../../db/schema/index.js';
 import type { CreateDraftInput, CreateDraftMessageInput, ConfirmMessageInput } from './schemas.js';
@@ -205,6 +206,19 @@ export class DraftService {
     }
 
     return this.draftRepo.findConfirmations(messageId);
+  }
+
+  // ==================== Card Management ====================
+
+  async findCards(draftId: number, userId: number): Promise<Array<import('../draft/file-types.js').CardData>> {
+    await this.checkDraftAccess(draftId, userId);
+
+    const draft = await this.draftRepo.findById(draftId);
+    if (!draft) {
+      throw new NotFoundError('草稿');
+    }
+
+    return listCards(draft.projectId, draftId);
   }
 
   // ==================== AI Command Handling ====================

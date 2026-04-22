@@ -55,6 +55,15 @@ export function createDraftRoutes(controller: DraftController): Router {
     asyncHandler((req, res) => controller.delete(req, res))
   );
 
+  // ==================== Card Management ====================
+
+  router.get(
+    '/:draftId/cards',
+    authMiddleware,
+    validateParams(draftIdParamsSchema),
+    asyncHandler((req, res) => controller.listCards(req, res))
+  );
+
   // ==================== Message Management ====================
 
   router.post(

@@ -13,6 +13,7 @@ import type { OrgRole } from '@/types/user';
 import type { Organization, OrganizationDetail, OrganizationMember } from '@/types/organization';
 import type { Repo } from '@/types/repo';
 import type { OrganizationInvitation } from '@/types/invitation';
+import type { Card } from '@/types/card';
 
 export { ApiError, setToken, removeToken };
 
@@ -150,6 +151,10 @@ export const api = {
     messageId: number
   ): Promise<{ confirmations: Array<{ userId: number; userName: string; type: string; comment: string | null }> }> =>
     apiClient(`/drafts/${draftId}/messages/${messageId}/confirmations`),
+
+  // Card 相关 API
+  getDraftCards: (draftId: number): Promise<{ cards: Card[] }> =>
+    apiClient<{ cards: Card[] }>(`/drafts/${draftId}/cards`, { method: 'GET' }),
 
   // Skills 相关 API
   getSkills: (): Promise<{ skills: Array<{ name: string; description: string }> }> =>

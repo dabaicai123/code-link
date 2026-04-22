@@ -36,6 +36,10 @@
   --color-status-warning: var(--status-warning);
   --color-status-info:    var(--status-info);
 
+  /* ─── Colors · Card type aliases ─────────────────────────── */
+  --color-brainstorming:  var(--accent-primary);
+  --color-plans:          var(--status-warning);
+
   /* ─── Colors · Shadcn HSL mapping ─────────────────────────── */
   --color-background:             hsl(var(--background));
   --color-foreground:             hsl(var(--foreground));
@@ -116,4 +120,28 @@ a:hover { color: var(--accent-hover); }
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.3; }
+}
+
+/* Timeline dot pulse animation */
+.pulse-dot {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Timeline vertical status line */
+.timeline-line {
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent-primary), var(--status-running));
+}
+
+/* Timeline card hover effect */
+.card-item {
+  transition: all 0.2s ease;
+}
+.card-item:hover {
+  box-shadow: 0 8px 32px rgba(45, 31, 20, 0.12);
+  transform: translateY(-1px);
 }

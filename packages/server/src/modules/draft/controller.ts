@@ -71,6 +71,14 @@ export class DraftController {
     res.json(success(confirmations));
   }
 
+  // ==================== Card Management ====================
+
+  async listCards(req: Request, res: Response): Promise<void> {
+    const draftId = Number(req.params.draftId);
+    const cards = await this.service.findCards(draftId, req.userId!);
+    res.json(success(cards));
+  }
+
   // ==================== Member Management ====================
 
   async addMember(req: Request, res: Response): Promise<void> {
