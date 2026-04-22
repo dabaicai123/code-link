@@ -3,9 +3,11 @@
 import { useState, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 import { CollaborationPanel } from '@/components/collaboration';
 import { DisplayPanel } from '@/components/collaboration/display-panel';
 import type { Project } from '@/types';
+import type { Draft } from '@/types/draft';
 
 type RightTab = 'collab' | 'preview';
 
@@ -18,11 +20,28 @@ export function RightPanel({ project, userId }: RightPanelProps) {
   const [activeTab, setActiveTab] = useState<RightTab>('collab');
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [newlyCreatedDraft, setNewlyCreatedDraft] = useState<Draft | null>(null);
 
   const handleToggleCreate = useCallback(() => {
     setShowCreate((prev) => !prev);
     if (showCreate) setNewTitle('');
   }, [showCreate]);
+
+  const handleCreate = async () => {
+    if (!newTitle.trim() || !project?.id) return;
+
+    try {
+      const result = await api.createDraft({
+        projectId: project.id,
+        title: newTitle.trim(),
+      });
+      setNewlyCreatedDraft(result.draft);
+      setShowCreate(false);
+      setNewTitle('');
+    } catch (err) {
+      console.error('Failed to create draft:', err);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col bg-bg-primary">
@@ -85,11 +104,7 @@ export function RightPanel({ project, userId }: RightPanelProps) {
                 autoFocus
               />
               <button
-                onClick={() => {
-                  // Placeholder — creation flow will be wired in Task 6
-                  setShowCreate(false);
-                  setNewTitle('');
-                }}
+                onClick={handleCreate}
                 className="h-8 px-3 rounded-lg bg-accent-primary text-white text-[13px] font-medium hover:bg-accent-hover transition-colors"
               >
                 创建
@@ -100,6 +115,7 @@ export function RightPanel({ project, userId }: RightPanelProps) {
           <CollaborationPanel
             projectId={project?.id}
             currentUserId={userId}
+            newlyCreatedDraft={newlyCreatedDraft}
           />
         </>
       ) : (

@@ -44,11 +44,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
     return (
       <div className="p-4 text-center text-destructive">
         {error}
-        <button
-          type="button"
-          onClick={loadDrafts}
-          className="mt-2 px-3 py-1.5 text-xs bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
-        >
+        <button onClick={loadDrafts} className="mt-2 text-[12px] text-accent-primary hover:underline">
           重试
         </button>
       </div>
@@ -65,7 +61,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
 
       <div className="flex-1 overflow-auto">
         {drafts.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground text-xs">
+          <div className="p-4 text-center text-text-muted text-xs">
             暂无协作，点击新建开始
           </div>
         ) : (

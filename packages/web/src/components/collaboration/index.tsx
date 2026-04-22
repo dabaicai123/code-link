@@ -7,23 +7,31 @@ import { CollaborationTimeline } from './collaboration-timeline';
 import { useDraftSocket } from '@/lib/socket/draft';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
 import type { DraftOnlineUser } from '@/lib/socket/types';
-
 type OnlineUser = DraftOnlineUser;
 
 interface CollaborationPanelProps {
   projectId?: number;
   currentUserId?: number;
   currentUserName?: string;
+  newlyCreatedDraft?: Draft | null;
 }
 
 export function CollaborationPanel({
   projectId,
   currentUserId,
   currentUserName,
+  newlyCreatedDraft,
 }: CollaborationPanelProps) {
   const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null);
   const [members, setMembers] = useState<DraftMember[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+
+  // Auto-select newly created draft
+  useEffect(() => {
+    if (newlyCreatedDraft) {
+      setSelectedDraft(newlyCreatedDraft);
+    }
+  }, [newlyCreatedDraft]);
 
   // WebSocket for online users
   const { onlineUsers: wsOnlineUsers } = useDraftSocket({
