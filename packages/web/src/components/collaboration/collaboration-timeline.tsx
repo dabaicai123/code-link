@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useDraftSocket } from '@/lib/socket/draft';
-import { MessageInput } from './message-input';
+import { MessageInput, MessageInputHandle } from './message-input';
 import { CardDetailModal } from './card/card-detail-modal';
 import { useCardContextMenu } from '@/hooks/use-card-context-menu';
 import { cn } from '@/lib/utils';
@@ -383,6 +383,7 @@ export function CollaborationTimeline({
   const [loading, setLoading] = useState(true);
   const [replyTo, setReplyTo] = useState<DraftMessage | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const messageInputRef = useRef<MessageInputHandle>(null);
   const { contextMenu, handleContextMenu, closeContextMenu } = useCardContextMenu();
   const timelineEndRef = useRef<HTMLDivElement>(null);
 
@@ -518,6 +519,14 @@ export function CollaborationTimeline({
       messageType,
       parentId,
     });
+  };
+
+  // Card reference handler — inserts @卡片{shortId} into message input
+  const handleReference = (card: Card) => {
+    const referenceText = `@卡片${card.shortId}`;
+    messageInputRef.current?.insertText(referenceText);
+    setSelectedCard(null);
+    closeContextMenu();
   };
 
   // Draft ID display format
@@ -670,6 +679,7 @@ export function CollaborationTimeline({
 
       {/* ====== Message input ====== */}
       <MessageInput
+        ref={messageInputRef}
         draftId={draft.id}
         replyTo={replyTo}
         onSend={handleSend}
@@ -679,10 +689,7 @@ export function CollaborationTimeline({
       <CardDetailModal
         card={selectedCard}
         onClose={() => setSelectedCard(null)}
-        onReference={(card) => {
-          console.log('Reference card:', card.shortId);
-          setSelectedCard(null);
-        }}
+        onReference={handleReference}
         onExecutePlan={(card) => { /* 后续接入 AI 执行流程 */ }}
         onStartCoding={(card) => { /* 后续接入 AI 执行流程 */ }}
         onResume={(card) => { /* 后续接入 AI 执行流程 */ }}
@@ -699,7 +706,7 @@ export function CollaborationTimeline({
             data-testid="card-reference-btn"
             className="w-full px-3 py-2 text-left text-[13px] hover:bg-bg-hover transition-colors"
             onClick={() => {
-              closeContextMenu();
+              handleReference(contextMenu.card);
             }}
           >
             引用此卡片
