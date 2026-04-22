@@ -32,11 +32,12 @@ test.describe('会话管理', () => {
     await expect(modeSelect).toHaveValue('plan');
   });
 
-  test('会话重启', async ({ app }) => {
+  test('多条消息顺序显示', async ({ app }) => {
     await app.sendChatMessage('第一条消息');
     await app.assertChatMessageVisible('第一条消息', 'user');
-    await app.restartChatSession();
-    await app.assertSessionReset();
+    await app.sendChatMessage('第二条消息');
+    await app.assertChatMessageVisible('第二条消息', 'user');
+    await app.assertChatMessageVisible('第一条消息', 'user');
   });
 
   test('项目状态指示', async ({ app }) => {

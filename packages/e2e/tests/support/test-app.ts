@@ -350,11 +350,12 @@ export class TestApp {
   async openSlashCommandMenu(): Promise<void> {
     const input = this.page.locator('[data-testid="chat-input"] textarea');
     await input.fill('/');
-    await expect(this.page.locator('.cmd-menu')).toBeVisible({ timeout: 5000 });
+    // Slash command menu has no data-testid; identify by command text
+    await expect(this.page.getByText('/clear').first()).toBeVisible({ timeout: 5000 });
   }
 
   async assertSlashCommandMenuVisible(): Promise<void> {
-    await expect(this.page.locator('.cmd-menu')).toBeVisible();
+    await expect(this.page.getByText('/clear').first()).toBeVisible();
   }
 
   async navigateSlashCommandMenu(index: number): Promise<void> {
@@ -366,7 +367,7 @@ export class TestApp {
 
   async selectSlashCommand(command: string): Promise<void> {
     await this.openSlashCommandMenu();
-    await this.page.locator('.cmd-item').filter({ hasText: command }).click();
+    await this.page.getByText(command).first().click();
   }
 
   // ============================================
@@ -374,7 +375,7 @@ export class TestApp {
   // ============================================
 
   async uploadImageAttachment(filePath: string): Promise<void> {
-    const attachBtn = this.page.getByRole('button', { name: /📎|attach|上传图片|Image/ });
+    const attachBtn = this.page.locator('button[title="添加图片"]');
     const fileChooserPromise = this.page.waitForEvent('filechooser');
     await attachBtn.click();
     const fileChooser = await fileChooserPromise;
@@ -383,11 +384,12 @@ export class TestApp {
 
   async removeImageAttachment(index: number): Promise<void> {
     const chip = this.page.locator(`[data-index="${index}"]`);
-    await chip.locator('span').filter({ hasText: '✕' }).click();
+    // The remove icon is an X SVG from lucide-react, click the last svg element
+    await chip.locator('svg').last().click();
   }
 
   async assertImagePreviewVisible(count: number): Promise<void> {
-    const previews = this.page.locator('.attachment-chip');
+    const previews = this.page.locator('[data-testid="attachment-tray"]').locator('[data-index]');
     await expect(previews).toHaveCount(count, { timeout: 5000 });
   }
 
@@ -436,10 +438,12 @@ export class TestApp {
   // ============================================
 
   async restartChatSession(): Promise<void> {
-    await this.page.getByRole('button', { name: /重启|Restart|重置/ }).click();
+    // The restart button uses text "重启" (conditional render, may not exist)
+    await this.page.getByRole('button', { name: '重启' }).click({ timeout: 5000 });
   }
 
   async assertSessionReset(): Promise<void> {
+    // After restart, the welcome message reappears
     await expect(this.page.getByText(/欢迎使用|开始对话|Welcome/i)).toBeVisible({ timeout: 5000 });
   }
 

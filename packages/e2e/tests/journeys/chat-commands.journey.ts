@@ -19,7 +19,7 @@ test.describe('斜杠命令和附件', () => {
   test('斜杠命令列表显示', async ({ app }) => {
     await app.openSlashCommandMenu();
     await expect(app.page.getByText('/clear')).toBeVisible();
-    await expect(app.page.getByText('/help')).toBeVisible();
+    await expect(app.page.getByText('/model')).toBeVisible();
   });
 
   test('键盘导航选择命令', async ({ app }) => {
@@ -30,7 +30,7 @@ test.describe('斜杠命令和附件', () => {
   test('关闭斜杠命令菜单', async ({ app }) => {
     await app.openSlashCommandMenu();
     await app.page.keyboard.press('Escape');
-    await expect(app.page.locator('.cmd-menu')).not.toBeVisible();
+    await expect(app.page.getByText('/clear').first()).not.toBeVisible();
   });
 
   test('图片上传预览', async ({ app }) => {
