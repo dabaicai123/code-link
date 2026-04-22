@@ -151,6 +151,10 @@ export class DockerService implements IDockerService {
     }
   }
 
+  getClient(): Docker {
+    return this.client;
+  }
+
   async cleanupTestContainers(): Promise<void> {
     if (process.env.NODE_ENV !== 'test') return;
 

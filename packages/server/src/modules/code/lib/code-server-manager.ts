@@ -8,6 +8,7 @@ const logger = createLogger('code-server-manager');
 interface CodeServerInfo {
   port: number;
   running: boolean;
+  containerIp: string;
 }
 
 @singleton()
@@ -44,8 +45,9 @@ export class CodeServerManager {
       // Wait for code-server to become ready (poll up to 15 seconds)
       await this.waitForReady(containerId);
 
-      this.codeServerInfo.set(projectId, { port, running: true });
-      logger.info('code-server started', { projectId, port });
+      const containerIp = await this.getContainerIp(containerId);
+      this.codeServerInfo.set(projectId, { port, running: true, containerIp });
+      logger.info('code-server started', { projectId, port, containerIp });
       return port;
     } catch (error) {
       // If startup fails, release the port
@@ -73,6 +75,10 @@ export class CodeServerManager {
     logger.info('code-server stopped', { projectId });
   }
 
+  getCodeServerInfo(projectId: number): CodeServerInfo | null {
+    return this.codeServerInfo.get(projectId) ?? null;
+  }
+
   getCodeServerUrl(projectId: number): string | null {
     const info = this.codeServerInfo.get(projectId);
     if (!info) return null;
@@ -87,6 +93,14 @@ export class CodeServerManager {
 
   isRunning(projectId: number): boolean {
     return this.codeServerInfo.get(projectId)?.running ?? false;
+  }
+
+  private async getContainerIp(containerId: string): Promise<string> {
+    const container = this.docker.getClient().getContainer(containerId);
+    const info = await container.inspect();
+    const networks = info.NetworkSettings.Networks;
+    const networkName = Object.keys(networks)[0];
+    return networks[networkName].IPAddress;
   }
 
   private async waitForReady(containerId: string): Promise<void> {

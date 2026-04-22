@@ -1,8 +1,11 @@
 import { Router } from 'express';
+import { container } from 'tsyringe';
 import { authMiddleware } from '../../middleware/auth.js';
 import { validateParams } from '../../middleware/validation.js';
 import { projectIdParamsSchema } from './schemas.js';
 import { CodeController } from './controller.js';
+import { CodeServerManager } from './lib/code-server-manager.js';
+import { createCodeServerProxy } from './proxy.js';
 import { asyncHandler } from '../../core/errors/index.js';
 
 export function createCodeRoutes(controller: CodeController): Router {
@@ -26,6 +29,14 @@ export function createCodeRoutes(controller: CodeController): Router {
     authMiddleware,
     validateParams(projectIdParamsSchema),
     asyncHandler((req, res) => controller.getCodeServerStatus(req, res)),
+  );
+
+  // Reverse proxy to code-server inside container (all HTTP)
+  router.use(
+    '/:projectId/code-server',
+    authMiddleware,
+    validateParams(projectIdParamsSchema),
+    createCodeServerProxy(container.resolve(CodeServerManager)),
   );
 
   return router;

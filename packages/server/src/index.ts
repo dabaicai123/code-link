@@ -28,6 +28,8 @@ import { createErrorHandler } from './core/errors/handler.js';
 
 // WebSocket
 import { createSocketServer } from './socket/index.js';
+import { handleCodeServerWebSocketUpgrade } from './modules/code/proxy.js';
+import { CodeServerManager } from './modules/code/code.module.js';
 
 // 其他初始化
 import { setEncryptionKey } from './crypto/aes.js';
@@ -156,6 +158,10 @@ export function startServer(port: number = 3001): void {
   // 初始化 Socket.IO 服务器
   createSocketServer(server);
 
+  // 初始化 code-server WebSocket 反向代理
+  const codeServerManager = container.resolve(CodeServerManager);
+  handleCodeServerWebSocketUpgrade(codeServerManager, server);
+
   server.listen(port, () => {
     logger.info(`Server running on http://localhost:${port}`);
     logger.info(`Socket.IO server ready on ws://localhost:${port}`);
@@ -192,6 +198,10 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
   // createApp(conn) registers the connection BEFORE module registration
   const app = createApp(conn);
   const server = createServer(app);
+
+  // 初始化 code-server WebSocket 反向代理
+  const codeServerManager = container.resolve(CodeServerManager);
+  handleCodeServerWebSocketUpgrade(codeServerManager, server);
 
   return new Promise((resolve, reject) => {
     server.listen(options?.port ?? 0, () => {
