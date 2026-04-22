@@ -5,12 +5,12 @@ import { api } from '@/lib/api';
 import { DraftList } from './draft-list';
 import { MessagePanel } from './message-panel';
 import { DraftHeader } from './draft-header';
-import { DisplayPanel, SelectedElement } from './display-panel';
+import { DisplayPanel } from './display-panel';
 import { useDraftSocket } from '@/lib/socket/draft';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
 import type { DraftOnlineUser } from '@/lib/socket/types';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Plus } from 'lucide-react';
 
 type OnlineUser = DraftOnlineUser;
 
@@ -18,7 +18,6 @@ interface CollaborationPanelProps {
   projectId?: number;
   currentUserId?: number;
   currentUserName?: string;
-  onAddElement?: (element: SelectedElement) => void;
 }
 
 type PanelType = 'display' | 'drafts';
@@ -28,7 +27,6 @@ export function CollaborationPanel({
   projectId,
   currentUserId,
   currentUserName,
-  onAddElement,
 }: CollaborationPanelProps) {
   const [activePanel, setActivePanel] = useState<PanelType>('display');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -96,49 +94,47 @@ export function CollaborationPanel({
   return (
     <div className="h-full flex flex-col bg-bg-primary">
       {/* 头部导航 */}
-      <div className="px-2 py-1.5 bg-bg-secondary border-b border-border-default flex items-center gap-2">
+      <div className="h-[44px] border-b border-border-default px-4 flex items-center gap-4">
         {viewMode === 'draft' ? (
           <>
             <Button variant="ghost" size="sm" onClick={handleBackToList}>
               ← 返回
             </Button>
-            <span className="text-sm font-medium">
+            <span className="text-sm font-medium text-text-primary">
               {selectedDraft?.title}
             </span>
           </>
         ) : (
           <>
-            <span className="text-sm font-medium">协作面板</span>
-            <div className="flex gap-1 ml-auto">
-              <Button
-                size="sm"
-                onClick={() => setActivePanel('display')}
-                className={cn(
-                  'text-xs h-6',
-                  activePanel === 'display' ? 'bg-primary text-white hover:bg-primary/90' : 'bg-hover text-muted-foreground hover:text-foreground'
-                )}
-              >
-                展示
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setActivePanel('drafts')}
-                className={cn(
-                  'text-xs h-6',
-                  activePanel === 'drafts' ? 'bg-primary text-white hover:bg-primary/90' : 'bg-hover text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Draft
-              </Button>
-              <Button size="sm" variant="ghost" className="text-xs h-6">+</Button>
-            </div>
+            <button
+              onClick={() => setActivePanel('display')}
+              className={activePanel === 'display'
+                ? 'text-[13px] font-semibold text-accent-primary pb-2 border-b-2 border-accent-primary'
+                : 'text-[13px] text-text-muted hover:text-text-secondary transition-colors pb-2'
+              }
+            >
+              展示
+            </button>
+            <button
+              onClick={() => setActivePanel('drafts')}
+              className={activePanel === 'drafts'
+                ? 'text-[13px] font-semibold text-accent-primary pb-2 border-b-2 border-accent-primary'
+                : 'text-[13px] text-text-muted hover:text-text-secondary transition-colors pb-2'
+              }
+            >
+              草稿
+            </button>
+            <button className="ml-auto text-[13px] text-text-muted hover:text-accent-primary transition-colors flex items-center gap-1">
+              <Plus className="w-3.5 h-3.5" />
+              新建
+            </button>
           </>
         )}
       </div>
 
       {/* 内容区域 */}
       {activePanel === 'display' && viewMode === 'list' ? (
-        <DisplayPanel onAddElement={onAddElement || (() => {})} />
+        <DisplayPanel />
       ) : viewMode === 'list' ? (
         <DraftList
           projectId={projectId}

@@ -58,7 +58,7 @@ export function Workspace({ project, userId, onRestart }: WorkspaceProps) {
           onChatReady={handleTerminalReady}
         />
       }
-      right={<CollaborationPanel onAddElement={handleAddElement} />}
+      right={<CollaborationPanel />}
       defaultLeftWidth={55}
       minLeftWidth={30}
       maxLeftWidth={80}
