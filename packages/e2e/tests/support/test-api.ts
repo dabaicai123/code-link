@@ -1,10 +1,25 @@
 // packages/e2e/tests/support/test-api.ts
-import type { TestUser, TestOrganization, TestOrganizationDetail, TestProject } from './types';
+import type { TestUser, TestOrganization, TestOrganizationDetail, TestProject, TestDraft, TestCard } from './types';
 
 interface ApiResponse<T> {
   code: number;
   data: T;
   error?: string;
+}
+
+interface DraftMessagesResponse {
+  messages: Array<{
+    id: number;
+    draftId: number;
+    parentId: number | null;
+    userId: number;
+    userName: string;
+    content: string;
+    messageType: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  total: number;
 }
 
 export class TestApi {
@@ -92,6 +107,28 @@ export class TestApi {
 
   async removeContainer(projectId: number): Promise<void> {
     await this.delete(`/projects/${projectId}/container`);
+  }
+
+  // === Draft Operations ===
+
+  async createDraft(params: { projectId: number; title: string }): Promise<TestDraft> {
+    const response = await this.post<ApiResponse<TestDraft>>('/drafts', params);
+    return response.data;
+  }
+
+  async getDraft(draftId: number): Promise<TestDraft> {
+    const response = await this.get<ApiResponse<TestDraft>>(`/drafts/${draftId}`);
+    return response.data;
+  }
+
+  async getDraftCards(draftId: number): Promise<TestCard[]> {
+    const response = await this.get<ApiResponse<{ cards: TestCard[] }>>(`/drafts/${draftId}/cards`);
+    return response.data.cards;
+  }
+
+  async getDraftMessages(draftId: number): Promise<DraftMessagesResponse> {
+    const response = await this.get<ApiResponse<DraftMessagesResponse>>(`/drafts/${draftId}/messages`);
+    return response.data;
   }
 
   // === Test Support ===
