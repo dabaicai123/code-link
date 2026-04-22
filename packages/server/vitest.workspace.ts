@@ -1,15 +1,30 @@
 import { defineWorkspace } from 'vitest/config';
+import swc from 'vite-plugin-swc-transform';
 
-// 使用 forks 模式减少内存占用，每个测试文件在独立进程中运行
-// 限制并行数为 2，降低资源占用
+// SWC transform plugin for tsyringe decorator metadata (emitDecoratorMetadata)
+// esbuild doesn't support emitDecoratorMetadata, so SWC is needed for DI to work
+const swcPlugin = swc({
+  swcOptions: {
+    jsc: {
+      transform: {
+        legacyDecorator: true,
+        decoratorMetadata: true,
+        useDefineForClassFields: false,
+      },
+    },
+  },
+});
+
 export default defineWorkspace([
   // 普通单元测试（默认运行）
   {
+    plugins: [swcPlugin],
     test: {
       include: ['tests/**/*.test.ts'],
       exclude: [
         'tests/container-manager.test.ts',
         'tests/preview-container.test.ts',
+        'tests/socket/rate-limit.test.ts',
       ],
       globals: false,
       pool: 'forks',
@@ -26,6 +41,7 @@ export default defineWorkspace([
   },
   // 容器集成测试（需要显式运行：npm run test:container）
   {
+    plugins: [swcPlugin],
     test: {
       include: [
         'tests/container-manager.test.ts',

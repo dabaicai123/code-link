@@ -1,8 +1,11 @@
 import "reflect-metadata";
-import { singleton, inject } from 'tsyringe';
+import { singleton, inject, delay } from 'tsyringe';
 import { OrganizationRepository } from './repository.js';
+import { AuthService } from '../auth/auth.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { ParamError, NotFoundError, PermissionError, ConflictError } from '../../core/errors/index.js';
+import type { PaginatedResult } from '../../core/database/pagination.js';
+import type { OrgRole } from '../../db/schema/index.js';
 import type { CreateOrganizationInput, UpdateOrganizationInput, InviteMemberInput } from './schemas.js';
 import type { OrganizationWithRole, OrganizationDetail, OrganizationInvitationWithUser } from './types.js';
 
@@ -10,17 +13,18 @@ import type { OrganizationWithRole, OrganizationDetail, OrganizationInvitationWi
 export class OrganizationService {
   constructor(
     @inject(OrganizationRepository) private readonly repo: OrganizationRepository,
-    @inject(PermissionService) private readonly permissionService: PermissionService
+    @inject(AuthService) private readonly authService: AuthService,
+    @inject(delay(() => PermissionService)) private readonly permService: PermissionService
   ) {}
 
   private async isAdminOrOwner(orgId: number, userId: number): Promise<boolean> {
-    if (await this.permissionService.isSuperAdmin(userId)) return true;
+    if (await this.permService.isSuperAdmin(userId)) return true;
     const membership = await this.repo.findUserMembership(orgId, userId);
     return membership?.role === 'owner';
   }
 
   private async isMemberOrAdmin(orgId: number, userId: number): Promise<boolean> {
-    if (await this.permissionService.isSuperAdmin(userId)) return true;
+    if (await this.permService.isSuperAdmin(userId)) return true;
     const membership = await this.repo.findUserMembership(orgId, userId);
     return !!membership;
   }
@@ -41,8 +45,8 @@ export class OrganizationService {
     };
   }
 
-  async findByUserId(userId: number): Promise<OrganizationWithRole[]> {
-    return this.repo.findByUserId(userId);
+  async findByUserId(userId: number, page?: number, limit?: number): Promise<PaginatedResult<OrganizationWithRole>> {
+    return this.repo.findByUserId(userId, page, limit);
   }
 
   async findById(orgId: number, userId: number): Promise<OrganizationDetail> {
@@ -56,7 +60,7 @@ export class OrganizationService {
     }
 
     const members = await this.repo.findMembers(orgId);
-    const isSuperAdmin = await this.permissionService.isSuperAdmin(userId);
+    const isSuperAdmin = await this.permService.isSuperAdmin(userId);
     const membership = await this.repo.findUserMembership(orgId, userId);
     const role = membership?.role ?? (isSuperAdmin ? 'owner' as const : 'member' as const);
     return {
@@ -120,9 +124,9 @@ export class OrganizationService {
   }
 
   async getMyInvitations(userId: number): Promise<OrganizationInvitationWithUser[]> {
-    const email = await this.permissionService.getUserEmail(userId);
-    if (!email) throw new NotFoundError('用户');
-    return this.repo.findPendingInvitationsForEmail(email);
+    const user = await this.authService.findById(userId);
+    if (!user) throw new NotFoundError('用户');
+    return this.repo.findPendingInvitationsForEmail(user.email);
   }
 
   async acceptInvitation(invId: number, userId: number): Promise<{ organizationId: number; organizationName: string }> {
@@ -142,5 +146,17 @@ export class OrganizationService {
     if (inv.status !== 'pending') throw new ConflictError('邀请已处理');
 
     await this.repo.declineInvitation(invId);
+  }
+
+  // ==================== Facade methods for cross-module access ====================
+
+  async getOrgRole(userId: number, orgId: number): Promise<OrgRole | null> {
+    const membership = await this.repo.findUserMembership(orgId, userId);
+    return membership?.role ?? null;
+  }
+
+  async isOrgOwner(userId: number, orgId: number): Promise<boolean> {
+    const membership = await this.repo.findUserMembership(orgId, userId);
+    return membership?.role === 'owner';
   }
 }

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 import { projects } from './projects.js';
@@ -14,7 +14,10 @@ export const drafts = sqliteTable('drafts', {
   createdBy: integer('created_by').notNull().references(() => users.id),
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
   updatedAt: text('updated_at').notNull().default(sql`datetime('now')`),
-});
+}, (table) => ({
+  projectIdIdx: index('idx_drafts_project_id').on(table.projectId),
+  statusIdx: index('idx_drafts_status').on(table.status),
+}));
 
 export const draftMembers = sqliteTable('draft_members', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -24,13 +27,17 @@ export const draftMembers = sqliteTable('draft_members', {
     .references(() => users.id, { onDelete: 'cascade' }),
   role: text('role', { enum: ['owner', 'participant'] }).notNull().default('participant'),
   joinedAt: text('joined_at').notNull().default(sql`datetime('now')`),
-});
+}, (table) => ({
+  draftUserUnique: unique().on(table.draftId, table.userId),
+  draftIdIdx: index('idx_draft_members_draft_id').on(table.draftId),
+  userIdIdx: index('idx_draft_members_user_id').on(table.userId),
+}));
 
 export const draftMessages = sqliteTable('draft_messages', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   draftId: integer('draft_id').notNull()
     .references(() => drafts.id, { onDelete: 'cascade' }),
-  parentId: integer('parent_id'),
+  parentId: integer('parent_id').references(() => draftMessages.id, { onDelete: 'cascade' }),
   userId: integer('user_id').notNull().references(() => users.id),
   content: text('content'),
   messageType: text('message_type', {
@@ -39,7 +46,10 @@ export const draftMessages = sqliteTable('draft_messages', {
   metadata: text('metadata'),
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
   updatedAt: text('updated_at').notNull().default(sql`datetime('now')`),
-});
+}, (table) => ({
+  draftIdIdx: index('idx_draft_messages_draft_id').on(table.draftId),
+  parentIdIdx: index('idx_draft_messages_parent_id').on(table.parentId),
+}));
 
 export const messageConfirmations = sqliteTable('message_confirmations', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -51,6 +61,7 @@ export const messageConfirmations = sqliteTable('message_confirmations', {
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
 }, (table) => ({
   messageUserUnique: unique().on(table.messageId, table.userId),
+  messageIdIdx: index('idx_message_confirmations_message_id').on(table.messageId),
 }));
 
 export type InsertDraft = typeof drafts.$inferInsert;

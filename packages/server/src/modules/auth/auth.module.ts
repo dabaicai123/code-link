@@ -10,7 +10,6 @@ export function registerAuthModule(): void {
   container.registerSingleton(AuthController);
 }
 
-export { AuthRepository } from './repository.js';
 export { AuthService } from './service.js';
 export { AuthController } from './controller.js';
 export { createAuthRoutes } from './routes.js';

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 
@@ -20,6 +20,8 @@ export const organizationMembers = sqliteTable('organization_members', {
   joinedAt: text('joined_at').notNull().default(sql`datetime('now')`),
 }, (table) => ({
   orgUserUnique: unique().on(table.organizationId, table.userId),
+  organizationIdIdx: index('idx_org_members_org_id').on(table.organizationId),
+  userIdIdx: index('idx_org_members_user_id').on(table.userId),
 }));
 
 export const organizationInvitations = sqliteTable('organization_invitations', {
@@ -32,7 +34,12 @@ export const organizationInvitations = sqliteTable('organization_invitations', {
   status: text('status', { enum: ['pending', 'accepted', 'declined'] })
     .notNull().default('pending'),
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
-});
+}, (table) => ({
+  orgEmailUnique: unique().on(table.organizationId, table.email),
+  organizationIdIdx: index('idx_org_invitations_org_id').on(table.organizationId),
+  emailIdx: index('idx_org_invitations_email').on(table.email),
+  statusIdx: index('idx_org_invitations_status').on(table.status),
+}));
 
 export type OrgRole = 'owner' | 'developer' | 'member';
 export type InvitationStatus = 'pending' | 'accepted' | 'declined';

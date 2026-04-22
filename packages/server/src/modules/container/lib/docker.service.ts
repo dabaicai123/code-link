@@ -1,11 +1,14 @@
 import { singleton } from 'tsyringe';
 import Docker from 'dockerode';
+import type { DockerOptions } from 'dockerode';
 import { createLogger } from '../../../core/logger/index.js';
+import { getConfig } from '../../../core/config.js';
 import { ensureTemplateImage, getTemplateConfig, TemplateType } from './templates.js';
 import type { IDockerService } from '../../../core/interfaces/index.js';
 
 const logger = createLogger('docker-service');
-const CONTAINER_NAME_PREFIX = 'code-link-project-';
+const CONTAINER_NAME_PREFIX = process.env.NODE_ENV === 'test' ? 'test_code-link-project-' : 'code-link-project-';
+const VOLUME_NAME_PREFIX = process.env.NODE_ENV === 'test' ? 'test_code-link-project-' : 'code-link-project-';
 
 export interface ExecResult {
   stdout: string;
@@ -18,7 +21,13 @@ export class DockerService implements IDockerService {
   private client: Docker;
 
   constructor() {
-    this.client = new Docker();
+    const config = getConfig();
+    const dockerOptions: DockerOptions = {};
+    if (config.dockerHost) {
+      dockerOptions.host = config.dockerHost;
+      if (config.dockerPort) dockerOptions.port = config.dockerPort;
+    }
+    this.client = new Docker(dockerOptions);
   }
 
   getClient(): Docker {
@@ -35,12 +44,11 @@ export class DockerService implements IDockerService {
 
     const containerName = `${CONTAINER_NAME_PREFIX}${projectId}`;
 
-    // 检查是否已存在同名容器
     try {
       const existing = await this.client.getContainer(containerName).inspect();
       return existing.Id;
     } catch {
-      // 不存在，继续创建
+      // Container doesn't exist yet, proceed to create
     }
 
     const container = await this.client.createContainer({
@@ -60,6 +68,8 @@ export class DockerService implements IDockerService {
 
   async startContainer(containerId: string): Promise<void> {
     const container = this.client.getContainer(containerId);
+    const info = await container.inspect();
+    if (info.State.Status === 'running') return;
     await container.start();
   }
 
@@ -139,7 +149,7 @@ export class DockerService implements IDockerService {
   }
 
   async volumeExists(projectId: number): Promise<boolean> {
-    const volumeName = `code-link-project-${projectId}`;
+    const volumeName = `${VOLUME_NAME_PREFIX}${projectId}`;
     try {
       await this.client.getVolume(volumeName).inspect();
       return true;
@@ -149,7 +159,7 @@ export class DockerService implements IDockerService {
   }
 
   async createProjectVolume(projectId: number): Promise<string> {
-    const volumeName = `code-link-project-${projectId}`;
+    const volumeName = `${VOLUME_NAME_PREFIX}${projectId}`;
     const volume = await this.client.createVolume({
       Name: volumeName,
     });
@@ -157,11 +167,38 @@ export class DockerService implements IDockerService {
   }
 
   async removeProjectVolume(projectId: number): Promise<void> {
-    const volumeName = `code-link-project-${projectId}`;
+    const volumeName = `${VOLUME_NAME_PREFIX}${projectId}`;
     try {
       await this.client.getVolume(volumeName).remove();
     } catch {
       // Volume may not exist
+    }
+  }
+
+  getClient(): Docker {
+    return this.client;
+  }
+
+  async cleanupTestContainers(): Promise<void> {
+    if (process.env.NODE_ENV !== 'test') return;
+
+    const containers = await this.client.listContainers({ all: true });
+    for (const c of containers) {
+      const isTest = c.Names.some((n) => n.startsWith('/test_'));
+      if (isTest) {
+        const container = this.client.getContainer(c.Id);
+        if (c.State === 'running') {
+          await container.stop({ t: 5 }).catch(() => {});
+        }
+        await container.remove({ force: true }).catch(() => {});
+      }
+    }
+
+    const volumes = await this.client.listVolumes();
+    for (const v of volumes.Volumes || []) {
+      if (v.Name.startsWith('test_')) {
+        await this.client.getVolume(v.Name).remove({ force: true }).catch(() => {});
+      }
     }
   }
 }

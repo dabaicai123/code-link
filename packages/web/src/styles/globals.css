@@ -1,6 +1,7 @@
 /* packages/web/src/styles/globals.css */
 
 @import "./tokens.css";
+@import "./code-tokens.css";
 @import "tailwindcss";
 
 /* ======================================================================
@@ -91,6 +92,18 @@
   /* ─── Typography ──────────────────────────────────────────── */
   --font-sans: var(--ff-sans);
   --font-mono: var(--ff-mono);
+
+  /* ─── Code Tab · Toolbar overlay ─────────────────────────────── */
+  --color-code-bg-base:       var(--code-bg-base);
+  --color-code-bg-surface:    var(--code-bg-surface);
+  --color-code-bg-hover:      var(--code-bg-hover);
+  --color-code-bg-active:     var(--code-bg-active);
+  --color-code-accent:        var(--code-accent);
+  --color-code-accent-hover:  var(--code-accent-hover);
+  --color-code-text-primary:  var(--code-text-primary);
+  --color-code-text-secondary: var(--code-text-secondary);
+  --color-code-text-muted:    var(--code-text-muted);
+  --color-code-border:        var(--code-border);
 }
 
 /* ======================================================================

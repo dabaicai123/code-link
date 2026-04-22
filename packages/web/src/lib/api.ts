@@ -14,6 +14,7 @@ import type { Organization, OrganizationDetail, OrganizationMember } from '@/typ
 import type { Repo } from '@/types/repo';
 import type { OrganizationInvitation } from '@/types/invitation';
 import type { Card } from '@/types/card';
+import type { CodeServerStatus } from '@/types/code';
 
 export { ApiError, setToken, removeToken };
 
@@ -159,4 +160,17 @@ export const api = {
   // Skills 相关 API
   getSkills: (): Promise<{ skills: Array<{ name: string; description: string }> }> =>
     apiClient<{ skills: Array<{ name: string; description: string }> }>('/skills'),
+
+  // ─── Code-server lifecycle ─────────────────────────────────
+  startCodeServer(projectId: number): Promise<{ url: string }> {
+    return apiClientMethods.post(`/projects/${projectId}/code-server/start`, {});
+  },
+
+  stopCodeServer(projectId: number): Promise<{ success: boolean }> {
+    return apiClientMethods.post(`/projects/${projectId}/code-server/stop`, {});
+  },
+
+  getCodeServerStatus(projectId: number): Promise<CodeServerStatus> {
+    return apiClientMethods.get(`/projects/${projectId}/code-server/status`);
+  },
 };

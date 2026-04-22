@@ -5,4 +5,4 @@ export interface AuthResult {
   user: Omit<SelectUser, 'passwordHash'>;
 }
 
-export interface UserWithoutPassword extends Omit<SelectUser, 'passwordHash'> {}
+export type UserWithoutPassword = Omit<SelectUser, 'passwordHash'>;

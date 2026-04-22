@@ -10,7 +10,6 @@ export function registerClaudeConfigModule(): void {
   container.registerSingleton(ClaudeConfigController);
 }
 
-export { ClaudeConfigRepository } from './repository.js';
 export { ClaudeConfigService } from './service.js';
 export { ClaudeConfigController } from './controller.js';
 export { createClaudeConfigRoutes } from './routes.js';

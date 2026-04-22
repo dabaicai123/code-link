@@ -6,18 +6,14 @@ import { DraftRepository } from '../../../src/modules/draft/repository.js';
 import { ProjectRepository } from '../../../src/modules/project/repository.js';
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
 import { OrganizationRepository } from '../../../src/modules/organization/repository.js';
-import { PermissionService } from '../../../src/shared/permission.service.js';
-import { DatabaseConnection } from '../../../src/core/database/connection.js';
+import { DatabaseConnection } from '../../../src/core/database/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { initSchema } from '../../../src/db/init.js';
+import { registerServiceModules } from '../../helpers/service-modules.js';
+import { createSqliteDb, runMigrations } from '../../../src/db/index.js';
 import { organizationMembers } from '../../../src/db/schema/index.js';
-import path from 'path';
-import fs from 'fs';
 
-const TEST_DB_PATH = path.join(process.cwd(), 'test-draft-service.db');
-
-// Mock AI functions
-vi.mock('../../../src/ai/commands.js', () => ({
+// Mock AI command functions from the draft module
+vi.mock('../../../src/modules/draft/lib/commands.js', () => ({
   parseAICommand: vi.fn((content: string) => {
     if (content.startsWith('@AI generate')) {
       return { type: 'generate', target: 'test target', rawContent: content };
@@ -46,19 +42,16 @@ describe('DraftService', () => {
   beforeEach(async () => {
     container.reset();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
     process.env.ADMIN_EMAIL = 'admin@test.com';
+    process.env.SUPER_ADMIN_EMAILS = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    initSchema(db.getSqlite());
+    const sqlite = createSqliteDb(':memory:');
+    runMigrations(sqlite);
+    db = DatabaseConnection.fromSqlite(sqlite);
     container.registerInstance(DatabaseConnection, db);
-    container.registerSingleton(AuthRepository);
-    container.registerSingleton(OrganizationRepository);
-    container.registerSingleton(ProjectRepository);
-    container.registerSingleton(DraftRepository);
-    container.registerSingleton(PermissionService);
-    container.registerSingleton(DraftService);
+
+    registerServiceModules();
 
     service = container.resolve(DraftService);
     authRepo = container.resolve(AuthRepository);
@@ -87,9 +80,6 @@ describe('DraftService', () => {
   afterEach(() => {
     db.close();
     container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
   });
 
   // ==================== Draft CRUD Tests ====================
@@ -199,7 +189,7 @@ describe('DraftService', () => {
 
       const result = await service.findByUserId(userId);
 
-      expect(result.length).toBe(2);
+      expect(result.data.length).toBe(2);
     });
 
     it('should return drafts where user is participant', async () => {
@@ -218,15 +208,15 @@ describe('DraftService', () => {
       await draftRepo.addMember(draft.id, participant.id);
 
       const result = await service.findByUserId(participant.id);
-      expect(result.length).toBe(1);
-      expect(result[0].title).toBe('Test Draft');
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].title).toBe('Test Draft');
     });
 
-    it('should return empty array for user with no drafts', async () => {
+    it('should return empty result for user with no drafts', async () => {
       const outsider = await authRepo.create({ name: 'Outsider', email: 'outsider@test.com', passwordHash: 'hash' });
 
       const result = await service.findByUserId(outsider.id);
-      expect(result).toEqual([]);
+      expect(result.data).toEqual([]);
     });
   });
 
@@ -407,7 +397,7 @@ describe('DraftService', () => {
 
       const result = await service.findMessages(draft.id, userId);
 
-      expect(result.length).toBe(2);
+      expect(result.data.length).toBe(2);
     });
 
     it('should throw PermissionError for non-member', async () => {

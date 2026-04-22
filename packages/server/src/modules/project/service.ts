@@ -1,9 +1,11 @@
 import "reflect-metadata";
-import { singleton, inject } from 'tsyringe';
+import { singleton, inject, delay } from 'tsyringe';
 import { ProjectRepository } from './repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { ParamError } from '../../core/errors/index.js';
 import type { SelectProject, SelectProjectRepo } from '../../db/schema/index.js';
+import type { PaginatedResult } from '../../core/database/pagination.js';
+import { isValidTemplate } from '../container/lib/templates.js';
 import type { CreateProjectInput, AddRepoInput } from './schemas.js';
 import type { ProjectDetail, ParsedRepoUrl } from './types.js';
 
@@ -11,7 +13,7 @@ import type { ProjectDetail, ParsedRepoUrl } from './types.js';
 export class ProjectService {
   constructor(
     @inject(ProjectRepository) private readonly repo: ProjectRepository,
-    @inject(PermissionService) private readonly permService: PermissionService
+    @inject(delay(() => PermissionService)) private readonly permService: PermissionService
   ) {}
 
   async create(userId: number, input: CreateProjectInput): Promise<SelectProject> {
@@ -20,8 +22,7 @@ export class ProjectService {
       throw new ParamError('项目名称必须是 1-100 字符');
     }
 
-    const validTemplateTypes = ['node', 'node+java', 'node+python'];
-    if (!validTemplateTypes.includes(input.templateType)) {
+    if (!isValidTemplate(input.templateType)) {
       throw new ParamError('无效的模板类型，必须是 node, node+java 或 node+python');
     }
 
@@ -35,8 +36,8 @@ export class ProjectService {
     });
   }
 
-  async findByUserId(userId: number, organizationId?: number): Promise<SelectProject[]> {
-    return this.repo.findByUserId(userId, organizationId);
+  async findByUserId(userId: number, organizationId?: number, page?: number, limit?: number): Promise<PaginatedResult<SelectProject>> {
+    return this.repo.findByUserId(userId, organizationId, page, limit);
   }
 
   async findById(userId: number, projectId: number): Promise<ProjectDetail> {
@@ -125,5 +126,18 @@ export class ProjectService {
     }
 
     await this.repo.deleteRepo(repoId);
+  }
+
+  async getProjectById(projectId: number): Promise<SelectProject | null> {
+    const project = await this.repo.findById(projectId);
+    return project ?? null;
+  }
+
+  async updateStatus(projectId: number, status: 'created' | 'running' | 'stopped'): Promise<SelectProject> {
+    return this.repo.updateStatus(projectId, status);
+  }
+
+  async updateContainerId(projectId: number, containerId: string | null): Promise<SelectProject> {
+    return this.repo.updateContainerId(projectId, containerId);
   }
 }

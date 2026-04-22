@@ -23,5 +23,8 @@
       "Grep"
     ],
     "deny": []
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
   }
 }

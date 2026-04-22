@@ -1,40 +1,89 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { loadConfig } from '../../src/core/config.js';
+import { loadConfig, resetConfig } from '../../src/core/config.js';
 
 describe('Config', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
+    resetConfig();
     process.env = { ...originalEnv };
   });
 
   afterEach(() => {
+    resetConfig();
     process.env = originalEnv;
   });
 
-  it('should load config with defaults', () => {
-    process.env.JWT_SECRET = 'a'.repeat(32);
-    const config = loadConfig();
-    expect(config.port).toBe(4000);
-    expect(config.dbPath).toBe('data/code-link.db');
-    expect(config.corsOrigin).toBe('http://localhost:3000');
-    expect(config.logLevel).toBe('info');
+  describe('loadConfig', () => {
+    it('should load config with defaults', () => {
+      process.env.JWT_SECRET = 'a'.repeat(32);
+      const config = loadConfig();
+      expect(config.port).toBe(4000);
+      expect(config.dbPath).toBe('data/code-link.db');
+      expect(config.corsOrigin).toBe('http://localhost:3000');
+      expect(config.logLevel).toBe('info');
+    });
+
+    it('should use environment variables when set', () => {
+      process.env.PORT = '5000';
+      process.env.JWT_SECRET = 'a'.repeat(32);
+      process.env.DB_PATH = '/custom/path.db';
+      process.env.LOG_LEVEL = 'debug';
+
+      const config = loadConfig();
+      expect(config.port).toBe(5000);
+      expect(config.dbPath).toBe('/custom/path.db');
+      expect(config.logLevel).toBe('debug');
+    });
   });
 
-  it('should throw if JWT_SECRET is too short', () => {
-    process.env.JWT_SECRET = 'short';
-    expect(() => loadConfig()).toThrow();
+  describe('JWT_SECRET validation', () => {
+    it('should throw when JWT_SECRET is not set', () => {
+      process.env.NODE_ENV = 'development';
+      delete process.env.JWT_SECRET;
+      expect(() => loadConfig()).toThrow('JWT_SECRET must be set and at least 32 characters');
+    });
+
+    it('should use default secret in test mode', () => {
+      process.env.NODE_ENV = 'test';
+      delete process.env.JWT_SECRET;
+      const config = loadConfig();
+      expect(config.jwtSecret).toBeTruthy();
+    });
+
+    it('should throw when JWT_SECRET is too short', () => {
+      process.env.NODE_ENV = 'development';
+      process.env.JWT_SECRET = 'short';
+      expect(() => loadConfig()).toThrow();
+    });
+
+    it('should throw when JWT_SECRET is less than 32 chars', () => {
+      process.env.NODE_ENV = 'development';
+      process.env.JWT_SECRET = 'short-key';
+      expect(() => loadConfig()).toThrow('JWT_SECRET must be at least 32 characters');
+    });
+
+    it('should accept JWT_SECRET of 32+ chars', () => {
+      process.env.JWT_SECRET = 'this-is-a-valid-secret-key-32-characters!';
+      const config = loadConfig();
+      expect(config.jwtSecret).toBe('this-is-a-valid-secret-key-32-characters!');
+    });
   });
 
-  it('should use environment variables when set', () => {
-    process.env.PORT = '5000';
-    process.env.JWT_SECRET = 'a'.repeat(32);
-    process.env.DB_PATH = '/custom/path.db';
-    process.env.LOG_LEVEL = 'debug';
+  describe('ADMIN_PASSWORD validation', () => {
+    it('should throw when ADMIN_PASSWORD is not set in production', () => {
+      process.env.NODE_ENV = 'production';
+      delete process.env.ADMIN_PASSWORD;
+      process.env.JWT_SECRET = 'valid-secret-key-32-characters-minimum';
+      expect(() => loadConfig()).toThrow('ADMIN_PASSWORD is required in production');
+    });
 
-    const config = loadConfig();
-    expect(config.port).toBe(5000);
-    expect(config.dbPath).toBe('/custom/path.db');
-    expect(config.logLevel).toBe('debug');
+    it('should allow empty ADMIN_PASSWORD in development', () => {
+      process.env.NODE_ENV = 'development';
+      delete process.env.ADMIN_PASSWORD;
+      process.env.JWT_SECRET = 'valid-secret-key-32-characters-minimum';
+      const config = loadConfig();
+      expect(config.adminPassword).toBeUndefined();
+    });
   });
 });

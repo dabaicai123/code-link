@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useImperativeHandle } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,14 +19,19 @@ const messageSchema = z.object({
 
 type MessageInput = z.infer<typeof messageSchema>;
 
+export interface MessageInputHandle {
+  insertText: (text: string) => void;
+}
+
 interface MessageInputProps {
   draftId: number;
   replyTo?: DraftMessage | null;
   onSend: (content: string, messageType: MessageType, parentId?: number) => Promise<void>;
   onCancelReply?: () => void;
+  ref?: React.Ref<MessageInputHandle>;
 }
 
-export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: MessageInputProps) {
+export function MessageInput({ draftId, replyTo, onSend, onCancelReply, ref }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messageTypeRef = useRef<MessageType>('text');
 
@@ -36,6 +41,15 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
       content: '',
     },
   });
+
+  useImperativeHandle(ref, () => ({
+    insertText: (text: string) => {
+      const currentContent = form.getValues('content');
+      const newContent = currentContent ? `${currentContent} ${text}` : text;
+      form.setValue('content', newContent);
+      textareaRef.current?.focus();
+    },
+  }), [form]);
 
   useEffect(() => {
     if (replyTo && textareaRef.current) {
@@ -108,6 +122,7 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply }: Messag
                     <textarea
                       {...field}
                       ref={textareaRef}
+                      data-testid="collab-message-input"
                       onKeyDown={handleKeyDown}
                       placeholder={
                         messageType === 'code' ? '输入代码...' :

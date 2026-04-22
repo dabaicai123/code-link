@@ -42,6 +42,31 @@ export interface TestInvitation {
   status: string;
 }
 
+export interface TestDraft {
+  id: number;
+  projectId: number;
+  title: string;
+  status: string;
+  createdBy: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TestCard {
+  id: string;
+  shortId: string;
+  cardType: string;
+  cardStatus: string;
+  title: string;
+  summary: string;
+  result: string;
+  parentCardId: string | null;
+  createdBy: number;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Forward declarations for circular dependencies
 export type TestApp = import('./test-app').TestApp;
 export type TestApi = import('./test-api').TestApi;

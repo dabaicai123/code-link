@@ -1,10 +1,11 @@
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { builds } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
 import { DatabaseConnection } from '../../db/connection.js';
 import { PAGINATION_LIMITS } from '../../core/database/constants.js';
+import { computeOffset, computeTotalPages, type PaginatedResult } from '../../core/database/pagination.js';
 import type { InsertBuild, SelectBuild } from '../../db/schema/index.js';
 
 @singleton()
@@ -29,16 +30,38 @@ export class BuildRepository extends BaseRepository {
       .get();
   }
 
-  async findByProjectId(projectId: number, limit?: number): Promise<SelectBuild[]> {
-    // When no limit specified, use max; otherwise cap provided limit at max
+  async findByProjectId(projectId: number, page?: number, limit?: number): Promise<PaginatedResult<SelectBuild>> {
     const effectiveLimit = limit !== undefined
       ? Math.min(limit, PAGINATION_LIMITS.builds.max)
-      : PAGINATION_LIMITS.builds.max;
-    return this.db.select()
+      : PAGINATION_LIMITS.builds.default;
+    const effectivePage = page ?? 1;
+    const offset = computeOffset(effectivePage, effectiveLimit);
+
+    // Total count
+    const countResult = this.db.select({ count: sql<number>`count(*)` })
+      .from(builds)
+      .where(eq(builds.projectId, projectId))
+      .get();
+    const total = countResult?.count ?? 0;
+
+    // Paginated data
+    const data = this.db.select()
       .from(builds)
       .where(eq(builds.projectId, projectId))
       .orderBy(desc(builds.createdAt))
-      .limit(effectiveLimit);
+      .limit(effectiveLimit)
+      .offset(offset)
+      .all();
+
+    return {
+      data,
+      meta: {
+        page: effectivePage,
+        limit: effectiveLimit,
+        total,
+        totalPages: computeTotalPages(total, effectiveLimit),
+      },
+    };
   }
 
   async findLatestByProjectId(projectId: number): Promise<SelectBuild | undefined> {

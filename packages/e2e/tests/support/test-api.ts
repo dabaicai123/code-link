@@ -1,10 +1,25 @@
 // packages/e2e/tests/support/test-api.ts
-import type { TestUser, TestOrganization, TestOrganizationDetail, TestProject } from './types';
+import type { TestUser, TestOrganization, TestOrganizationDetail, TestProject, TestDraft, TestCard } from './types';
 
 interface ApiResponse<T> {
   code: number;
   data: T;
   error?: string;
+}
+
+interface DraftMessagesResponse {
+  messages: Array<{
+    id: number;
+    draftId: number;
+    parentId: number | null;
+    userId: number;
+    userName: string;
+    content: string;
+    messageType: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  total: number;
 }
 
 export class TestApi {
@@ -73,6 +88,55 @@ export class TestApi {
     await this.delete(`/projects/${projectId}`);
   }
 
+  // === Container Operations ===
+
+  async startContainer(projectId: number): Promise<{ containerId: string; status: string }> {
+    const response = await this.post<ApiResponse<{ containerId: string; status: string }>>(`/projects/${projectId}/container/start`);
+    return response.data;
+  }
+
+  async stopContainer(projectId: number): Promise<{ containerId: string; status: string }> {
+    const response = await this.post<ApiResponse<{ containerId: string; status: string }>>(`/projects/${projectId}/container/stop`);
+    return response.data;
+  }
+
+  async getContainerStatus(projectId: number): Promise<{ containerId: string; status: string }> {
+    const response = await this.get<ApiResponse<{ containerId: string; status: string }>>(`/projects/${projectId}/container`);
+    return response.data;
+  }
+
+  async removeContainer(projectId: number): Promise<void> {
+    await this.delete(`/projects/${projectId}/container`);
+  }
+
+  // === Draft Operations ===
+
+  async createDraft(params: { projectId: number; title: string }): Promise<TestDraft> {
+    const response = await this.post<ApiResponse<TestDraft>>('/drafts', params);
+    return response.data;
+  }
+
+  async getDraft(draftId: number): Promise<{ draft: TestDraft; members: TestUser[] }> {
+    const response = await this.get<ApiResponse<{ draft: TestDraft; members: TestUser[] }>>(`/drafts/${draftId}`);
+    return response.data;
+  }
+
+  async getDraftCards(draftId: number): Promise<TestCard[]> {
+    const response = await this.get<ApiResponse<TestCard[]>>(`/drafts/${draftId}/cards`);
+    return response.data;
+  }
+
+  async getDraftMessages(draftId: number): Promise<DraftMessagesResponse> {
+    const response = await this.get<ApiResponse<DraftMessagesResponse>>(`/drafts/${draftId}/messages`);
+    return response.data;
+  }
+
+  // === Test Support ===
+
+  async resetDatabase(): Promise<void> {
+    await this.postRaw('/test/reset');
+  }
+
   // === Low-level HTTP Methods ===
 
   private async get<T>(path: string): Promise<T> {
@@ -104,6 +168,17 @@ export class TestApi {
       body: JSON.stringify(body),
     });
     return this.handleResponse<T>(response);
+  }
+
+  private async postRaw(path: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api${path}`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`POST ${path} failed: ${response.status} ${text}`);
+    }
   }
 
   private getHeaders(): Record<string, string> {

@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { RightPanel } from './right-panel';
 import { ResizableSplit } from './resizable-split';
-import { SelectedElement } from '@/components/collaboration/display-panel';
+import { SelectedElement } from '@/types/claude-message';
 import { Loading } from '@/components/ui/loading';
 import type { Project } from '@/types';
 
@@ -58,7 +58,7 @@ export function Workspace({ project, userId, onRestart }: WorkspaceProps) {
           onChatReady={handleTerminalReady}
         />
       }
-      right={<RightPanel project={project} userId={userId} />}
+      right={<RightPanel project={project} userId={userId} onAddElement={handleAddElement} />}
       defaultLeftWidth={55}
       minLeftWidth={30}
       maxLeftWidth={80}

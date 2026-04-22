@@ -20,18 +20,12 @@ export class ClaudeConfigRepository extends BaseRepository {
   }
 
   async upsert(userId: number, config: string): Promise<SelectUserClaudeConfig> {
-    const existing = await this.findByUserId(userId);
-
-    if (existing) {
-      return this.db.update(userClaudeConfigs)
-        .set({ config, updatedAt: sql`datetime('now')` })
-        .where(eq(userClaudeConfigs.userId, userId))
-        .returning()
-        .get();
-    }
-
     return this.db.insert(userClaudeConfigs)
       .values({ userId, config })
+      .onConflictDoUpdate({
+        target: userClaudeConfigs.userId,
+        set: { config, updatedAt: sql`datetime('now')` },
+      })
       .returning()
       .get();
   }
@@ -43,7 +37,11 @@ export class ClaudeConfigRepository extends BaseRepository {
   }
 
   async hasConfig(userId: number): Promise<boolean> {
-    const config = await this.findByUserId(userId);
-    return config !== undefined;
+    const result = await this.db.select({ exists: sql`1` })
+      .from(userClaudeConfigs)
+      .where(eq(userClaudeConfigs.userId, userId))
+      .limit(1)
+      .get();
+    return result !== undefined;
   }
 }

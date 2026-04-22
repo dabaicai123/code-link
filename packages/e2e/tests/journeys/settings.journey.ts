@@ -9,7 +9,7 @@ test.describe('配置管理旅程', () => {
 
     // 进入设置页 — 默认显示账户页
     await app.page.goto('/settings');
-    await expect(app.page.getByText('个人资料')).toBeVisible();
+    await expect(app.page.getByRole('heading', { name: '个人资料' })).toBeVisible();
     await expect(app.page.getByText('组织管理')).toBeVisible();
     await expect(app.page.getByText('Claude Code')).toBeVisible();
 
@@ -29,7 +29,7 @@ test.describe('配置管理旅程', () => {
     await app.page.goto('/settings');
 
     // 默认在账户页
-    await expect(app.page.getByText('个人资料')).toBeVisible();
+    await expect(app.page.getByRole('heading', { name: '个人资料' })).toBeVisible();
 
     // 切换到组织管理页
     await app.page.getByText('组织管理', { exact: true }).click();
@@ -41,6 +41,6 @@ test.describe('配置管理旅程', () => {
 
     // 切换回账户页
     await app.page.getByText('个人资料', { exact: true }).click();
-    await expect(app.page.getByText('个人资料')).toBeVisible();
+    await expect(app.page.getByRole('heading', { name: '个人资料' })).toBeVisible();
   });
 });

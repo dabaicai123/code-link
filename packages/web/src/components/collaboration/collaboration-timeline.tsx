@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useDraftSocket } from '@/lib/socket/draft';
-import { MessageInput } from './message-input';
+import { MessageInput, MessageInputHandle } from './message-input';
+import { CardDetailModal } from './card/card-detail-modal';
+import { useCardContextMenu } from '@/hooks/use-card-context-menu';
 import { cn } from '@/lib/utils';
 import { Loading } from '@/components/ui/loading';
 import { ArrowLeft, History, UserPlus } from 'lucide-react';
@@ -92,7 +94,7 @@ const CARD_TYPE_NODE_LABELS: Record<CardType, string> = {
 
 function TimelineNodeItem({ node }: { node: TimelineNode }) {
   return (
-    <div className="flex items-center gap-3 text-[12px] text-text-muted">
+    <div data-testid={`timeline-node-${node.id}`} className="flex items-center gap-3 text-[12px] text-text-muted">
       <div
         className={cn(
           'w-5 h-5 rounded-full flex items-center justify-center shrink-0 relative z-10',
@@ -124,7 +126,13 @@ function TimelineNodeItem({ node }: { node: TimelineNode }) {
 
 // ==================== Timeline Card Component ====================
 
-function TimelineCardItem({ item }: { item: TimelineCard }) {
+interface TimelineCardItemProps {
+  item: TimelineCard;
+  onClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
+}
+
+function TimelineCardItem({ item, onClick, onContextMenu }: TimelineCardItemProps) {
   const { card } = item;
   const isRunning = card.cardStatus === 'running';
   const isCompleted = card.cardStatus === 'completed';
@@ -142,6 +150,9 @@ function TimelineCardItem({ item }: { item: TimelineCard }) {
 
   return (
     <div
+      data-testid={`timeline-card-${card.shortId}`}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
       className={cn(
         'pl-10 card-item bg-bg-card border rounded-xl p-4 shadow-warm-sm cursor-pointer relative',
         isRunning ? 'border-status-running/20' : 'border-border-default',
@@ -238,7 +249,7 @@ function TimelineCardItem({ item }: { item: TimelineCard }) {
             暂停
           </button>
         )}
-        <button className="px-3 py-1.5 rounded-lg border border-border-default text-[12px] text-text-secondary hover:bg-bg-hover transition-colors">
+        <button data-testid="card-expand-detail" className="px-3 py-1.5 rounded-lg border border-border-default text-[12px] text-text-secondary hover:bg-bg-hover transition-colors">
           展开详情
         </button>
       </div>
@@ -371,6 +382,9 @@ export function CollaborationTimeline({
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyTo, setReplyTo] = useState<DraftMessage | null>(null);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const messageInputRef = useRef<MessageInputHandle>(null);
+  const { contextMenu, handleContextMenu, closeContextMenu } = useCardContextMenu();
   const timelineEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -505,6 +519,14 @@ export function CollaborationTimeline({
       messageType,
       parentId,
     });
+  };
+
+  // Card reference handler — inserts @卡片{shortId} into message input
+  const handleReference = (card: Card) => {
+    const referenceText = `@卡片${card.shortId}`;
+    messageInputRef.current?.insertText(referenceText);
+    setSelectedCard(null);
+    closeContextMenu();
   };
 
   // Draft ID display format
@@ -643,7 +665,7 @@ export function CollaborationTimeline({
                 case 'node':
                   return <TimelineNodeItem key={item.id} node={item} />;
                 case 'card':
-                  return <TimelineCardItem key={item.id} item={item} />;
+                  return <TimelineCardItem key={item.id} item={item} onClick={() => setSelectedCard(item.card)} onContextMenu={(e) => handleContextMenu(e, item.card)} />;
                 case 'message':
                   return <TimelineMessageItem key={item.id} item={item} />;
                 default:
@@ -657,11 +679,40 @@ export function CollaborationTimeline({
 
       {/* ====== Message input ====== */}
       <MessageInput
+        ref={messageInputRef}
         draftId={draft.id}
         replyTo={replyTo}
         onSend={handleSend}
         onCancelReply={() => setReplyTo(null)}
       />
+
+      <CardDetailModal
+        card={selectedCard}
+        onClose={() => setSelectedCard(null)}
+        onReference={handleReference}
+        onExecutePlan={(card) => { /* 后续接入 AI 执行流程 */ }}
+        onStartCoding={(card) => { /* 后续接入 AI 执行流程 */ }}
+        onResume={(card) => { /* 后续接入 AI 执行流程 */ }}
+        onAbort={(card) => { setSelectedCard(null); /* 后续接入 AI 执行流程 */ }}
+      />
+
+      {contextMenu && (
+        <div
+          data-testid="card-context-menu"
+          style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x, zIndex: 50 }}
+          className="bg-bg-card border border-border-default rounded-lg shadow-lg py-1"
+        >
+          <button
+            data-testid="card-reference-btn"
+            className="w-full px-3 py-2 text-left text-[13px] hover:bg-bg-hover transition-colors"
+            onClick={() => {
+              handleReference(contextMenu.card);
+            }}
+          >
+            引用此卡片
+          </button>
+        </div>
+      )}
     </div>
   );
 }

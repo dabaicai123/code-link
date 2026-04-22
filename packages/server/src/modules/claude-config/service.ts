@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
 import { ClaudeConfigRepository } from './repository.js';
-import { encrypt, decrypt, isEncryptionKeySet } from '../../crypto/aes.js';
+import { EncryptionService } from '../../core/crypto/encryption.service.js';
 import { createLogger } from '../../core/logger/index.js';
 import { ParamError } from '../../core/errors/index.js';
 import type { ClaudeConfig, ClaudeConfigResponse } from './types.js';
@@ -12,9 +12,10 @@ const logger = createLogger('claude-config-service');
 @singleton()
 export class ClaudeConfigService {
   constructor(
-    @inject(ClaudeConfigRepository) private readonly repo: ClaudeConfigRepository
+    @inject(ClaudeConfigRepository) private readonly repo: ClaudeConfigRepository,
+    @inject(EncryptionService) private readonly encryption: EncryptionService
   ) {
-    if (!isEncryptionKeySet()) {
+    if (!this.encryption.isAvailable()) {
       logger.warn('CLAUDE_CONFIG_ENCRYPTION_KEY not set. User config encryption disabled.');
     }
   }
@@ -27,7 +28,7 @@ export class ClaudeConfigService {
     }
 
     try {
-      const config = JSON.parse(decrypt(row.config));
+      const config = JSON.parse(this.encryption.decrypt(row.config));
       return { config, hasConfig: true };
     } catch (error) {
       logger.error('Failed to decrypt user config', error instanceof Error ? error : new Error(String(error)));
@@ -42,7 +43,7 @@ export class ClaudeConfigService {
     }
 
     try {
-      const encryptedConfig = encrypt(JSON.stringify(config));
+      const encryptedConfig = this.encryption.encrypt(JSON.stringify(config));
       await this.repo.upsert(userId, encryptedConfig);
     } catch (error) {
       logger.error('Failed to save user config', error instanceof Error ? error : new Error(String(error)));
@@ -59,6 +60,6 @@ export class ClaudeConfigService {
   }
 
   isEncryptionAvailable(): boolean {
-    return isEncryptionKeySet();
+    return this.encryption.isAvailable();
   }
 }

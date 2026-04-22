@@ -3,6 +3,7 @@ import { singleton, inject } from 'tsyringe';
 import { Request, Response } from 'express';
 import { DraftService } from './service.js';
 import { success } from '../../core/errors/index.js';
+import { draftPaginationSchema, messagePaginationSchema } from '../../core/database/pagination.js';
 
 @singleton()
 export class DraftController {
@@ -10,15 +11,15 @@ export class DraftController {
     @inject(DraftService) private readonly service: DraftService
   ) {}
 
-
   async create(req: Request, res: Response): Promise<void> {
     const result = await this.service.create(req.userId!, req.body);
     res.status(201).json(success(result));
   }
 
   async list(req: Request, res: Response): Promise<void> {
-    const drafts = await this.service.findByUserId(req.userId!);
-    res.json(success(drafts));
+    const { page, limit } = draftPaginationSchema.parse(req.query);
+    const result = await this.service.findByUserId(req.userId!, page, limit);
+    res.json(success(result));
   }
 
   async get(req: Request, res: Response): Promise<void> {
@@ -39,7 +40,6 @@ export class DraftController {
     res.status(204).send();
   }
 
-
   async createMessage(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);
     const result = await this.service.createMessage(draftId, req.userId!, req.body);
@@ -48,11 +48,10 @@ export class DraftController {
 
   async listMessages(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);
-    const limit = req.query.limit ? Number(req.query.limit) : undefined;
-    const messages = await this.service.findMessages(draftId, req.userId!, limit);
-    res.json(success(messages));
+    const { page, limit } = messagePaginationSchema.parse(req.query);
+    const result = await this.service.findMessages(draftId, req.userId!, page, limit);
+    res.json(success(result));
   }
-
 
   async confirmMessage(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);
@@ -68,13 +67,11 @@ export class DraftController {
     res.json(success(confirmations));
   }
 
-
   async listCards(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);
     const cards = await this.service.findCards(draftId, req.userId!);
     res.json(success(cards));
   }
-
 
   async addMember(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);

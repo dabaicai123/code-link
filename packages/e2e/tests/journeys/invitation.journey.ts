@@ -27,6 +27,9 @@ test.describe('邀请处理旅程', () => {
     await app.acceptInvitation('邀请组织');
 
     // 验证已加入组织 — 在组织管理页
+    // After accepting, wait for the page to settle before navigating
+    await app.page.waitForURL(/.*dashboard|.*settings|.*invitations/, { timeout: 10000 });
+    await app.page.waitForLoadState('networkidle');
     await app.page.goto('/settings');
     await app.page.getByText('组织管理', { exact: true }).click();
     await expect(app.page.getByText('邀请组织')).toBeVisible({ timeout: 5000 });

@@ -10,7 +10,6 @@ export function registerOrganizationModule(): void {
   container.registerSingleton(OrganizationController);
 }
 
-export { OrganizationRepository } from './repository.js';
 export { OrganizationService } from './service.js';
 export { OrganizationController } from './controller.js';
 export { createOrganizationRoutes, createInvitationRoutes } from './routes.js';

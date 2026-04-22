@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { AuthRepository } from './repository.js';
 import { ConflictError, AuthError } from '../../core/errors/index.js';
 import { getConfig } from '../../core/config.js';
+import { isSuperAdmin } from '../../utils/super-admin.js';
 import type { SelectUser } from '../../db/schema/index.js';
 import type { RegisterInput, LoginInput } from './schemas.js';
 import type { AuthResult, UserWithoutPassword } from './types.js';
@@ -67,5 +68,20 @@ export class AuthService {
   private sanitizeUser(user: SelectUser): UserWithoutPassword {
     const { passwordHash, ...rest } = user;
     return rest;
+  }
+
+  async findEmailById(userId: number): Promise<string | null> {
+    const user = await this.repo.findById(userId);
+    return user?.email ?? null;
+  }
+
+  async isSuperAdminCheck(userId: number): Promise<boolean> {
+    const email = await this.findEmailById(userId);
+    return isSuperAdmin(email ?? '');
+  }
+
+  async findById(userId: number): Promise<SelectUser | null> {
+    const user = await this.repo.findById(userId);
+    return user ?? null;
   }
 }

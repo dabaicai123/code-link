@@ -1,10 +1,14 @@
 import type Docker from 'dockerode';
-import { container } from 'tsyringe';
-import { DockerService } from './docker.service.js';
 import { PassThrough, Transform, TransformCallback } from 'stream';
 
-function getDockerClient() {
-  return container.resolve(DockerService).getClient();
+let dockerInstance: Docker | null = null;
+
+export function setDockerClient(client: Docker): void {
+  dockerInstance = client;
+}
+
+function getDockerClient(): Docker {
+  return dockerInstance!;
 }
 
 export interface ExecSession {

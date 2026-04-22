@@ -21,3 +21,6 @@ export * from './claude-message';
 
 // Chat
 export * from './chat';
+
+// Code tab
+export * from './code';

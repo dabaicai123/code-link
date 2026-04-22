@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users.js';
 import { organizations } from './organizations.js';
@@ -12,7 +12,9 @@ export const projects = sqliteTable('projects', {
   status: text('status', { enum: ['created', 'running', 'stopped'] }).notNull().default('created'),
   createdBy: integer('created_by').notNull().references(() => users.id),
   createdAt: text('created_at').notNull().default(sql`datetime('now')`),
-});
+}, (table) => ({
+  organizationIdIdx: index('idx_projects_organization_id').on(table.organizationId),
+}));
 
 export type InsertProject = typeof projects.$inferInsert;
 export type SelectProject = typeof projects.$inferSelect;

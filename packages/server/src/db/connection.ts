@@ -2,17 +2,37 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import * as schema from './schema/index.js';
 import { singleton } from 'tsyringe';
-import { getConfig } from '../core/config.js';
+import { createLogger } from '../core/logger/index.js';
+
+const logger = createLogger('db-connection');
 
 @singleton()
 export class DatabaseConnection {
-  private db: ReturnType<typeof drizzle>;
-  private sqlite: Database.Database;
+  private db: ReturnType<typeof drizzle> | null = null;
+  private sqlite: Database.Database | null = null;
 
+  /**
+   * @singleton() constructor — does NOT create a connection automatically.
+   * Connection must be injected via registerInstance(fromSqlite()) or
+   * lazily initialized by calling init() with a path.
+   */
   constructor() {
-    const config = getConfig();
-    this.sqlite = new Database(config.dbPath);
-    this.sqlite.pragma('journal_mode = WAL');
+    // Intentionally empty — connection must be externally provided
+  }
+
+  /**
+   * Lazy-initialize a file-based SQLite connection.
+   * Only used when no instance was registered via registerInstance.
+   */
+  init(dbPath: string): void {
+    if (this.sqlite) {
+      logger.warn('DatabaseConnection already initialized, skipping');
+      return;
+    }
+    this.sqlite = new Database(dbPath);
+    if (dbPath !== ':memory:') {
+      this.sqlite.pragma('journal_mode = WAL');
+    }
     this.sqlite.pragma('foreign_keys = ON');
     this.db = drizzle(this.sqlite, { schema });
   }
@@ -25,19 +45,27 @@ export class DatabaseConnection {
   }
 
   getDb(): ReturnType<typeof drizzle> {
+    if (!this.db) {
+      throw new Error('DatabaseConnection not initialized. Call init() or use registerInstance(fromSqlite())');
+    }
     return this.db;
   }
 
   getSqlite(): Database.Database {
+    if (!this.sqlite) {
+      throw new Error('DatabaseConnection not initialized. Call init() or use registerInstance(fromSqlite())');
+    }
     return this.sqlite;
   }
 
   transaction<T>(fn: () => T): T {
-    return this.sqlite.transaction(fn)() as T;
+    return this.getSqlite().transaction(fn)() as T;
   }
 
   close(): void {
-    this.sqlite.close();
+    if (this.sqlite) {
+      this.sqlite.close();
+    }
   }
 }
 

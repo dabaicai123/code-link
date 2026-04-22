@@ -5,8 +5,13 @@ import { DockerService } from '../../container/lib/docker.service.js';
 import { DraftRepository } from '../repository.js';
 
 const logger = createLogger('ai-context');
-function getDraftRepo() { return container.resolve(DraftRepository); }
-function getDockerService() { return container.resolve(DockerService); }
+
+// Lazy-resolved to avoid triggering DI resolution at module load time
+let _draftRepo: DraftRepository | null = null;
+let _dockerService: DockerService | null = null;
+
+function getDraftRepo() { return _draftRepo ??= container.resolve(DraftRepository); }
+function getDockerService() { return _dockerService ??= container.resolve(DockerService); }
 
 export interface DraftContext {
   draftId: number;

@@ -27,19 +27,13 @@ export interface ClaudeMessage {
 export function formatClaudeMessage(message: ClaudeMessage): string {
   const parts: string[] = [];
 
+  // Insert element references inline with the text
   if (message.elements.length > 0) {
-    parts.push('--- 选中元素 ---');
-    message.elements.forEach((el, index) => {
-      parts.push(`\n[${index + 1}] <${el.tagName}>`);
-      parts.push(`    选择器: ${el.selector}`);
-      if (el.content) {
-        parts.push(`    内容: ${el.content.slice(0, 100)}${el.content.length > 100 ? '...' : ''}`);
-      }
-    });
-    parts.push('\n--- 用户需求 ---');
+    const elementRefs = message.elements.map((el) => `<${el.tagName} selector="${el.selector}">`).join(' ');
+    parts.push(message.userRequest + ' ' + elementRefs);
+  } else {
+    parts.push(message.userRequest);
   }
-
-  parts.push(message.userRequest);
 
   return parts.join('\n');
 }

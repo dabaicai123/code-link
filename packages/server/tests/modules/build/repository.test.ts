@@ -5,13 +5,9 @@ import { BuildRepository } from '../../../src/modules/build/repository.js';
 import { ProjectRepository } from '../../../src/modules/project/repository.js';
 import { OrganizationRepository } from '../../../src/modules/organization/repository.js';
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
-import { DatabaseConnection } from '../../../src/core/database/connection.js';
+import { DatabaseConnection } from '../../../src/db/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { initSchema } from '../../../src/db/init.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-build-repo.db');
+import { setupTestDb, teardownTestDb } from '../../helpers/test-db.js';
 
 describe('BuildRepository', () => {
   let repo: BuildRepository;
@@ -21,14 +17,12 @@ describe('BuildRepository', () => {
   let db: DatabaseConnection;
 
   beforeEach(() => {
-    container.reset();
+    setupTestDb();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
+    process.env.ADMIN_EMAIL = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    initSchema(db.getSqlite());
-    container.registerInstance(DatabaseConnection, db);
+    db = container.resolve(DatabaseConnection);
     repo = new BuildRepository(db);
     projectRepo = new ProjectRepository(db);
     orgRepo = new OrganizationRepository(db);
@@ -36,11 +30,7 @@ describe('BuildRepository', () => {
   });
 
   afterEach(() => {
-    db.close();
-    container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
+    teardownTestDb();
   });
 
   describe('create', () => {
@@ -84,7 +74,7 @@ describe('BuildRepository', () => {
       await repo.create({ projectId: project.id });
 
       const builds = await repo.findByProjectId(project.id);
-      expect(builds).toHaveLength(2);
+      expect(builds.data).toHaveLength(2);
     });
   });
 

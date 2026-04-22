@@ -50,6 +50,11 @@ export class LoggerService implements Logger {
     return childLogger;
   }
 
+  withContext(context: Record<string, unknown>): Logger {
+    const childPino = this.logger.child(context);
+    return new LoggerService(childPino);
+  }
+
   private formatMessage(message: string): string {
     return this.moduleName ? `[${this.moduleName}] ${message}` : message;
   }

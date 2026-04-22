@@ -7,7 +7,7 @@ import "reflect-metadata";
 import { eq, and } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 import { container } from 'tsyringe';
-import { DatabaseConnection, createSqliteDb, initSchema } from '../../src/db/index.js';
+import { DatabaseConnection, createSqliteDb, runMigrations } from '../../src/db/index.js';
 import {
   users,
   organizations,
@@ -63,7 +63,7 @@ export function setupTestDb(): Database.Database {
   }
 
   const sqlite = createSqliteDb(':memory:');
-  initSchema(sqlite);
+  runMigrations(sqlite);
 
   container.reset();
   currentDbConnection = DatabaseConnection.fromSqlite(sqlite);

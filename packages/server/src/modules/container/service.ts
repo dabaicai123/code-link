@@ -1,17 +1,17 @@
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
-import { ProjectRepository } from '../project/repository.js';
-import { ClaudeConfigRepository } from '../claude-config/repository.js';
+import { ProjectService } from '../project/project.module.js';
+import { ClaudeConfigService } from '../claude-config/claude-config.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { DockerService } from './lib/docker.service.js';
 import { NotFoundError, ParamError } from '../../core/errors/index.js';
-import type { ContainerStatus, ContainerStartResult, ContainerStopResult } from './types.js';
+import type { ContainerStartResult, ContainerStopResult, ContainerStatus } from './types.js';
 
 @singleton()
 export class ContainerService {
   constructor(
-    @inject(ProjectRepository) private readonly projectRepo: ProjectRepository,
-    @inject(ClaudeConfigRepository) private readonly claudeConfigRepo: ClaudeConfigRepository,
+    @inject(ProjectService) private readonly projectService: ProjectService,
+    @inject(ClaudeConfigService) private readonly claudeConfigService: ClaudeConfigService,
     @inject(PermissionService) private readonly permService: PermissionService,
     @inject(DockerService) private readonly dockerService: DockerService
   ) {}
@@ -19,16 +19,25 @@ export class ContainerService {
   async start(userId: number, projectId: number): Promise<ContainerStartResult> {
     const project = await this.permService.checkProjectAccess(userId, projectId);
 
-    const hasConfig = await this.claudeConfigRepo.hasConfig(userId);
+    const hasConfig = await this.claudeConfigService.hasConfig(userId);
     if (!hasConfig) {
       throw new ParamError('请先配置 Claude 设置');
     }
 
-    const existing = await this.dockerService.getProjectContainerInfo(projectId);
-    if (existing) {
-      await this.dockerService.startContainer(existing.id);
-      await this.projectRepo.updateStatus(projectId, 'running');
-      return { containerId: existing.id, status: 'running' };
+    const existingContainer = await this.dockerService.getProjectContainer(projectId);
+    if (existingContainer) {
+      const containerInfo = await existingContainer.inspect();
+      await this.dockerService.startContainer(containerInfo.Id);
+      await this.projectService.updateStatus(projectId, 'running');
+      return {
+        containerId: containerInfo.Id,
+        status: 'running',
+      };
+    }
+
+    const volume = await this.dockerService.volumeExists(projectId);
+    if (!volume) {
+      await this.dockerService.createProjectVolume(projectId);
     }
 
     const volumePath = `/volumes/project-${projectId}`;
@@ -39,8 +48,8 @@ export class ContainerService {
     );
 
     await this.dockerService.startContainer(containerId);
-    await this.projectRepo.updateContainerId(projectId, containerId);
-    await this.projectRepo.updateStatus(projectId, 'running');
+    await this.projectService.updateContainerId(projectId, containerId);
+    await this.projectService.updateStatus(projectId, 'running');
 
     return { containerId, status: 'running' };
   }
@@ -48,39 +57,45 @@ export class ContainerService {
   async stop(userId: number, projectId: number): Promise<ContainerStopResult> {
     await this.permService.checkProjectAccess(userId, projectId);
 
-    const existing = await this.dockerService.getProjectContainerInfo(projectId);
-    if (!existing) {
+    const container = await this.dockerService.getProjectContainer(projectId);
+    if (!container) {
       throw new NotFoundError('容器');
     }
 
-    await this.dockerService.stopContainer(existing.id);
-    await this.projectRepo.updateStatus(projectId, 'stopped');
+    const containerInfo = await container.inspect();
+    await this.dockerService.stopContainer(containerInfo.Id);
+    await this.projectService.updateStatus(projectId, 'stopped');
 
-    return { containerId: existing.id, status: 'stopped' };
+    return { containerId: containerInfo.Id, status: 'stopped' };
   }
 
   async getStatus(userId: number, projectId: number): Promise<ContainerStatus> {
     await this.permService.checkProjectAccess(userId, projectId);
 
-    const existing = await this.dockerService.getProjectContainerInfo(projectId);
-    if (!existing) {
+    const container = await this.dockerService.getProjectContainer(projectId);
+    if (!container) {
       return { containerId: '', status: 'not_created' };
     }
 
-    return { containerId: existing.id, status: existing.status };
+    const containerInfo = await container.inspect();
+    const status = await this.dockerService.getContainerStatus(containerInfo.Id);
+
+    return { containerId: containerInfo.Id, status };
   }
 
   async remove(userId: number, projectId: number): Promise<void> {
     const project = await this.permService.checkProjectAccess(userId, projectId);
     await this.permService.checkOrgOwner(userId, project.organizationId);
 
-    const existing = await this.dockerService.getProjectContainerInfo(projectId);
-    if (existing) {
-      await this.dockerService.removeContainer(existing.id);
+    const container = await this.dockerService.getProjectContainer(projectId);
+    if (container) {
+      const containerInfo = await container.inspect();
+      await this.dockerService.removeContainer(containerInfo.Id);
     }
 
     await this.dockerService.removeProjectVolume(projectId);
-    await this.projectRepo.updateContainerId(projectId, null);
-    await this.projectRepo.updateStatus(projectId, 'created');
+
+    await this.projectService.updateContainerId(projectId, null);
+    await this.projectService.updateStatus(projectId, 'created');
   }
 }

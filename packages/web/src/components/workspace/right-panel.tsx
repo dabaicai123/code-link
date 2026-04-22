@@ -6,17 +6,20 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { CollaborationPanel } from '@/components/collaboration';
 import { DisplayPanel } from '@/components/collaboration/display-panel';
+import { CodePanel } from '@/components/code';
+import type { SelectedElement } from '@/types/claude-message';
 import type { Project } from '@/types';
 import type { Draft } from '@/types/draft';
 
-type RightTab = 'collab' | 'preview';
+type RightTab = 'collab' | 'preview' | 'code';
 
 interface RightPanelProps {
   project: Project | null;
   userId: number;
+  onAddElement?: (element: SelectedElement) => void;
 }
 
-export function RightPanel({ project, userId }: RightPanelProps) {
+export function RightPanel({ project, userId, onAddElement }: RightPanelProps) {
   const [activeTab, setActiveTab] = useState<RightTab>('collab');
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -70,6 +73,17 @@ export function RightPanel({ project, userId }: RightPanelProps) {
           >
             预览
           </button>
+          <button
+            onClick={() => setActiveTab('code')}
+            className={cn(
+              'px-3 py-2 text-[13px] font-semibold transition-colors',
+              activeTab === 'code'
+                ? 'text-accent-primary border-b-2 border-accent-primary'
+                : 'text-text-muted hover:text-text-secondary'
+            )}
+          >
+            代码
+          </button>
         </div>
       </div>
 
@@ -118,8 +132,10 @@ export function RightPanel({ project, userId }: RightPanelProps) {
             newlyCreatedDraft={newlyCreatedDraft}
           />
         </>
+      ) : activeTab === 'code' ? (
+        <CodePanel project={project} userId={userId} />
       ) : (
-        <DisplayPanel url={undefined} />
+        <DisplayPanel url={undefined} onAddElement={onAddElement} />
       )}
     </div>
   );

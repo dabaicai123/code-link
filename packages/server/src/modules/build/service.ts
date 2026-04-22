@@ -1,12 +1,14 @@
 import "reflect-metadata";
-import { singleton, inject } from 'tsyringe';
+import { singleton, inject, container } from 'tsyringe';
 import { BuildRepository } from './repository.js';
-import { ProjectRepository } from '../project/repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { BuildManager } from './lib/build-manager.js';
 import { PreviewContainerManager } from './lib/preview-container.js';
 import { NotFoundError } from '../../core/errors/index.js';
 import { createLogger } from '../../core/logger/index.js';
+import { SocketServerService } from '../../socket/socket-server.service.js';
+import { broadcastBuildStatus } from '../../socket/namespaces/project.js';
+import type { PaginatedResult } from '../../core/database/pagination.js';
 import type { SelectBuild } from '../../db/schema/index.js';
 import type { CreateBuildInput } from './schemas.js';
 import type { PreviewInfo } from './types.js';
@@ -17,7 +19,6 @@ const logger = createLogger('build-service');
 export class BuildService {
   constructor(
     @inject(BuildRepository) private readonly repo: BuildRepository,
-    @inject(ProjectRepository) private readonly projectRepo: ProjectRepository,
     @inject(PermissionService) private readonly permService: PermissionService,
     @inject(BuildManager) private readonly buildManager: BuildManager,
     @inject(PreviewContainerManager) private readonly previewManager: PreviewContainerManager
@@ -28,17 +29,26 @@ export class BuildService {
 
     const build = await this.buildManager.createBuild(input.projectId);
 
-    this.buildManager.startBuild(input.projectId, build.id).catch((error: unknown) => {
-      logger.error('Build failed', error instanceof Error ? error : new Error(String(error)), { projectId: input.projectId, buildId: build.id });
+    this.buildManager.startBuild(input.projectId, build.id).catch(async (error: unknown) => {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error('Build failed', err, { projectId: input.projectId, buildId: build.id });
+
+      // Update build status to failed
+      await this.repo.updateStatus(build.id, 'failed');
+
+      // Broadcast failure via Socket.IO
+      const socketService = container.resolve(SocketServerService);
+      const io = socketService.getServer();
+      broadcastBuildStatus(io.of('/project'), input.projectId, 'failed', undefined, err.message);
     });
 
     return build;
   }
 
-  async findByProjectId(userId: number, projectId: number): Promise<SelectBuild[]> {
+  async findByProjectId(userId: number, projectId: number, page?: number, limit?: number): Promise<PaginatedResult<SelectBuild>> {
     await this.permService.checkProjectAccess(userId, projectId);
 
-    return this.buildManager.getProjectBuilds(projectId);
+    return this.buildManager.getProjectBuilds(projectId, page, limit);
   }
 
   async findById(userId: number, buildId: number): Promise<SelectBuild> {

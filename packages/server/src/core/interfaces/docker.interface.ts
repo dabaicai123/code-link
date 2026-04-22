@@ -11,4 +11,5 @@ export interface IDockerService {
   volumeExists(projectId: number): Promise<boolean>;
   createProjectVolume(projectId: number): Promise<string>;
   removeProjectVolume(projectId: number): Promise<void>;
+  cleanupTestContainers(): Promise<void>;
 }

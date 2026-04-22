@@ -20,10 +20,17 @@ import { CardType } from '../../modules/draft/file-types.js';
 
 const logger = createLogger('socket-terminal');
 
-function getProjectRepo() { return container.resolve(ProjectRepository); }
-function getClaudeConfigRepo() { return container.resolve(ClaudeConfigRepository); }
-function getOrgRepo() { return container.resolve(OrganizationRepository); }
-function getDockerService() { return container.resolve(DockerService); }
+// Lazy-resolved to avoid triggering DI resolution at module load time,
+// which would create a DatabaseConnection before registerInstance completes
+let _projectRepo: ProjectRepository | null = null;
+let _claudeConfigRepo: ClaudeConfigRepository | null = null;
+let _orgRepo: OrganizationRepository | null = null;
+let _dockerService: DockerService | null = null;
+
+function getProjectRepo() { return _projectRepo ??= container.resolve(ProjectRepository); }
+function getClaudeConfigRepo() { return _claudeConfigRepo ??= container.resolve(ClaudeConfigRepository); }
+function getOrgRepo() { return _orgRepo ??= container.resolve(OrganizationRepository); }
+function getDockerService() { return _dockerService ??= container.resolve(DockerService); }
 
 export function setupTerminalNamespace(namespace: Namespace): void {
   namespace.on('connection', async (socket) => {

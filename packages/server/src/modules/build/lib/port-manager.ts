@@ -1,3 +1,6 @@
+import { singleton } from 'tsyringe';
+
+@singleton()
 export class PortManager {
   private minPort: number;
   private maxPort: number;
@@ -80,17 +83,3 @@ export class PortManager {
   }
 }
 
-// 全局单例
-let portManagerInstance: PortManager | null = null;
-
-export function getPortManager(): PortManager {
-  if (!portManagerInstance) {
-    portManagerInstance = new PortManager();
-  }
-  return portManagerInstance;
-}
-
-// 重置实例（用于测试）
-export function resetPortManagerInstance(): void {
-  portManagerInstance = null;
-}

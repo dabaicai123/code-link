@@ -1,26 +1,25 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
-import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { createLogger } from '../core/logger/index.js';
-import { isSuperAdmin } from '../utils/super-admin.js';
-import { ROLE_HIERARCHY } from '../utils/roles.js';
-import { AuthRepository } from '../modules/auth/repository.js';
-import { OrganizationRepository } from '../modules/organization/repository.js';
-import { ProjectRepository } from '../modules/project/repository.js';
 import { Errors } from '../core/errors/index.js';
-import { getConfig } from '../core/config.js';
+import { AuthService } from '../modules/auth/auth.module.js';
+import { AuthMiddlewareService } from './auth-middleware.service.js';
 import type { OrgRole } from '../db/schema/index.js';
 
 const logger = createLogger('auth');
 
-// 延迟获取 Repository 实例（避免模块加载时解析）
-function getAuthRepo() { return container.resolve(AuthRepository); }
-function getOrgRepo() { return container.resolve(OrganizationRepository); }
-function getProjectRepo() { return container.resolve(ProjectRepository); }
+let _authService: AuthService | null = null;
+function getAuthService(): AuthService {
+  return _authService ??= container.resolve(AuthService);
+}
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const authRepo = getAuthRepo();
+let _authMiddlewareService: AuthMiddlewareService | null = null;
+function getAuthMiddlewareService(): AuthMiddlewareService {
+  return _authMiddlewareService ??= container.resolve(AuthMiddlewareService);
+}
+
+export async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     logger.debug('No auth token provided');
@@ -36,15 +35,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   }
 
   try {
-    const config = getConfig();
-    const payload = jwt.verify(token, config.jwtSecret);
-    if (typeof payload !== 'object' || payload === null || typeof payload.userId !== 'number') {
-      logger.warn('Invalid token payload structure');
-      res.status(401).json(Errors.unauthorized());
-      return;
-    }
-    logger.debug(`Token verified for userId=${payload.userId}`);
-    req.userId = payload.userId;
+    const userId = await getAuthService().verifyToken(token);
+    logger.debug(`Token verified for userId=${userId}`);
+    req.userId = userId;
     next();
   } catch (err) {
     logger.warn('Token verification failed', { error: err instanceof Error ? err.message : String(err) });
@@ -58,8 +51,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
  */
 export function createOrgMemberMiddleware(minRole: OrgRole) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const authRepo = getAuthRepo();
-    const orgRepo = getOrgRepo();
+    const authService = getAuthMiddlewareService();
     const userId = req.userId;
     const orgIdParam = req.params.orgId || req.params.id || req.body.organization_id;
     const orgId = parseInt(Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam || '', 10);
@@ -74,23 +66,8 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
       return;
     }
 
-    // 获取用户邮箱检查是否为超级管理员
-    const userEmail = await authRepo.findEmailById(userId);
-    if (userEmail && isSuperAdmin(userEmail)) {
-      req.orgRole = 'owner';
-      next();
-      return;
-    }
-
-    // 检查组织成员角色
-    const membership = await orgRepo.findUserMembership(orgId, userId);
-
+    const membership = await authService.checkOrgMembership(userId, orgId, minRole);
     if (!membership) {
-      res.status(403).json(Errors.forbidden());
-      return;
-    }
-
-    if (ROLE_HIERARCHY[membership.role] < ROLE_HIERARCHY[minRole]) {
       res.status(403).json(Errors.forbidden());
       return;
     }
@@ -108,9 +85,7 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
  */
 export function createProjectMemberMiddleware(minRole: OrgRole) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const authRepo = getAuthRepo();
-    const orgRepo = getOrgRepo();
-    const projectRepo = getProjectRepo();
+    const authService = getAuthMiddlewareService();
     const userId = req.userId;
     const projectIdParam = req.params.id || req.params.projectId;
     const projectId = parseInt(Array.isArray(projectIdParam) ? projectIdParam[0] : projectIdParam || '', 10);
@@ -125,30 +100,15 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
       return;
     }
 
-    // 获取用户邮箱检查是否为超级管理员
-    const userEmail = await authRepo.findEmailById(userId);
-    if (userEmail && isSuperAdmin(userEmail)) {
-      next();
-      return;
-    }
-
-    // 获取项目所属组织
-    const project = await projectRepo.findById(projectId);
+    const project = await authService.checkProjectMembership(userId, projectId, minRole);
     if (!project) {
-      res.status(404).json(Errors.notFound('项目'));
-      return;
-    }
-
-    // 检查组织成员角色
-    const membership = await orgRepo.findUserMembership(project.organizationId, userId);
-
-    if (!membership) {
-      res.status(403).json(Errors.forbidden());
-      return;
-    }
-
-    if (ROLE_HIERARCHY[membership.role] < ROLE_HIERARCHY[minRole]) {
-      res.status(403).json(Errors.forbidden());
+      // 区分：项目不存在 vs 不是成员/角色不足
+      const exists = await authService.findProjectById(projectId);
+      if (!exists) {
+        res.status(404).json(Errors.notFound('项目'));
+      } else {
+        res.status(403).json(Errors.forbidden());
+      }
       return;
     }
 
@@ -162,8 +122,7 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
  */
 export function createCanCreateOrgMiddleware() {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const authRepo = getAuthRepo();
-    const orgRepo = getOrgRepo();
+    const authService = getAuthMiddlewareService();
     const userId = req.userId;
 
     if (!userId) {
@@ -171,16 +130,8 @@ export function createCanCreateOrgMiddleware() {
       return;
     }
 
-    // 获取用户邮箱检查是否为超级管理员
-    const userEmail = await authRepo.findEmailById(userId);
-    if (userEmail && isSuperAdmin(userEmail)) {
-      next();
-      return;
-    }
-
-    // 检查用户是否是任何组织的 owner
-    const isOwner = await orgRepo.isOwnerOfAny(userId);
-    if (!isOwner) {
+    const canCreate = await authService.canCreateOrg(userId);
+    if (!canCreate) {
       res.status(403).json(Errors.forbidden());
       return;
     }

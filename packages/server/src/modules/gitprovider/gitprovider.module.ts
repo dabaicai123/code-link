@@ -10,7 +10,6 @@ export function registerGitProviderModule(): void {
   container.registerSingleton(GitProviderController);
 }
 
-export { GitProviderRepository } from './repository.js';
 export { GitProviderService } from './service.js';
 export { GitProviderController } from './controller.js';
 export { createGitProviderRoutes } from './routes.js';

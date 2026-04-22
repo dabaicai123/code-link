@@ -7,9 +7,10 @@ import { container } from 'tsyringe';
 import { getConfig } from './core/config.js';
 
 // 数据库初始化
-import { DatabaseConnection, initSchema, initDefaultAdmin, createSqliteDb } from './db/index.js';
+import { DatabaseConnection, initDefaultAdmin, createSqliteDb, runMigrations } from './db/index.js';
 
 // 模块注册
+import { registerCoreModule } from './core/core.module.js';
 import { registerAuthModule, createAuthRoutes, AuthController } from './modules/auth/auth.module.js';
 import { registerOrganizationModule, createOrganizationRoutes, createInvitationRoutes, OrganizationController } from './modules/organization/organization.module.js';
 import { registerProjectModule, createProjectRoutes, ProjectController } from './modules/project/project.module.js';
@@ -18,18 +19,21 @@ import { registerBuildModule, createBuildRoutes, BuildController } from './modul
 import { registerGitProviderModule, createGitProviderRoutes, GitProviderController } from './modules/gitprovider/gitprovider.module.js';
 import { registerClaudeConfigModule, createClaudeConfigRoutes, ClaudeConfigController } from './modules/claude-config/claude-config.module.js';
 import { registerContainerModule, createContainerRoutes, ContainerController } from './modules/container/container.module.js';
+import { registerCodeModule, createCodeRoutes, CodeController } from './modules/code/code.module.js';
+import { registerSocketModule } from './socket/socket.module.js';
 
 // 核心服务
 import { LoggerService } from './core/logger/logger.js';
 import { PermissionService } from './shared/permission.service.js';
 import { createErrorHandler } from './core/errors/handler.js';
+import { requestIdMiddleware } from './middleware/request-id.js';
 
 // WebSocket
 import { createSocketServer } from './socket/index.js';
+import { handleCodeServerWebSocketUpgrade } from './modules/code/proxy.js';
+import { CodeServerManager } from './modules/code/code.module.js';
 
 // 其他初始化
-import { setEncryptionKey } from './crypto/aes.js';
-import { initAIClient } from './modules/draft/lib/client.js';
 import { success, Errors } from './core/errors/index.js';
 
 const logger = new LoggerService();
@@ -37,15 +41,26 @@ const logger = new LoggerService();
 export function createApp(): express.Express {
   const app = express();
 
-  // 注册所有模块（@singleton() 装饰器会自动处理 DI）
+  // 注册核心模块（EncryptionService, LoggerService 等）
+  registerCoreModule();
+
+  // 注册 Socket 模块（SocketServerService）
+  registerSocketModule();
+
+  // 注册业务模块 — 顺序确保依赖的服务先注册：
+  // Auth → Organization (depends on AuthService)
+  // → Project (depends on PermissionService)
+  // → ClaudeConfig → Build → Container (depends on ProjectService, ClaudeConfigService)
+  // → Draft (depends on ProjectService, AuthService) → GitProvider
   registerAuthModule();
   registerOrganizationModule();
   registerProjectModule();
-  registerDraftModule();
-  registerBuildModule();
-  registerGitProviderModule();
   registerClaudeConfigModule();
+  registerBuildModule();
   registerContainerModule();
+  registerCodeModule();
+  registerDraftModule();
+  registerGitProviderModule();
 
   // 获取配置
   const config = getConfig();
@@ -68,6 +83,17 @@ export function createApp(): express.Express {
   };
   app.use(cors(corsOptions));
   app.use(express.json());
+  app.use(requestIdMiddleware);
+
+  // Request-context logging — each request gets a child logger with requestId & userId
+  app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    const rootLogger = container.resolve(LoggerService);
+    req.log = rootLogger.withContext({
+      requestId: req.requestId,
+      userId: req.userId ?? 'anonymous',
+    });
+    next();
+  });
 
   // 健康检查
   app.get('/api/health', (_req, res) => {
@@ -83,6 +109,7 @@ export function createApp(): express.Express {
   const gitProviderController = container.resolve(GitProviderController);
   const claudeConfigController = container.resolve(ClaudeConfigController);
   const containerController = container.resolve(ContainerController);
+  const codeController = container.resolve(CodeController);
 
   // 注册路由
   app.use('/api/auth', createAuthRoutes(authController));
@@ -90,6 +117,7 @@ export function createApp(): express.Express {
   app.use('/api/invitations', createInvitationRoutes(orgController));
   app.use('/api/projects', createProjectRoutes(projectController));
   app.use('/api/projects', createContainerRoutes(containerController));
+  app.use('/api/projects', createCodeRoutes(codeController));
   app.use('/api/drafts', createDraftRoutes(draftController));
   app.use('/api/builds', createBuildRoutes(buildController));
 
@@ -117,6 +145,10 @@ export function startServer(port: number = 3001): void {
 
   // 初始化 Socket.IO 服务器
   createSocketServer(server);
+
+  // 初始化 code-server WebSocket 反向代理
+  const codeServerManager = container.resolve(CodeServerManager);
+  handleCodeServerWebSocketUpgrade(codeServerManager, server);
 
   server.listen(port, () => {
     logger.info(`Server running on http://localhost:${port}`);
@@ -148,7 +180,7 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
   resetConfig();
 
   const sqlite = createSqliteDb(':memory:');
-  initSchema(sqlite);
+  runMigrations(sqlite);
 
   // Register in-memory DatabaseConnection before DI resolves
   const { container } = await import('tsyringe');
@@ -158,6 +190,10 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
 
   const app = createApp();
   const server = createServer(app);
+
+  // 初始化 code-server WebSocket 反向代理
+  const codeServerManager = container.resolve(CodeServerManager);
+  handleCodeServerWebSocketUpgrade(codeServerManager, server);
 
   return new Promise((resolve, reject) => {
     server.listen(options?.port ?? 0, () => {
@@ -185,23 +221,13 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
 // 启动入口
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
   const sqlite = createSqliteDb();
-  initSchema(sqlite);
+  runMigrations(sqlite);
 
   // 注册 DatabaseConnection 到 DI 容器
   const dbConnection = DatabaseConnection.fromSqlite(sqlite);
   container.registerInstance(DatabaseConnection, dbConnection);
 
   await initDefaultAdmin(dbConnection);
-
-  // 设置加密密钥
-  const encryptionKey = process.env.CLAUDE_CONFIG_ENCRYPTION_KEY || '';
-  if (!encryptionKey) {
-    logger.warn('CLAUDE_CONFIG_ENCRYPTION_KEY not set. User config encryption disabled.');
-  }
-  setEncryptionKey(encryptionKey);
-
-  // 初始化 AI 客户端
-  initAIClient();
 
   startServer(process.env.PORT ? parseInt(process.env.PORT) : 4000);
 }

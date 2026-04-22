@@ -7,7 +7,8 @@ test.describe('聊天核心功能', () => {
     api.setToken(generateToken(user.id));
     await app.configureClaude({ authToken: 'sk-test-token' });
     const org = await app.createOrganization(createOrganizationParams());
-    await app.createProject(createProjectParams({ organizationId: org!.id }));
+    const project = await app.createProject(createProjectParams({ organizationId: org!.id }));
+    await app.selectProject(project!.name);
   });
 
   test('聊天面板渲染', async ({ app }) => {

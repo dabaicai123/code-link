@@ -4,13 +4,9 @@ import { container } from 'tsyringe';
 import { ClaudeConfigService } from '../../../src/modules/claude-config/service.js';
 import { ClaudeConfigRepository } from '../../../src/modules/claude-config/repository.js';
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
-import { DatabaseConnection } from '../../../src/core/database/connection.js';
+import { DatabaseConnection } from '../../../src/db/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { initSchema } from '../../../src/db/init.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-claude-config-service.db');
+import { setupTestDb, teardownTestDb } from '../../helpers/test-db.js';
 
 // Mock encryption functions
 vi.mock('../../../src/crypto/aes.js', () => ({
@@ -25,27 +21,21 @@ describe('ClaudeConfigService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    container.reset();
+    setupTestDb();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
+    process.env.ADMIN_EMAIL = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    initSchema(db.getSqlite());
-    container.registerInstance(DatabaseConnection, db);
     container.registerSingleton(AuthRepository);
     container.registerSingleton(ClaudeConfigRepository);
     container.registerSingleton(ClaudeConfigService);
 
+    db = container.resolve(DatabaseConnection);
     service = container.resolve(ClaudeConfigService);
   });
 
   afterEach(() => {
-    db.close();
-    container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
+    teardownTestDb();
   });
 
   describe('getConfig', () => {

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { isAppError } from './errors.js';
 import { errorResponse } from './response.js';
 import { LoggerService } from '../logger/logger.js';
+import type { Logger } from '../logger/types.js';
 
 const ErrorCodeMap: Record<string, number> = {
   'NOT_FOUND': 40001,
@@ -13,12 +14,13 @@ const ErrorCodeMap: Record<string, number> = {
   'INTERNAL_ERROR': 10001,
 };
 
-export function createErrorHandler(logger: LoggerService) {
+export function createErrorHandler(logger: LoggerService | Logger) {
   return (err: Error, req: Request, res: Response, _next: NextFunction): void => {
-    const requestId = (req as any).requestId || 'unknown';
+    const requestId = req.requestId;
+    const reqLog: Logger = req.log || logger;
 
     if (isAppError(err)) {
-      logger.warn(`[${requestId}] ${err.code}: ${err.message}`);
+      reqLog.warn(`${err.code}: ${err.message}`, { requestId, code: err.code });
       const code = ErrorCodeMap[err.code] || 10001;
       res.status(err.httpStatus).json(
         errorResponse(code, err.message, err.details)
@@ -26,7 +28,7 @@ export function createErrorHandler(logger: LoggerService) {
       return;
     }
 
-    logger.error(`[${requestId}] Unexpected error:`, err);
+    reqLog.error('Unexpected error', err, { requestId });
     res.status(500).json(
       errorResponse(10001, '服务器内部错误')
     );

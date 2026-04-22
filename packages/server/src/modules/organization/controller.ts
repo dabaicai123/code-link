@@ -3,6 +3,7 @@ import { singleton, inject } from 'tsyringe';
 import { Request, Response } from 'express';
 import { OrganizationService } from './service.js';
 import { success } from '../../core/errors/index.js';
+import { organizationPaginationSchema } from '../../core/database/pagination.js';
 
 @singleton()
 export class OrganizationController {
@@ -16,8 +17,9 @@ export class OrganizationController {
   }
 
   async list(req: Request, res: Response): Promise<void> {
-    const organizations = await this.service.findByUserId(req.userId!);
-    res.json(success(organizations));
+    const { page, limit } = organizationPaginationSchema.parse(req.query);
+    const result = await this.service.findByUserId(req.userId!, page, limit);
+    res.json(success(result));
   }
 
   async get(req: Request, res: Response): Promise<void> {

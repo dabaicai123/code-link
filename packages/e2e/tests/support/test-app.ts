@@ -20,9 +20,9 @@ export class TestApp {
     password: string;
   }): Promise<TestUser> {
     await this.page.goto('/register');
-    await this.page.getByPlaceholder('邮箱地址').fill(params.email);
-    await this.page.getByPlaceholder('用户名').fill(params.name);
-    await this.page.getByPlaceholder('密码').fill(params.password);
+    await this.page.getByLabel('邮箱地址').fill(params.email);
+    await this.page.getByLabel('用户名').fill(params.name);
+    await this.page.getByLabel('密码').fill(params.password);
     await this.page.getByRole('button', { name: '注册' }).click();
     await this.page.waitForURL('**/dashboard', { timeout: 15000 });
 
@@ -36,8 +36,8 @@ export class TestApp {
 
   async login(email: string, password: string): Promise<void> {
     await this.page.goto('/login');
-    await this.page.getByPlaceholder('邮箱地址').fill(email);
-    await this.page.getByPlaceholder('密码').fill(password);
+    await this.page.getByLabel('邮箱地址').fill(email);
+    await this.page.getByLabel('密码').fill(password);
     await this.page.getByRole('button', { name: '登录' }).click();
     await this.page.waitForURL('**/dashboard', { timeout: 15000 });
 
@@ -156,6 +156,15 @@ export class TestApp {
     await this.api.deleteProject(projectId);
   }
 
+  async selectProject(name: string): Promise<void> {
+    await this.page.goto('/dashboard');
+    await this.page.waitForLoadState('networkidle');
+    // Click the project in the sidebar to make it active
+    await this.page.getByText(name, { exact: true }).first().click();
+    // Wait for chat panel to appear (indicates project is active)
+    await this.page.locator('[data-testid="chat-input"]').waitFor({ state: 'visible', timeout: 15000 });
+  }
+
   // ============================================
   // Invitation Operations
   // ============================================
@@ -218,16 +227,45 @@ export class TestApp {
   }
 
   // ============================================
-  // Collaboration Operations
+  // Preview Element Selection Operations
   // ============================================
 
   /**
-   * Toggle select mode in the collaboration panel
+   * Switch to the preview tab in the right panel
+   */
+  async switchToPreviewTab(): Promise<void> {
+    await this.page.getByRole('button', { name: '预览' }).click();
+    await expect(this.page.getByText('预览', { exact: true }).first()).toBeVisible();
+  }
+
+  /**
+   * Enter a URL in the preview panel's URL bar
+   */
+  async enterPreviewUrl(url: string): Promise<void> {
+    const urlInput = this.page.getByPlaceholder('输入 URL 查看预览...');
+    await urlInput.fill(url);
+    await urlInput.press('Enter');
+  }
+
+  /**
+   * Toggle select mode in the preview panel
    */
   async toggleSelectMode(): Promise<void> {
-    // Click the select button in the collaboration panel toolbar
-    await this.page.getByRole('button', { name: '🎯 选择' }).first().click();
-    // Wait for select mode indicator text to appear
+    await this.page.getByRole('button', { name: '选择元素' }).click();
+    await expect(this.page.getByText('选择模式已开启')).toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Cancel select mode
+   */
+  async cancelSelectMode(): Promise<void> {
+    await this.page.getByRole('button', { name: '取消选择' }).click();
+  }
+
+  /**
+   * Assert select mode is active
+   */
+  async assertSelectModeActive(): Promise<void> {
     await expect(this.page.getByText('选择模式已开启')).toBeVisible({ timeout: 5000 });
   }
 
@@ -236,77 +274,76 @@ export class TestApp {
    * Note: The display panel has a transparent overlay that captures clicks
    */
   async selectElementInPreview(): Promise<void> {
-    // Wait for select mode to be active (cancel button appears)
-    await expect(this.page.getByRole('button', { name: '✕ 取消' })).toBeVisible({ timeout: 5000 });
-
-    // The overlay is hidden but still captures clicks
-    // Click on the preview area container
-    const previewContainer = this.page.locator('.flex-1.relative').filter({
-      has: this.page.locator('iframe')
-    });
-
-    // Click through the overlay to select an element
-    await previewContainer.click({ position: { x: 200, y: 100 } });
+    const overlay = this.page.locator('[data-testid="chat-workspace"]').locator('.absolute.inset-0.z-10');
+    await overlay.waitFor({ state: 'visible', timeout: 5000 });
+    await overlay.click({ position: { x: 200, y: 100 } });
   }
 
   /**
-   * Add the selected element to the message
+   * Add the selected element to the chat input
    */
   async addSelectedElement(): Promise<void> {
-    // Click the "添加 <tag>" button that appears after selection
     const addButton = this.page.getByRole('button', { name: /添加 </ });
     await addButton.waitFor({ state: 'visible', timeout: 5000 });
     await addButton.click();
   }
 
   /**
-   * Type a message in the message editor
-   */
-  async typeCollaborationMessage(text: string): Promise<void> {
-    const input = this.page.getByPlaceholder('描述修改...');
-    await input.fill(text);
-  }
-
-  /**
-   * Send the collaboration message
-   */
-  async sendCollaborationMessage(): Promise<void> {
-    await this.page.getByRole('button', { name: '发送' }).click();
-  }
-
-  /**
-   * Cancel select mode
-   */
-  async cancelSelectMode(): Promise<void> {
-    await this.page.getByRole('button', { name: '✕ 取消' }).click();
-  }
-
-  /**
-   * Expand the collaboration panel
-   */
-  async expandCollaborationPanel(): Promise<void> {
-    await this.page.getByRole('button', { name: '展示' }).click();
-  }
-
-  /**
-   * Check if collaboration panel is visible
-   */
-  async assertCollaborationPanelVisible(): Promise<void> {
-    await expect(this.page.getByText('协作面板')).toBeVisible({ timeout: 5000 });
-  }
-
-  /**
-   * Check if an element tag is visible in the message editor
+   * Check if an element tag is visible in the chat input
    */
   async assertElementTagVisible(tagName: string): Promise<void> {
-    await expect(this.page.locator(`text=<${tagName}>`)).toBeVisible({ timeout: 5000 });
+    const chatInput = this.page.locator('[data-testid="chat-input"]');
+    await expect(chatInput.locator(`text=<${tagName}>`)).toBeVisible({ timeout: 5000 });
   }
 
   /**
-   * Assert select mode is active
+   * Type a message in the chat input alongside element tags
    */
-  async assertSelectModeActive(): Promise<void> {
-    await expect(this.page.getByText('选择模式已开启')).toBeVisible({ timeout: 5000 });
+  async typeChatMessageWithElements(text: string): Promise<void> {
+    const textarea = this.page.locator('[data-testid="chat-input"] textarea');
+    await textarea.fill(text);
+  }
+
+  /**
+   * Send the chat message with elements
+   */
+  async sendChatMessageWithElements(): Promise<void> {
+    await this.page.locator('[data-testid="chat-input"]').getByRole('button', { name: '发送' }).click();
+  }
+
+  /**
+   * Assert element tag appears inline in a sent user message
+   */
+  async assertInlineElementInMessage(tagName: string): Promise<void> {
+    const userMsg = this.page.locator('[data-role="user"]').last();
+    await expect(userMsg.locator(`text=<${tagName}>`)).toBeVisible({ timeout: 5000 });
+  }
+
+  // ============================================
+  // Collaboration Panel Navigation
+  // ============================================
+
+  async ensureCollabTabActive(): Promise<void> {
+    // Ensure RightPanel's "协作" tab is active
+    const collabTab = this.page.getByRole('button', { name: '协作' });
+    await collabTab.click();
+  }
+
+  async selectDraft(draftTitle: string): Promise<void> {
+    // From DraftList click the specified Draft
+    await this.ensureCollabTabActive();
+    await this.page.getByText(draftTitle).click();
+    // Wait for Timeline view to load — the "返回" back button appears
+    await expect(this.page.getByText('返回')).toBeVisible({ timeout: 5000 });
+  }
+
+  async createDraftViaUI(title: string): Promise<void> {
+    await this.ensureCollabTabActive();
+    await this.page.getByText('新建协作').click();
+    await this.page.getByPlaceholder('协作标题...').fill(title);
+    await this.page.getByRole('button', { name: '创建' }).click();
+    // Wait for DraftList to refresh and show the new draft
+    await expect(this.page.getByText(title)).toBeVisible({ timeout: 5000 });
   }
 
   // ============================================
@@ -341,11 +378,12 @@ export class TestApp {
   async openSlashCommandMenu(): Promise<void> {
     const input = this.page.locator('[data-testid="chat-input"] textarea');
     await input.fill('/');
-    await expect(this.page.locator('.cmd-menu')).toBeVisible({ timeout: 5000 });
+    // Slash command menu has no data-testid; identify by command text
+    await expect(this.page.getByText('/clear').first()).toBeVisible({ timeout: 5000 });
   }
 
   async assertSlashCommandMenuVisible(): Promise<void> {
-    await expect(this.page.locator('.cmd-menu')).toBeVisible();
+    await expect(this.page.getByText('/clear').first()).toBeVisible();
   }
 
   async navigateSlashCommandMenu(index: number): Promise<void> {
@@ -357,7 +395,7 @@ export class TestApp {
 
   async selectSlashCommand(command: string): Promise<void> {
     await this.openSlashCommandMenu();
-    await this.page.locator('.cmd-item').filter({ hasText: command }).click();
+    await this.page.getByText(command).first().click();
   }
 
   // ============================================
@@ -365,7 +403,7 @@ export class TestApp {
   // ============================================
 
   async uploadImageAttachment(filePath: string): Promise<void> {
-    const attachBtn = this.page.getByRole('button', { name: /📎|attach|上传图片|Image/ });
+    const attachBtn = this.page.locator('button[title="添加图片"]');
     const fileChooserPromise = this.page.waitForEvent('filechooser');
     await attachBtn.click();
     const fileChooser = await fileChooserPromise;
@@ -374,11 +412,12 @@ export class TestApp {
 
   async removeImageAttachment(index: number): Promise<void> {
     const chip = this.page.locator(`[data-index="${index}"]`);
-    await chip.locator('span').filter({ hasText: '✕' }).click();
+    // The remove icon is an X SVG from lucide-react, click the last svg element
+    await chip.locator('svg').last().click();
   }
 
   async assertImagePreviewVisible(count: number): Promise<void> {
-    const previews = this.page.locator('.attachment-chip');
+    const previews = this.page.locator('[data-testid="attachment-tray"]').locator('[data-index]');
     await expect(previews).toHaveCount(count, { timeout: 5000 });
   }
 
@@ -387,16 +426,20 @@ export class TestApp {
   // ============================================
 
   async selectAgent(agent: 'claude' | 'codex'): Promise<void> {
-    await this.page.locator('.chat-agent-btn').click();
+    // Agent toggle button in chat input toolbar
+    const agentBtn = this.page.locator('[data-testid="chat-input"]').locator('button').filter({ hasText: /Claude|Codex/ });
+    await agentBtn.click();
   }
 
   async selectPermissionMode(mode: 'default' | 'plan' | 'yolo'): Promise<void> {
-    await this.page.locator('.mode-select').selectOption(mode);
+    // Permission mode dropdown in chat input toolbar
+    const modeSelect = this.page.locator('[data-testid="chat-input"]').locator('select');
+    await modeSelect.selectOption(mode);
   }
 
   async assertAgentSelected(agent: string): Promise<void> {
-    const agentBtn = this.page.locator('.chat-agent-btn');
-    await expect(agentBtn).toContainText(agent);
+    const agentBtn = this.page.locator('[data-testid="chat-input"]').locator('button').filter({ hasText: new RegExp(`^${agent}$`, 'i') });
+    await expect(agentBtn).toBeVisible();
   }
 
   // ============================================
@@ -419,21 +462,62 @@ export class TestApp {
   }
 
   // ============================================
+  // Card Operations
+  // ============================================
+
+  async clickCard(shortId: string): Promise<void> {
+    await this.page.getByTestId(`timeline-card-${shortId}`).click();
+  }
+
+  async rightClickCard(shortId: string): Promise<void> {
+    await this.page.getByTestId(`timeline-card-${shortId}`).click({ button: 'right' });
+  }
+
+  async expandCardDetail(shortId: string): Promise<void> {
+    await this.page.getByTestId(`timeline-card-${shortId}`).getByTestId('card-expand-detail').click();
+  }
+
+  async assertCardVisible(shortId: string): Promise<void> {
+    await expect(this.page.getByTestId(`timeline-card-${shortId}`)).toBeVisible({ timeout: 5000 });
+  }
+
+  async assertCardDetailModalVisible(): Promise<void> {
+    await expect(this.page.getByTestId('card-detail-modal')).toBeVisible({ timeout: 5000 });
+  }
+
+  async assertCardDetailModalNotVisible(): Promise<void> {
+    await expect(this.page.getByTestId('card-detail-modal')).not.toBeVisible();
+  }
+
+  async assertContextMenuVisible(): Promise<void> {
+    await expect(this.page.getByTestId('card-context-menu')).toBeVisible({ timeout: 5000 });
+  }
+
+  async clickContextMenuItem(itemText: string): Promise<void> {
+    await this.page.getByTestId('card-context-menu').getByRole('button', { name: itemText }).click();
+  }
+
+  // ============================================
   // Session Management
   // ============================================
 
   async restartChatSession(): Promise<void> {
-    await this.page.getByRole('button', { name: /重启|Restart|重置/ }).click();
+    // The restart button uses text "重启" (conditional render, may not exist)
+    await this.page.getByRole('button', { name: '重启' }).click({ timeout: 5000 });
   }
 
   async assertSessionReset(): Promise<void> {
+    // After restart, the welcome message reappears
     await expect(this.page.getByText(/欢迎使用|开始对话|Welcome/i)).toBeVisible({ timeout: 5000 });
   }
 
   async assertConnectionStatus(connected: boolean): Promise<void> {
-    const statusDot = this.page.locator('.status-dot');
-    const expectedClass = connected ? 'status-dot-running' : 'status-dot-stopped';
-    await expect(statusDot).toHaveClass(new RegExp(expectedClass));
+    const statusDot = this.page.locator('[data-testid="chat-workspace"]').locator('.bg-status-running, .bg-status-stopped').first();
+    if (connected) {
+      await expect(statusDot).toHaveClass(/bg-status-running/);
+    } else {
+      await expect(statusDot).toHaveClass(/bg-status-stopped/);
+    }
   }
 
   // ============================================

@@ -11,5 +11,9 @@
     "test:e2e:debug": "pnpm --filter @code-link/e2e test:debug",
     "test:e2e:headed": "pnpm --filter @code-link/e2e test:headed",
     "build": "pnpm -r build"
+  },
+  "dependencies": {
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2"
   }
 }

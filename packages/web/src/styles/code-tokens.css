@@ -1,0 +1,26 @@
+/* ======================================================================
+   Code Tab Tokens — Toolbar Overlay
+   ----------------------------------------------------------------------
+   Minimal dark tokens for the CodePanel toolbar. code-server's iframe
+   has its own complete VSCode dark theme internally.
+   ====================================================================== */
+
+:root {
+  /* ─── Toolbar overlay ─────────────────────────────────────────── */
+  --code-bg-base:       #1e1e1e;
+  --code-bg-surface:    #181818;
+  --code-bg-hover:      #2a2a2a;
+  --code-bg-active:     #094771;
+
+  /* ─── Accent ─────────────────────────────────────────────────────── */
+  --code-accent:        #0078d4;
+  --code-accent-hover:  #1a8ad4;
+
+  /* ─── Text ─────────────────────────────────────────────────────────── */
+  --code-text-primary:  #cccccc;
+  --code-text-secondary: #808080;
+  --code-text-muted:    #4f4f4f;
+
+  /* ─── Border ─────────────────────────────────────────────────────── */
+  --code-border:        #3c3c3c;
+}

@@ -21,12 +21,16 @@ export function getDefaultDbPath(): string {
  */
 export function createSqliteDb(dbPath?: string): Database.Database {
   const resolvedPath = dbPath || getDefaultDbPath();
-  const dir = path.dirname(resolvedPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (resolvedPath !== ':memory:') {
+    const dir = path.dirname(resolvedPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   }
   const db = new Database(resolvedPath);
-  db.pragma('journal_mode = WAL');
+  if (resolvedPath !== ':memory:') {
+    db.pragma('journal_mode = WAL');
+  }
   db.pragma('foreign_keys = ON');
   return db;
 }

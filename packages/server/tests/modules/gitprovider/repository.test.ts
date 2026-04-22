@@ -4,13 +4,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { container } from 'tsyringe';
 import { GitProviderRepository } from '../../../src/modules/gitprovider/repository.js';
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
-import { DatabaseConnection } from '../../../src/core/database/connection.js';
+import { DatabaseConnection } from '../../../src/db/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { initSchema } from '../../../src/db/init.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-gitprovider-repo.db');
+import { setupTestDb, teardownTestDb } from '../../helpers/test-db.js';
 
 describe('GitProviderRepository', () => {
   let repo: GitProviderRepository;
@@ -18,24 +14,18 @@ describe('GitProviderRepository', () => {
   let db: DatabaseConnection;
 
   beforeEach(() => {
-    container.reset();
+    setupTestDb();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
+    process.env.ADMIN_EMAIL = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    initSchema(db.getSqlite());
-    container.registerInstance(DatabaseConnection, db);
+    db = container.resolve(DatabaseConnection);
     repo = new GitProviderRepository(db);
     userRepo = new AuthRepository(db);
   });
 
   afterEach(() => {
-    db.close();
-    container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
+    teardownTestDb();
   });
 
   describe('upsert', () => {

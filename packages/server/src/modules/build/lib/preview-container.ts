@@ -1,10 +1,11 @@
 import { singleton, inject } from 'tsyringe';
+import Docker from 'dockerode';
 import { DockerService } from '../../container/lib/docker.service.js';
-import { getPortManager } from './port-manager.js';
+import { PortManager } from './port-manager.js';
 import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('preview');
-const PREVIEW_CONTAINER_PREFIX = 'code-link-preview-';
+const PREVIEW_CONTAINER_PREFIX = process.env.NODE_ENV === 'test' ? 'test_code-link-preview-' : 'code-link-preview-';
 
 interface PreviewContainer {
   containerId: string;
@@ -16,12 +17,16 @@ interface PreviewContainer {
 @singleton()
 export class PreviewContainerManager {
   private containers: Map<string, PreviewContainer> = new Map();
+  private readonly portManager: PortManager;
 
   constructor(
-    @inject(DockerService) private readonly dockerService: DockerService
-  ) {}
+    @inject(DockerService) private readonly dockerService: DockerService,
+    @inject(PortManager) portManager: PortManager
+  ) {
+    this.portManager = portManager;
+  }
 
-  private getDocker() {
+  private get docker(): Docker {
     return this.dockerService.getClient();
   }
 
@@ -30,18 +35,13 @@ export class PreviewContainerManager {
     projectId: string,
     env?: Record<string, string>
   ): Promise<number> {
-    const portManager = getPortManager();
+    const port = this.portManager.allocatePort();
 
-    // 分配端口
-    const port = portManager.allocatePort();
-
-    // 停止并移除旧的预览容器（如果存在）
     await this.stopPreviewContainer(projectId);
 
-    // 创建并启动容器
     let container;
     try {
-      container = await this.getDocker().createContainer({
+      container = await this.docker.createContainer({
         name: `${PREVIEW_CONTAINER_PREFIX}${projectId}`,
         Image: imageId,
         ExposedPorts: {
@@ -57,12 +57,10 @@ export class PreviewContainerManager {
 
       await container.start();
     } catch (error) {
-      // 启动失败时释放端口
-      portManager.releasePort(port);
+      this.portManager.releasePort(port);
       throw error;
     }
 
-    // 记录容器信息
     this.containers.set(projectId, {
       containerId: container.id,
       projectId,
@@ -74,25 +72,23 @@ export class PreviewContainerManager {
   }
 
   async stopPreviewContainer(projectId: string): Promise<void> {
-    const portManager = getPortManager();
     const info = this.containers.get(projectId);
 
     if (info) {
       try {
-        const container = this.getDocker().getContainer(info.containerId);
+        const container = this.docker.getContainer(info.containerId);
         await container.stop();
         await container.remove();
       } catch (error) {
         logger.error('Failed to stop container', error instanceof Error ? error : new Error(String(error)));
       }
 
-      // 释放端口
-      portManager.releasePort(info.port);
+      this.portManager.releasePort(info.port);
       this.containers.delete(projectId);
     } else {
       // 尝试通过名称查找
       try {
-        const container = this.getDocker().getContainer(`${PREVIEW_CONTAINER_PREFIX}${projectId}`);
+        const container = this.docker.getContainer(`${PREVIEW_CONTAINER_PREFIX}${projectId}`);
         const containerInfo = await container.inspect();
         await container.stop();
         await container.remove();
@@ -100,7 +96,7 @@ export class PreviewContainerManager {
         // 尝试从端口绑定中释放端口
         const portBinding = containerInfo.NetworkSettings?.Ports?.['3000/tcp']?.[0]?.HostPort;
         if (portBinding) {
-          portManager.releasePort(parseInt(portBinding, 10));
+          this.portManager.releasePort(parseInt(portBinding, 10));
         }
       } catch (error) {
         logger.error('Failed to stop container by name', error instanceof Error ? error : new Error(String(error)));
@@ -118,22 +114,18 @@ export class PreviewContainerManager {
   }
 
   async cleanupAll(): Promise<void> {
-    const portManager = getPortManager();
-
     for (const [projectId, info] of this.containers) {
       try {
-        const container = this.getDocker().getContainer(info.containerId);
+        const container = this.docker.getContainer(info.containerId);
         await container.stop();
         await container.remove();
       } catch (error) {
         logger.error('Failed to cleanup container', error instanceof Error ? error : new Error(String(error)));
       }
 
-      // 释放端口
-      portManager.releasePort(info.port);
+      this.portManager.releasePort(info.port);
     }
 
     this.containers.clear();
   }
 }
-
