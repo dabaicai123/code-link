@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { CollaborationPanel } from '@/components/collaboration';
+import { RightPanel } from './right-panel';
 import { ResizableSplit } from './resizable-split';
 import { SelectedElement } from '@/components/collaboration/display-panel';
 import { Loading } from '@/components/ui/loading';
@@ -58,7 +58,7 @@ export function Workspace({ project, userId, onRestart }: WorkspaceProps) {
           onChatReady={handleTerminalReady}
         />
       }
-      right={<CollaborationPanel />}
+      right={<RightPanel project={project} userId={userId} />}
       defaultLeftWidth={55}
       minLeftWidth={30}
       maxLeftWidth={80}
