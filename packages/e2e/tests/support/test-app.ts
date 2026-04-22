@@ -66,7 +66,8 @@ export class TestApp {
   async configureClaude(params: { authToken: string }): Promise<void> {
     await this.page.goto('/settings');
 
-    await this.page.getByRole('tab', { name: 'Claude Code' }).click();
+    // Navigate to Claude Code page via sidebar
+    await this.page.getByText('Claude Code', { exact: true }).click();
 
     const config = {
       env: {
@@ -81,7 +82,7 @@ export class TestApp {
     };
 
     await this.page.locator('textarea').fill(JSON.stringify(config, null, 2));
-    await this.page.getByText('保存配置').click();
+    await this.page.getByRole('button', { name: '保存配置' }).click();
     await this.page.waitForSelector('text=配置保存成功', { timeout: 5000 });
   }
 
@@ -91,7 +92,12 @@ export class TestApp {
 
   async createOrganization(params: { name: string }): Promise<TestOrganization> {
     await this.page.goto('/settings');
-    await this.page.getByText('+ 创建组织').click();
+
+    // Navigate to organization page via sidebar
+    await this.page.getByText('组织管理', { exact: true }).click();
+
+    // Click the "创建新组织" button
+    await this.page.getByText('创建新组织').click();
     await this.page.getByPlaceholder('输入组织名称').fill(params.name);
     await this.page.getByRole('dialog').getByRole('button', { name: '创建组织' }).click();
     // Wait for the organization name to appear in the list
@@ -104,15 +110,18 @@ export class TestApp {
     const org = await this.api.getOrganizationById(orgId);
     await this.page.goto('/settings');
 
-    // Click the organization in the left list
+    // Navigate to organization page via sidebar
+    await this.page.getByText('组织管理', { exact: true }).click();
+
+    // Click the organization card in the list
     await this.page.getByText(org!.name).first().click();
 
     // Wait for detail panel to load, then click invite button
-    await this.page.getByText('邀请成员', { exact: true }).click();
+    await this.page.getByRole('button', { name: '邀请成员' }).click();
 
     // Fill invite dialog - use locator within dialog
     const dialog = this.page.getByRole('dialog', { name: '邀请成员' });
-    await dialog.locator('input[type="email"]').fill(email);
+    await dialog.getByPlaceholder('输入成员邮箱').fill(email);
     await dialog.getByRole('button', { name: '发送邀请' }).click();
 
     // Wait a moment for the request to complete, then verify via API
@@ -123,9 +132,19 @@ export class TestApp {
   // Project Operations
   // ============================================
 
-  async createProject(params: { name: string }): Promise<TestProject> {
+  async createProject(params: { name: string; organizationId?: number }): Promise<TestProject> {
     await this.page.goto('/dashboard');
     await this.page.getByText('+ 新建项目').click();
+
+    // Select organization if specified — find org name via API for the dropdown
+    if (params.organizationId) {
+      const org = await this.api.getOrganizationById(params.organizationId);
+      // The dropdown shows "OrgName (Owner)" or "OrgName (Developer)"
+      const orgLabel = org ? `${org.name} (${org.role === 'owner' ? 'Owner' : 'Developer'})` : String(params.organizationId);
+      await this.page.getByRole('combobox').click();
+      await this.page.getByRole('option', { name: orgLabel }).click();
+    }
+
     await this.page.getByPlaceholder('输入项目名称').fill(params.name);
     await this.page.getByRole('dialog').getByRole('button', { name: '创建项目' }).click();
     await this.page.waitForSelector('dialog', { state: 'hidden', timeout: 5000 });
@@ -149,8 +168,8 @@ export class TestApp {
     await this.goToInvitations();
     await this.page.waitForSelector(`text=${orgName}`, { timeout: 5000 });
     await this.page.getByRole('button', { name: '接受' }).first().click();
-    // Accept redirects to /organizations, wait for navigation
-    await this.page.waitForURL(/.*organizations|.*dashboard|.*settings/, { timeout: 10000 });
+    // After accept, the app may redirect — wait for landing on a valid page
+    await this.page.waitForURL(/.*dashboard|.*settings|.*invitations/, { timeout: 10000 });
   }
 
   async declineInvitation(orgName: string): Promise<void> {

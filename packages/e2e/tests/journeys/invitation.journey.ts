@@ -26,8 +26,9 @@ test.describe('邀请处理旅程', () => {
     // 查看邀请并接受
     await app.acceptInvitation('邀请组织');
 
-    // 验证已加入组织
+    // 验证已加入组织 — 在组织管理页
     await app.page.goto('/settings');
+    await app.page.getByText('组织管理', { exact: true }).click();
     await expect(app.page.getByText('邀请组织')).toBeVisible({ timeout: 5000 });
   });
 
@@ -48,8 +49,9 @@ test.describe('邀请处理旅程', () => {
     // 拒绝邀请
     await app.declineInvitation('拒绝测试组织');
 
-    // 验证未加入组织
+    // 验证未加入组织 — 在组织管理页
     await app.page.goto('/settings');
+    await app.page.getByText('组织管理', { exact: true }).click();
     await expect(app.page.getByText('拒绝测试组织')).not.toBeVisible({ timeout: 5000 });
   });
 });

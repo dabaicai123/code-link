@@ -32,7 +32,7 @@ test.describe('项目生命周期旅程', () => {
     // 创建多个项目
     const projectNames = ['Project Alpha', 'Project Beta', 'Project Gamma'];
     for (const name of projectNames) {
-      await app.createProject({ name });
+      await app.createProject({ name, organizationId: org!.id });
     }
 
     // 验证所有项目可见

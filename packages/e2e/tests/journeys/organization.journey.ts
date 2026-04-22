@@ -25,8 +25,9 @@ test.describe('组织管理旅程', () => {
       await app.createOrganization({ name });
     }
 
-    // 验证所有组织可见
+    // 验证所有组织可见 — 在组织管理页
     await app.page.goto('/settings');
+    await app.page.getByText('组织管理', { exact: true }).click();
     for (const name of orgNames) {
       await expect(app.page.getByText(name)).toBeVisible({ timeout: 5000 });
     }
@@ -35,6 +36,8 @@ test.describe('组织管理旅程', () => {
   test('空组织列表显示', async ({ app }) => {
     await app.register(createUserParams());
     await app.page.goto('/settings');
-    await expect(app.page.getByText('+ 创建组织')).toBeVisible();
+    // Navigate to organization page via sidebar
+    await app.page.getByText('组织管理', { exact: true }).click();
+    await expect(app.page.getByText('创建新组织')).toBeVisible();
   });
 });
