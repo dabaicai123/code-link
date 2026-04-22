@@ -39,13 +39,9 @@ export function MessageItem({ message, streamingContent }: MessageItemProps) {
         {isUser ? (
           <div className="msg-text whitespace-pre-wrap">
             {message.content}
-            {message.elements && message.elements.length > 0 && (
-              <div className="mt-1 text-xs opacity-80">
-                {message.elements.map((el) => (
-                  <span key={el.id} className="inline-block mr-1">&lt;{el.tagName}&gt;</span>
-                ))}
-              </div>
-            )}
+            {message.elements?.map((el) => (
+              <span key={el.id} className="inline-flex items-center mx-1 px-1.5 py-0.5 bg-white/20 border border-white/40 rounded-sm font-mono text-[11px]">&lt;{el.tagName}&gt;</span>
+            ))}
           </div>
         ) : (
           <AssistantMessage

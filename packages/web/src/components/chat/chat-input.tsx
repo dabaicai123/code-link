@@ -140,11 +140,11 @@ export function ChatInput({
 
       <div className="flex items-end gap-3">
         {/* Input wrapper with border */}
-        <div className="flex-1 min-h-[44px] max-h-[120px] bg-bg-primary border border-border-default rounded-lg px-4 py-2.5 flex items-center">
+        <div className="flex-1 min-h-[44px] max-h-[120px] bg-bg-primary border border-border-default rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-1">
           {elements.map((el) => (
             <span key={el.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-accent-primary/15 border border-accent-primary rounded-sm font-mono text-[11px] text-accent-primary whitespace-nowrap">
               &lt;{el.tagName}&gt;
-              <X className="w-3 h-3" onClick={() => onRemoveElement(el.id)} />
+              <X className="w-3 h-3 cursor-pointer" onClick={() => onRemoveElement(el.id)} />
             </span>
           ))}
           <textarea

@@ -227,16 +227,45 @@ export class TestApp {
   }
 
   // ============================================
-  // Collaboration Operations
+  // Preview Element Selection Operations
   // ============================================
 
   /**
-   * Toggle select mode in the collaboration panel
+   * Switch to the preview tab in the right panel
+   */
+  async switchToPreviewTab(): Promise<void> {
+    await this.page.getByRole('button', { name: '预览' }).click();
+    await expect(this.page.getByText('预览', { exact: true }).first()).toBeVisible();
+  }
+
+  /**
+   * Enter a URL in the preview panel's URL bar
+   */
+  async enterPreviewUrl(url: string): Promise<void> {
+    const urlInput = this.page.getByPlaceholder('输入 URL 查看预览...');
+    await urlInput.fill(url);
+    await urlInput.press('Enter');
+  }
+
+  /**
+   * Toggle select mode in the preview panel
    */
   async toggleSelectMode(): Promise<void> {
-    // Click the select button in the collaboration panel toolbar
-    await this.page.getByRole('button', { name: '🎯 选择' }).first().click();
-    // Wait for select mode indicator text to appear
+    await this.page.getByRole('button', { name: '选择元素' }).click();
+    await expect(this.page.getByText('选择模式已开启')).toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Cancel select mode
+   */
+  async cancelSelectMode(): Promise<void> {
+    await this.page.getByRole('button', { name: '取消选择' }).click();
+  }
+
+  /**
+   * Assert select mode is active
+   */
+  async assertSelectModeActive(): Promise<void> {
     await expect(this.page.getByText('选择模式已开启')).toBeVisible({ timeout: 5000 });
   }
 
@@ -245,77 +274,49 @@ export class TestApp {
    * Note: The display panel has a transparent overlay that captures clicks
    */
   async selectElementInPreview(): Promise<void> {
-    // Wait for select mode to be active (cancel button appears)
-    await expect(this.page.getByRole('button', { name: '✕ 取消' })).toBeVisible({ timeout: 5000 });
-
-    // The overlay is hidden but still captures clicks
-    // Click on the preview area container
-    const previewContainer = this.page.locator('.flex-1.relative').filter({
-      has: this.page.locator('iframe')
-    });
-
-    // Click through the overlay to select an element
-    await previewContainer.click({ position: { x: 200, y: 100 } });
+    const overlay = this.page.locator('[data-testid="chat-workspace"]').locator('.absolute.inset-0.z-10');
+    await overlay.waitFor({ state: 'visible', timeout: 5000 });
+    await overlay.click({ position: { x: 200, y: 100 } });
   }
 
   /**
-   * Add the selected element to the message
+   * Add the selected element to the chat input
    */
   async addSelectedElement(): Promise<void> {
-    // Click the "添加 <tag>" button that appears after selection
     const addButton = this.page.getByRole('button', { name: /添加 </ });
     await addButton.waitFor({ state: 'visible', timeout: 5000 });
     await addButton.click();
   }
 
   /**
-   * Type a message in the message editor
-   */
-  async typeCollaborationMessage(text: string): Promise<void> {
-    const input = this.page.getByPlaceholder('描述修改...');
-    await input.fill(text);
-  }
-
-  /**
-   * Send the collaboration message
-   */
-  async sendCollaborationMessage(): Promise<void> {
-    await this.page.getByRole('button', { name: '发送' }).click();
-  }
-
-  /**
-   * Cancel select mode
-   */
-  async cancelSelectMode(): Promise<void> {
-    await this.page.getByRole('button', { name: '✕ 取消' }).click();
-  }
-
-  /**
-   * Expand the collaboration panel
-   */
-  async expandCollaborationPanel(): Promise<void> {
-    await this.page.getByRole('button', { name: '展示' }).click();
-  }
-
-  /**
-   * Check if collaboration panel is visible
-   */
-  async assertCollaborationPanelVisible(): Promise<void> {
-    await expect(this.page.getByText('协作面板')).toBeVisible({ timeout: 5000 });
-  }
-
-  /**
-   * Check if an element tag is visible in the message editor
+   * Check if an element tag is visible in the chat input
    */
   async assertElementTagVisible(tagName: string): Promise<void> {
-    await expect(this.page.locator(`text=<${tagName}>`)).toBeVisible({ timeout: 5000 });
+    const chatInput = this.page.locator('[data-testid="chat-input"]');
+    await expect(chatInput.locator(`text=<${tagName}>`)).toBeVisible({ timeout: 5000 });
   }
 
   /**
-   * Assert select mode is active
+   * Type a message in the chat input alongside element tags
    */
-  async assertSelectModeActive(): Promise<void> {
-    await expect(this.page.getByText('选择模式已开启')).toBeVisible({ timeout: 5000 });
+  async typeChatMessageWithElements(text: string): Promise<void> {
+    const textarea = this.page.locator('[data-testid="chat-input"] textarea');
+    await textarea.fill(text);
+  }
+
+  /**
+   * Send the chat message with elements
+   */
+  async sendChatMessageWithElements(): Promise<void> {
+    await this.page.locator('[data-testid="chat-input"]').getByRole('button', { name: '发送' }).click();
+  }
+
+  /**
+   * Assert element tag appears inline in a sent user message
+   */
+  async assertInlineElementInMessage(tagName: string): Promise<void> {
+    const userMsg = this.page.locator('[data-role="user"]').last();
+    await expect(userMsg.locator(`text=<${tagName}>`)).toBeVisible({ timeout: 5000 });
   }
 
   // ============================================
