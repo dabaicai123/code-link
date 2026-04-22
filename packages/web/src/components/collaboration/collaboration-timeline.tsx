@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useDraftSocket } from '@/lib/socket/draft';
 import { MessageInput } from './message-input';
+import { CardDetailModal } from './card/card-detail-modal';
+import { useCardContextMenu } from '@/hooks/use-card-context-menu';
 import { cn } from '@/lib/utils';
 import { Loading } from '@/components/ui/loading';
 import { ArrowLeft, History, UserPlus } from 'lucide-react';
@@ -124,7 +126,13 @@ function TimelineNodeItem({ node }: { node: TimelineNode }) {
 
 // ==================== Timeline Card Component ====================
 
-function TimelineCardItem({ item }: { item: TimelineCard }) {
+interface TimelineCardItemProps {
+  item: TimelineCard;
+  onClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
+}
+
+function TimelineCardItem({ item, onClick, onContextMenu }: TimelineCardItemProps) {
   const { card } = item;
   const isRunning = card.cardStatus === 'running';
   const isCompleted = card.cardStatus === 'completed';
@@ -143,6 +151,8 @@ function TimelineCardItem({ item }: { item: TimelineCard }) {
   return (
     <div
       data-testid={`timeline-card-${card.shortId}`}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
       className={cn(
         'pl-10 card-item bg-bg-card border rounded-xl p-4 shadow-warm-sm cursor-pointer relative',
         isRunning ? 'border-status-running/20' : 'border-border-default',
@@ -372,6 +382,8 @@ export function CollaborationTimeline({
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyTo, setReplyTo] = useState<DraftMessage | null>(null);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const { contextMenu, handleContextMenu, closeContextMenu } = useCardContextMenu();
   const timelineEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -644,7 +656,7 @@ export function CollaborationTimeline({
                 case 'node':
                   return <TimelineNodeItem key={item.id} node={item} />;
                 case 'card':
-                  return <TimelineCardItem key={item.id} item={item} />;
+                  return <TimelineCardItem key={item.id} item={item} onClick={() => setSelectedCard(item.card)} onContextMenu={(e) => handleContextMenu(e, item.card)} />;
                 case 'message':
                   return <TimelineMessageItem key={item.id} item={item} />;
                 default:
@@ -663,6 +675,37 @@ export function CollaborationTimeline({
         onSend={handleSend}
         onCancelReply={() => setReplyTo(null)}
       />
+
+      <CardDetailModal
+        card={selectedCard}
+        onClose={() => setSelectedCard(null)}
+        onReference={(card) => {
+          console.log('Reference card:', card.shortId);
+          setSelectedCard(null);
+        }}
+        onExecutePlan={(card) => { /* 后续接入 AI 执行流程 */ }}
+        onStartCoding={(card) => { /* 后续接入 AI 执行流程 */ }}
+        onResume={(card) => { /* 后续接入 AI 执行流程 */ }}
+        onAbort={(card) => { /* 后续接入 AI 执行流程 */ }}
+      />
+
+      {contextMenu && (
+        <div
+          data-testid="card-context-menu"
+          style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x, zIndex: 50 }}
+          className="bg-bg-card border border-border-default rounded-lg shadow-lg py-1"
+        >
+          <button
+            data-testid="card-reference-btn"
+            className="w-full px-3 py-2 text-left text-[13px] hover:bg-bg-hover transition-colors"
+            onClick={() => {
+              closeContextMenu();
+            }}
+          >
+            引用此卡片
+          </button>
+        </div>
+      )}
     </div>
   );
 }
