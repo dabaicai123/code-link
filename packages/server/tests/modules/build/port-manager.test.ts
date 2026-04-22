@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PortManager } from '../../../src/modules/build/lib/port-manager.ts';
+import { PortManager } from '../../../src/modules/build/lib/port-manager.js';
 
 describe('PortManager', () => {
   let manager: PortManager;

@@ -44,7 +44,6 @@ describe('DraftService', () => {
     resetConfig();
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
     process.env.ADMIN_EMAIL = 'admin@test.com';
-    process.env.SUPER_ADMIN_EMAILS = 'admin@test.com';
 
     const sqlite = createSqliteDb(':memory:');
     runMigrations(sqlite);

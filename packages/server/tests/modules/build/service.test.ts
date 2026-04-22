@@ -5,7 +5,6 @@ import { BuildService } from '../../../src/modules/build/service.js';
 import { BuildRepository } from '../../../src/modules/build/repository.js';
 import { BuildManager } from '../../../src/modules/build/lib/build-manager.js';
 import { PreviewContainerManager } from '../../../src/modules/build/lib/preview-container.js';
-import { PortManager } from '../../../src/modules/build/lib/port-manager.js';
 import { DockerService } from '../../../src/modules/container/lib/docker.service.js';
 import { ProjectRepository } from '../../../src/modules/project/repository.js';
 import { OrganizationRepository } from '../../../src/modules/organization/repository.js';
@@ -39,7 +38,6 @@ describe('BuildService', () => {
     resetConfig();
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
     process.env.ADMIN_EMAIL = 'admin@test.com';
-    process.env.SUPER_ADMIN_EMAILS = 'admin@test.com';
 
     const sqlite = createSqliteDb(':memory:');
     runMigrations(sqlite);
