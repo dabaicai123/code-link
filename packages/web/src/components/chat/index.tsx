@@ -19,6 +19,8 @@ interface ChatWorkspaceProps {
   onSendMessage?: (message: string, elements: SelectedElement[]) => void;
   onRestart?: () => void;
   onChatReady?: (sendFn: (elements: SelectedElement[], message: string) => void) => void;
+  onShowPanel?: () => void;
+  onShowDraft?: () => void;
 }
 
 export function ChatWorkspace({
@@ -29,6 +31,8 @@ export function ChatWorkspace({
   onSendMessage,
   onRestart,
   onChatReady,
+  onShowPanel,
+  onShowDraft,
 }: ChatWorkspaceProps) {
   const {
     state,
@@ -131,6 +135,8 @@ export function ChatWorkspace({
       <ChatHeader
         project={project}
         onRestart={onRestart}
+        onShowPanel={onShowPanel}
+        onShowDraft={onShowDraft}
       />
       <MessageList
         messages={state.messages}
@@ -143,6 +149,10 @@ export function ChatWorkspace({
         onSend={handleSend}
         onAbort={handleAbort}
         isRunning={state.isRunning}
+        agent={state.agent}
+        permissionMode={state.permissionMode}
+        onAgentChange={setAgent}
+        onModeChange={setPermissionMode}
       />
     </div>
   );

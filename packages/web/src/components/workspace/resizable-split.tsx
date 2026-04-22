@@ -52,7 +52,7 @@ export function ResizableSplit({ left, right, defaultLeftWidth = 55, minLeftWidt
         onMouseDown={handleMouseDown}
         className={cn(
           'w-1 cursor-col-resize flex items-center justify-center transition-colors',
-          isDragging ? 'bg-primary' : 'bg-border'
+          isDragging ? 'bg-accent-primary' : 'bg-border-default'
         )}
       >
         <div className="w-0.5 h-8 bg-border-light rounded-sm" />
