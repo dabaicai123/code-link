@@ -14,7 +14,7 @@ import type { Organization, OrganizationDetail, OrganizationMember } from '@/typ
 import type { Repo } from '@/types/repo';
 import type { OrganizationInvitation } from '@/types/invitation';
 import type { Card } from '@/types/card';
-import type { RepoGitStatus, CommitNode, BranchInfo, FileContent, FileTreeNode } from '@/types/code';
+import type { CodeServerStatus } from '@/types/code';
 
 export { ApiError, setToken, removeToken };
 
@@ -161,37 +161,16 @@ export const api = {
   getSkills: (): Promise<{ skills: Array<{ name: string; description: string }> }> =>
     apiClient<{ skills: Array<{ name: string; description: string }> }>('/skills'),
 
-  // ─── Code tab ────────────────────────────────────────────────
-  getCodeFileTree: (projectId: number, repoName?: string) =>
-    apiClient<FileTreeNode[]>(`/projects/${projectId}/code/tree${repoName ? `?repoName=${repoName}` : ''}`),
+  // ─── Code-server lifecycle ─────────────────────────────────
+  startCodeServer(projectId: number): Promise<{ url: string }> {
+    return apiClientMethods.post(`/projects/${projectId}/code-server/start`, {});
+  },
 
-  getCodeFileContent: (projectId: number, path: string, repoName?: string) =>
-    apiClient<FileContent>(`/projects/${projectId}/code/file?path=${encodeURIComponent(path)}${repoName ? `&repoName=${repoName}` : ''}`),
+  stopCodeServer(projectId: number): Promise<{ success: boolean }> {
+    return apiClientMethods.post(`/projects/${projectId}/code-server/stop`, {});
+  },
 
-  getCodeGitStatus: (projectId: number) =>
-    apiClient<RepoGitStatus[]>(`/projects/${projectId}/code/git/status`),
-
-  getCodeGitLog: (projectId: number, repoName?: string) =>
-    apiClient<CommitNode[]>(`/projects/${projectId}/code/git/log${repoName ? `?repoName=${repoName}` : ''}`),
-
-  getCodeBranches: (projectId: number, repoName?: string) =>
-    apiClient<BranchInfo[]>(`/projects/${projectId}/code/git/branches${repoName ? `?repoName=${repoName}` : ''}`),
-
-  getCodeCommitDiff: (projectId: number, hash: string, repoName?: string) =>
-    apiClient<{ diff: string }>(`/projects/${projectId}/code/git/diff?hash=${hash}${repoName ? `&repoName=${repoName}` : ''}`),
-
-  codeGitCommit: (projectId: number, message: string, repoName?: string) =>
-    apiClient<{ success: boolean; hash?: string }>(`/projects/${projectId}/code/git/commit`, { method: 'POST', body: JSON.stringify({ message, repoName }) }),
-
-  codeGitPush: (projectId: number, repoName?: string) =>
-    apiClient<{ success: boolean }>(`/projects/${projectId}/code/git/push`, { method: 'POST', body: JSON.stringify({ repoName }) }),
-
-  codeGitPull: (projectId: number, repoName?: string) =>
-    apiClient<{ success: boolean }>(`/projects/${projectId}/code/git/pull`, { method: 'POST', body: JSON.stringify({ repoName }) }),
-
-  codeGitStage: (projectId: number, repoName: string, paths: string[]) =>
-    apiClient<{ success: boolean }>(`/projects/${projectId}/code/git/stage`, { method: 'POST', body: JSON.stringify({ repoName, paths }) }),
-
-  codeGitDiscard: (projectId: number, repoName: string, paths: string[]) =>
-    apiClient<{ success: boolean }>(`/projects/${projectId}/code/git/discard`, { method: 'POST', body: JSON.stringify({ repoName, paths }) }),
+  getCodeServerStatus(projectId: number): Promise<CodeServerStatus> {
+    return apiClientMethods.get(`/projects/${projectId}/code-server/status`);
+  },
 };
