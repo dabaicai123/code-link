@@ -7,8 +7,6 @@ import { CollaborationTimeline } from './collaboration-timeline';
 import { useDraftSocket } from '@/lib/socket/draft';
 import type { Draft, DraftMember, DraftStatus } from '../../types/draft';
 import type { DraftOnlineUser } from '@/lib/socket/types';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 
 type OnlineUser = DraftOnlineUser;
 
@@ -92,25 +90,11 @@ export function CollaborationPanel({
           onStatusChange={handleStatusChange}
         />
       ) : (
-        /* ====== Draft list for selection ====== */
-        <>
-          {/* Header with title */}
-          <div className="h-[44px] border-b border-border-default px-4 flex items-center gap-4">
-            <span className="text-[13px] font-semibold text-accent-primary pb-2 border-b-2 border-accent-primary">
-              草稿
-            </span>
-            <button className="ml-auto text-[13px] text-text-muted hover:text-accent-primary transition-colors flex items-center gap-1">
-              <Plus className="w-3.5 h-3.5" />
-              新建
-            </button>
-          </div>
-
-          <DraftList
-            projectId={projectId}
-            onSelectDraft={handleSelectDraft}
-            selectedDraftId={undefined}
-          />
-        </>
+        <DraftList
+          projectId={projectId}
+          onSelectDraft={handleSelectDraft}
+          selectedDraftId={undefined}
+        />
       )}
     </div>
   );
