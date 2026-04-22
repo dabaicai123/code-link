@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { CollaborationPanel } from '@/components/collaboration';
 import { DisplayPanel } from '@/components/collaboration/display-panel';
+import type { SelectedElement } from '@/types/claude-message';
 import type { Project } from '@/types';
 import type { Draft } from '@/types/draft';
 
@@ -14,9 +15,10 @@ type RightTab = 'collab' | 'preview';
 interface RightPanelProps {
   project: Project | null;
   userId: number;
+  onAddElement?: (element: SelectedElement) => void;
 }
 
-export function RightPanel({ project, userId }: RightPanelProps) {
+export function RightPanel({ project, userId, onAddElement }: RightPanelProps) {
   const [activeTab, setActiveTab] = useState<RightTab>('collab');
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -119,7 +121,7 @@ export function RightPanel({ project, userId }: RightPanelProps) {
           />
         </>
       ) : (
-        <DisplayPanel url={undefined} />
+        <DisplayPanel url={undefined} onAddElement={onAddElement} />
       )}
     </div>
   );
