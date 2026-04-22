@@ -6,7 +6,6 @@ import type { Draft } from '../../types/draft';
 import { DRAFT_STATUS_LABELS, DRAFT_STATUS_COLORS } from '../../types/draft';
 import { formatShortDate } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/loading';
 
 interface DraftListProps {
@@ -19,8 +18,6 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
 
   const loadDrafts = useCallback(async () => {
     try {
@@ -39,23 +36,6 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
     loadDrafts();
   }, [loadDrafts]);
 
-  const handleCreate = async () => {
-    if (!newTitle.trim() || !projectId) return;
-
-    try {
-      const result = await api.createDraft({
-        projectId,
-        title: newTitle.trim(),
-      });
-      setDrafts(prev => [result.draft, ...prev]);
-      setNewTitle('');
-      setShowCreate(false);
-      onSelectDraft(result.draft);
-    } catch (err) {
-      console.error('Failed to create draft:', err);
-    }
-  };
-
   if (loading) {
     return <Loading className="p-4" />;
   }
@@ -64,52 +44,29 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
     return (
       <div className="p-4 text-center text-destructive">
         {error}
-        <Button variant="secondary" size="sm" onClick={loadDrafts} className="mt-2">
+        <button
+          type="button"
+          onClick={loadDrafts}
+          className="mt-2 px-3 py-1.5 text-xs bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
+        >
           重试
-        </Button>
+        </button>
       </div>
     );
   }
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-2 py-1.5 bg-bg-secondary border-b border-border-default flex items-center gap-2 justify-between">
-        <span className="text-xs font-medium">
-          Draft 列表 ({drafts.length})
+      <div className="px-4 py-1.5 border-b border-border-default/50">
+        <span className="text-[11px] font-medium text-text-muted">
+          协作列表 ({drafts.length})
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowCreate(!showCreate)}
-          className="text-xs"
-        >
-          + 新建
-        </Button>
       </div>
-
-      {showCreate && (
-        <div className="p-2 border-b border-border flex gap-2">
-          <input
-            type="text"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Draft 标题..."
-            className="flex-1 px-2 py-1.5 text-xs border border-border rounded-sm bg-card text-foreground focus:border-primary outline-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreate();
-              if (e.key === 'Escape') setShowCreate(false);
-            }}
-          />
-          <Button variant="default" size="sm" onClick={handleCreate} className="text-xs">
-            创建
-          </Button>
-        </div>
-      )}
 
       <div className="flex-1 overflow-auto">
         {drafts.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground text-xs">
-            暂无 Draft，点击新建开始协作
+            暂无协作，点击新建开始
           </div>
         ) : (
           drafts.map((draft) => (
