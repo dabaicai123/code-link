@@ -73,6 +73,7 @@ export default function DashboardPage() {
         onProjectSelect={handleProjectSelect}
         onCreateProject={() => setIsDialogOpen(true)}
         onLogout={handleLogout}
+        onSettings={() => router.push('/settings')}
       />
       <div className="flex-1 overflow-hidden relative bg-bg-primary">
         {isStarting ? (

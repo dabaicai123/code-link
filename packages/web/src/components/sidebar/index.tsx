@@ -16,9 +16,10 @@ interface SidebarProps {
   onProjectSelect: (project: Project) => void;
   onCreateProject: () => void;
   onLogout: () => void;
+  onSettings: () => void;
 }
 
-export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout }: SidebarProps) {
+export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, onCreateProject, onLogout, onSettings }: SidebarProps) {
   const organizations = useOrganizationStore((s) => s.organizations);
   const currentOrganization = useOrganizationStore((s) => s.currentOrganization);
   const setCurrentOrganization = useOrganizationStore((s) => s.setCurrentOrganization);
@@ -151,7 +152,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
         )}
       </div>
 
-      <UserSection user={user} onLogout={onLogout} />
+      <UserSection user={user} onLogout={onLogout} onSettings={onSettings} />
     </div>
   );
 }
