@@ -73,6 +73,27 @@ export class TestApi {
     await this.delete(`/projects/${projectId}`);
   }
 
+  // === Container Operations ===
+
+  async startContainer(projectId: number): Promise<{ containerId: string; status: string }> {
+    const response = await this.post<ApiResponse<{ containerId: string; status: string }>>(`/projects/${projectId}/container/start`);
+    return response.data;
+  }
+
+  async stopContainer(projectId: number): Promise<{ containerId: string; status: string }> {
+    const response = await this.post<ApiResponse<{ containerId: string; status: string }>>(`/projects/${projectId}/container/stop`);
+    return response.data;
+  }
+
+  async getContainerStatus(projectId: number): Promise<{ containerId: string; status: string }> {
+    const response = await this.get<ApiResponse<{ containerId: string; status: string }>>(`/projects/${projectId}/container`);
+    return response.data;
+  }
+
+  async removeContainer(projectId: number): Promise<void> {
+    await this.delete(`/projects/${projectId}/container`);
+  }
+
   // === Test Support ===
 
   async resetDatabase(): Promise<void> {

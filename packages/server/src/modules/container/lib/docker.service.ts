@@ -5,7 +5,8 @@ import { ensureTemplateImage, getTemplateConfig, TemplateType } from './template
 import type { IDockerService } from '../../../core/interfaces/index.js';
 
 const logger = createLogger('docker-service');
-const CONTAINER_NAME_PREFIX = 'code-link-project-';
+const CONTAINER_NAME_PREFIX = process.env.NODE_ENV === 'test' ? 'test_code-link-project-' : 'code-link-project-';
+const VOLUME_NAME_PREFIX = process.env.NODE_ENV === 'test' ? 'test_code-link-project-' : 'code-link-project-';
 
 export interface ExecResult {
   stdout: string;
@@ -124,7 +125,7 @@ export class DockerService implements IDockerService {
   }
 
   async volumeExists(projectId: number): Promise<boolean> {
-    const volumeName = `code-link-project-${projectId}`;
+    const volumeName = `${VOLUME_NAME_PREFIX}${projectId}`;
     try {
       await this.client.getVolume(volumeName).inspect();
       return true;
@@ -134,7 +135,7 @@ export class DockerService implements IDockerService {
   }
 
   async createProjectVolume(projectId: number): Promise<string> {
-    const volumeName = `code-link-project-${projectId}`;
+    const volumeName = `${VOLUME_NAME_PREFIX}${projectId}`;
     const volume = await this.client.createVolume({
       Name: volumeName,
     });
@@ -142,11 +143,34 @@ export class DockerService implements IDockerService {
   }
 
   async removeProjectVolume(projectId: number): Promise<void> {
-    const volumeName = `code-link-project-${projectId}`;
+    const volumeName = `${VOLUME_NAME_PREFIX}${projectId}`;
     try {
       await this.client.getVolume(volumeName).remove();
     } catch {
       // Volume may not exist
+    }
+  }
+
+  async cleanupTestContainers(): Promise<void> {
+    if (process.env.NODE_ENV !== 'test') return;
+
+    const containers = await this.client.listContainers({ all: true });
+    for (const c of containers) {
+      const isTest = c.Names.some((n) => n.startsWith('/test_'));
+      if (isTest) {
+        const container = this.client.getContainer(c.Id);
+        if (c.State === 'running') {
+          await container.stop({ t: 5 }).catch(() => {});
+        }
+        await container.remove({ force: true }).catch(() => {});
+      }
+    }
+
+    const volumes = await this.client.listVolumes();
+    for (const v of volumes.Volumes || []) {
+      if (v.Name.startsWith('test_')) {
+        await this.client.getVolume(v.Name).remove({ force: true }).catch(() => {});
+      }
     }
   }
 }

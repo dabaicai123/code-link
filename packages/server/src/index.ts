@@ -18,6 +18,7 @@ import { registerBuildModule, createBuildRoutes, BuildController } from './modul
 import { registerGitProviderModule, createGitProviderRoutes, GitProviderController } from './modules/gitprovider/gitprovider.module.js';
 import { registerClaudeConfigModule, createClaudeConfigRoutes, ClaudeConfigController } from './modules/claude-config/claude-config.module.js';
 import { registerContainerModule, createContainerRoutes, ContainerController } from './modules/container/container.module.js';
+import { DockerService } from './modules/container/lib/docker.service.js';
 
 // 核心服务
 import { LoggerService } from './core/logger/logger.js';
@@ -94,6 +95,12 @@ export function createApp(dbConnection?: DatabaseConnection): express.Express {
       }
       sqlite.exec('PRAGMA foreign_keys = ON');
       res.json(success({ reset: true }));
+    });
+
+    app.post('/api/test/cleanup-containers', async (_req, res) => {
+      const dockerService = container.resolve(DockerService);
+      await dockerService.cleanupTestContainers();
+      res.json(success({ cleanup: true }));
     });
   }
 
