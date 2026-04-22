@@ -1,6 +1,7 @@
 /* packages/web/src/styles/globals.css */
 
 @import "./tokens.css";
+@import "./code-tokens.css";
 @import "tailwindcss";
 
 /* ======================================================================
@@ -91,6 +92,26 @@
   /* ─── Typography ──────────────────────────────────────────── */
   --font-sans: var(--ff-sans);
   --font-mono: var(--ff-mono);
+
+  /* ─── Code Tab · Dark theme ─────────────────────────────────── */
+  --color-code-bg-base:       var(--code-bg-base);
+  --color-code-bg-surface:    var(--code-bg-surface);
+  --color-code-bg-elevated:   var(--code-bg-elevated);
+  --color-code-bg-active:     var(--code-bg-active);
+  --color-code-bg-hover:      var(--code-bg-hover);
+  --color-code-accent:        var(--code-accent);
+  --color-code-accent-hover:  var(--code-accent-hover);
+  --color-code-text-primary:  var(--code-text-primary);
+  --color-code-text-secondary: var(--code-text-secondary);
+  --color-code-text-muted:    var(--code-text-muted);
+  --color-code-text-contrast: var(--code-text-contrast);
+  --color-code-border:        var(--code-border);
+  --color-code-border-light:  var(--code-border-light);
+  --color-code-git-added:     var(--code-git-added);
+  --color-code-git-modified:  var(--code-git-modified);
+  --color-code-git-untracked: var(--code-git-untracked);
+  --color-code-diff-added-bg: var(--code-diff-added-bg);
+  --color-code-diff-deleted-bg: var(--code-diff-deleted-bg);
 }
 
 /* ======================================================================

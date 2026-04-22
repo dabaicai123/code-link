@@ -1,0 +1,55 @@
+/* ======================================================================
+   Code Tab Tokens — VSCode Dark Modern Theme
+   ----------------------------------------------------------------------
+   The app's main design system is warm/light. The code tab uses a dark
+   theme (VSCode-style) for readability. These tokens extend tokens.css.
+   ====================================================================== */
+
+:root {
+  /* ─── Code Tab · VSCode Dark Modern ─────────────────────────── */
+  --code-bg-base:       #1e1e1e;
+  --code-bg-surface:    #181818;
+  --code-bg-elevated:   #2d2d2d;
+  --code-bg-active:     #094771;
+  --code-bg-hover:      #2a2a2a;
+
+  /* ─── Code Tab · Accent ────────────────────────────────────── */
+  --code-accent:        #0078d4;
+  --code-accent-hover:  #1a8ad4;
+
+  /* ─── Code Tab · Status bar ────────────────────────────────── */
+  --code-statusbar-bg:  #0078d4;
+
+  /* ─── Code Tab · Text ──────────────────────────────────────── */
+  --code-text-primary:  #cccccc;
+  --code-text-secondary: #808080;
+  --code-text-muted:    #4f4f4f;
+  --code-text-contrast: #ffffff;
+
+  /* ─── Code Tab · Border ──────────────────────────────────────── */
+  --code-border:        #3c3c3c;
+  --code-border-light:  #2d2d2d;
+
+  /* ─── Code Tab · Git status colors ──────────────────────────── */
+  --code-git-added:     #22c55e;
+  --code-git-modified:  #e74c3c;
+  --code-git-deleted:   #e74c3c;
+  --code-git-renamed:   #d4a017;
+  --code-git-untracked: #0078d4;
+
+  /* ─── Code Tab · Branch colors ──────────────────────────────── */
+  --code-branch-main:   #0078d4;
+  --code-branch-develop: #22c55e;
+  --code-branch-feature: #d4a017;
+  --code-branch-merged: #808080;
+
+  /* ─── Code Tab · Diff background ─────────────────────────────── */
+  --code-diff-added-bg:   rgba(34,197,94,0.12);
+  --code-diff-deleted-bg: rgba(231,76,60,0.12);
+
+  /* ─── Code Tab · Sizes ──────────────────────────────────────── */
+  --code-sidebar-width: 240px;
+  --code-activity-strip-width: 48px;
+  --code-tab-height: 36px;
+  --code-statusbar-height: 24px;
+}
