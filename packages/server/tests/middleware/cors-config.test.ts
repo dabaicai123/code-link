@@ -1,3 +1,4 @@
+import "reflect-metadata";
 // Set JWT_SECRET before any imports that use tsyringe DI
 process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
 

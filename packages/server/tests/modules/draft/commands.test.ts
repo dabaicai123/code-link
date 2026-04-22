@@ -1,7 +1,7 @@
 // packages/server/tests/ai-commands.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { parseAICommand, isAICommand } from '../../../src/modules/draft/lib/commands.ts';
+import { parseAICommand, isAICommand } from '../../../src/modules/draft/lib/commands.js';
 
 describe('AI Commands', () => {
   describe('parseAICommand', () => {

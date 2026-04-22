@@ -3,67 +3,55 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { container } from 'tsyringe';
 import { BuildService } from '../../../src/modules/build/service.js';
 import { BuildRepository } from '../../../src/modules/build/repository.js';
+import { BuildManager } from '../../../src/modules/build/lib/build-manager.js';
+import { PreviewContainerManager } from '../../../src/modules/build/lib/preview-container.js';
+import { PortManager } from '../../../src/modules/build/lib/port-manager.js';
+import { DockerService } from '../../../src/modules/container/lib/docker.service.js';
 import { ProjectRepository } from '../../../src/modules/project/repository.js';
-import { ProjectService } from '../../../src/modules/project/project.module.js';
 import { OrganizationRepository } from '../../../src/modules/organization/repository.js';
-import { OrganizationService } from '../../../src/modules/organization/organization.module.js';
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
-import { AuthService } from '../../../src/modules/auth/auth.module.js';
-import { PermissionService } from '../../../src/shared/permission.service.js';
 import { DatabaseConnection } from '../../../src/core/database/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { runMigrations } from '../../../src/db/migrate-runner.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-build-service.db');
-
-// Mock external services
-const mockBuildManager = {
-  createBuild: vi.fn(),
-  startBuild: vi.fn(),
-  getProjectBuilds: vi.fn(),
-  getBuild: vi.fn(),
-};
-
-const mockPreviewManager = {
-  getContainerInfo: vi.fn(),
-  getPreviewUrl: vi.fn(),
-  stopPreviewContainer: vi.fn(),
-};
-
-vi.mock('../../../src/build/build-manager.js', () => ({
-  getBuildManager: () => mockBuildManager,
-}));
-
-vi.mock('../../../src/build/preview-container.js', () => ({
-  getPreviewContainerManager: () => mockPreviewManager,
-}));
+import { registerServiceModules } from '../../helpers/service-modules.js';
+import { createSqliteDb, runMigrations } from '../../../src/db/index.js';
 
 describe('BuildService', () => {
   let service: BuildService;
   let db: DatabaseConnection;
 
+  // Mock instances for BuildManager and PreviewContainerManager
+  const mockBuildManager = {
+    createBuild: vi.fn(),
+    startBuild: vi.fn(),
+    getProjectBuilds: vi.fn(),
+    getBuild: vi.fn(),
+  };
+
+  const mockPreviewManager = {
+    getContainerInfo: vi.fn(),
+    getPreviewUrl: vi.fn(),
+    stopPreviewContainer: vi.fn(),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     container.reset();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
     process.env.ADMIN_EMAIL = 'admin@test.com';
+    process.env.SUPER_ADMIN_EMAILS = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    runMigrations(db.getSqlite());
+    const sqlite = createSqliteDb(':memory:');
+    runMigrations(sqlite);
+    db = DatabaseConnection.fromSqlite(sqlite);
     container.registerInstance(DatabaseConnection, db);
-    container.registerSingleton(AuthRepository);
-    container.registerSingleton(AuthService);
-    container.registerSingleton(OrganizationRepository);
-    container.registerSingleton(OrganizationService);
-    container.registerSingleton(ProjectRepository);
-    container.registerSingleton(ProjectService);
-    container.registerSingleton(BuildRepository);
-    container.registerSingleton(PermissionService);
-    container.registerSingleton(BuildService);
+
+    registerServiceModules();
+
+    // Register mock instances for BuildManager and PreviewContainerManager
+    // (their real implementations depend on DockerService which needs a real Docker daemon)
+    container.registerInstance(BuildManager, mockBuildManager as unknown as BuildManager);
+    container.registerInstance(PreviewContainerManager, mockPreviewManager as unknown as PreviewContainerManager);
 
     service = container.resolve(BuildService);
   });
@@ -71,9 +59,6 @@ describe('BuildService', () => {
   afterEach(() => {
     db.close();
     container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
   });
 
   describe('create', () => {

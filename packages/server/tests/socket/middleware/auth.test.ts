@@ -1,3 +1,4 @@
+import "reflect-metadata";
 // packages/server/tests/socket/middleware/auth.test.ts
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createAuthMiddleware } from '../../../src/socket/middleware/auth.js';

@@ -2,20 +2,14 @@ import "reflect-metadata";
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { container } from 'tsyringe';
 import { PermissionService } from '../../src/shared/permission.service.js';
-import { OrganizationRepository } from '../../src/modules/organization/repository.js';
-import { OrganizationService } from '../../src/modules/organization/organization.module.js';
 import { AuthRepository } from '../../src/modules/auth/repository.js';
-import { AuthService } from '../../src/modules/auth/auth.module.js';
+import { OrganizationRepository } from '../../src/modules/organization/repository.js';
 import { ProjectRepository } from '../../src/modules/project/repository.js';
-import { ProjectService } from '../../src/modules/project/project.module.js';
 import { DatabaseConnection } from '../../src/core/database/index.js';
 import { resetConfig } from '../../src/core/config.js';
-import { runMigrations } from '../../src/db/migrate-runner.js';
+import { registerCoreServiceModules } from '../helpers/service-modules.js';
+import { createSqliteDb, runMigrations } from '../../src/db/index.js';
 import { organizationMembers } from '../../src/db/schema/index.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-permission.db');
 
 describe('PermissionService', () => {
   let service: PermissionService;
@@ -24,20 +18,16 @@ describe('PermissionService', () => {
   beforeEach(() => {
     container.reset();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
     process.env.ADMIN_EMAIL = 'admin@test.com';
+    process.env.SUPER_ADMIN_EMAILS = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    runMigrations(db.getSqlite());
+    const sqlite = createSqliteDb(':memory:');
+    runMigrations(sqlite);
+    db = DatabaseConnection.fromSqlite(sqlite);
     container.registerInstance(DatabaseConnection, db);
-    container.registerSingleton(AuthRepository);
-    container.registerSingleton(AuthService);
-    container.registerSingleton(OrganizationRepository);
-    container.registerSingleton(OrganizationService);
-    container.registerSingleton(ProjectRepository);
-    container.registerSingleton(ProjectService);
-    container.registerSingleton(PermissionService);
+
+    registerCoreServiceModules();
 
     service = container.resolve(PermissionService);
   });
@@ -45,9 +35,6 @@ describe('PermissionService', () => {
   afterEach(() => {
     db.close();
     container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
   });
 
   describe('checkOrgRole', () => {

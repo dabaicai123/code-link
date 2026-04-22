@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { initDefaultAdmin } from '../../src/db/init.js';
 import { resetConfig, getConfig } from '../../src/core/config.js';

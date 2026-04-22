@@ -1,3 +1,4 @@
+import "reflect-metadata";
 // packages/server/tests/server.test.ts
 import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';

@@ -9,9 +9,9 @@ import { BuildController } from './controller.js';
 
 export function registerBuildModule(): void {
   container.registerSingleton(BuildRepository);
+  container.registerInstance(PortManager, new PortManager());
   container.registerSingleton(BuildManager);
   container.registerSingleton(PreviewContainerManager);
-  container.registerSingleton(PortManager);
   container.registerSingleton(BuildService);
   container.registerSingleton(BuildController);
 }

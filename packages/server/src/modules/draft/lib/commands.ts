@@ -206,7 +206,8 @@ export async function executeAICommand(
  * Check if content is an AI command
  */
 export function isAICommand(content: string): boolean {
-  return content.trim().startsWith('@助手');
+  const trimmed = content.trim();
+  return trimmed.startsWith('@助手') || trimmed.startsWith('@AI');
 }
 
 /**

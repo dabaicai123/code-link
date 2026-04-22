@@ -5,13 +5,9 @@ import { DraftRepository } from '../../../src/modules/draft/repository.js';
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
 import { OrganizationRepository } from '../../../src/modules/organization/repository.js';
 import { ProjectRepository } from '../../../src/modules/project/repository.js';
-import { DatabaseConnection } from '../../../src/core/database/connection.js';
+import { DatabaseConnection } from '../../../src/db/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { runMigrations } from '../../../src/db/migrate-runner.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-draft-repo.db');
+import { setupTestDb, teardownTestDb } from '../../helpers/test-db.js';
 
 describe('DraftRepository', () => {
   let repo: DraftRepository;
@@ -21,14 +17,12 @@ describe('DraftRepository', () => {
   let db: DatabaseConnection;
 
   beforeEach(() => {
-    container.reset();
+    setupTestDb();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
+    process.env.ADMIN_EMAIL = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    runMigrations(db.getSqlite());
-    container.registerInstance(DatabaseConnection, db);
+    db = container.resolve(DatabaseConnection);
     repo = new DraftRepository(db);
     userRepo = new AuthRepository(db);
     orgRepo = new OrganizationRepository(db);
@@ -36,11 +30,7 @@ describe('DraftRepository', () => {
   });
 
   afterEach(() => {
-    db.close();
-    container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
+    teardownTestDb();
   });
 
   // Helper function to setup test data: user, org, project
@@ -123,9 +113,9 @@ describe('DraftRepository', () => {
       });
 
       const drafts = await repo.findByUserId(user.id);
-      expect(drafts).toHaveLength(2);
-      expect(drafts.map(d => d.title)).toContain('Draft 1');
-      expect(drafts.map(d => d.title)).toContain('Draft 2');
+      expect(drafts.data).toHaveLength(2);
+      expect(drafts.data.map(d => d.title)).toContain('Draft 1');
+      expect(drafts.data.map(d => d.title)).toContain('Draft 2');
     });
 
     it('should update draft status', async () => {
@@ -330,7 +320,7 @@ describe('DraftRepository', () => {
       });
 
       const messages = await repo.findMessages(draft.id);
-      expect(messages).toHaveLength(2);
+      expect(messages.data).toHaveLength(2);
     });
 
     it('should find a specific message', async () => {

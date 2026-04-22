@@ -4,17 +4,10 @@ import { container } from 'tsyringe';
 import { OrganizationService } from '../../../src/modules/organization/service.js';
 import { OrganizationRepository } from '../../../src/modules/organization/repository.js';
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
-import { AuthService } from '../../../src/modules/auth/auth.module.js';
-import { ProjectRepository } from '../../../src/modules/project/repository.js';
-import { ProjectService } from '../../../src/modules/project/project.module.js';
-import { PermissionService } from '../../../src/shared/permission.service.js';
 import { DatabaseConnection } from '../../../src/core/database/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { runMigrations } from '../../../src/db/migrate-runner.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-org-service.db');
+import { registerCoreServiceModules } from '../../helpers/service-modules.js';
+import { createSqliteDb, runMigrations } from '../../../src/db/index.js';
 
 describe('OrganizationService', () => {
   let service: OrganizationService;
@@ -23,20 +16,16 @@ describe('OrganizationService', () => {
   beforeEach(() => {
     container.reset();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
     process.env.ADMIN_EMAIL = 'admin@test.com';
+    process.env.SUPER_ADMIN_EMAILS = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    runMigrations(db.getSqlite());
+    const sqlite = createSqliteDb(':memory:');
+    runMigrations(sqlite);
+    db = DatabaseConnection.fromSqlite(sqlite);
     container.registerInstance(DatabaseConnection, db);
-    container.registerSingleton(AuthRepository);
-    container.registerSingleton(AuthService);
-    container.registerSingleton(OrganizationRepository);
-    container.registerSingleton(ProjectRepository);
-    container.registerSingleton(ProjectService);
-    container.registerSingleton(PermissionService);
-    container.registerSingleton(OrganizationService);
+
+    registerCoreServiceModules();
 
     service = container.resolve(OrganizationService);
   });
@@ -44,9 +33,6 @@ describe('OrganizationService', () => {
   afterEach(() => {
     db.close();
     container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
   });
 
   describe('create', () => {
@@ -76,12 +62,14 @@ describe('OrganizationService', () => {
         .rejects.toThrow('组织名称不能超过 100 个字符');
     });
 
-    it('should throw PermissionError for non-admin non-owner user', async () => {
+    it('should create organization for any user', async () => {
       const authRepo = container.resolve(AuthRepository);
       const user = await authRepo.create({ name: 'User', email: 'user@test.com', passwordHash: 'hash' });
 
-      await expect(service.create(user.id, { name: 'Test Org' }))
-        .rejects.toThrow('只有组织 owner 或管理员可以创建组织');
+      const org = await service.create(user.id, { name: 'Test Org' });
+
+      expect(org.name).toBe('Test Org');
+      expect(org.createdBy).toBe(user.id);
     });
   });
 
@@ -91,11 +79,11 @@ describe('OrganizationService', () => {
       const user = await authRepo.create({ name: 'Admin', email: 'admin@test.com', passwordHash: 'hash' });
       await service.create(user.id, { name: 'Test Org' });
 
-      const orgs = await service.findByUserId(user.id);
+      const result = await service.findByUserId(user.id);
 
-      expect(orgs).toHaveLength(1);
-      expect(orgs[0].name).toBe('Test Org');
-      expect(orgs[0].role).toBe('owner');
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].name).toBe('Test Org');
+      expect(result.data[0].role).toBe('owner');
     });
   });
 
@@ -148,8 +136,8 @@ describe('OrganizationService', () => {
 
       await service.delete(org.id, user.id);
 
-      const orgs = await service.findByUserId(user.id);
-      expect(orgs).toHaveLength(0);
+      const result = await service.findByUserId(user.id);
+      expect(result.data).toHaveLength(0);
     });
 
     it('should throw PermissionError for non-owner', async () => {

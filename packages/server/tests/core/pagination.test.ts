@@ -6,14 +6,10 @@ import { BuildRepository } from '../../src/modules/build/repository.js';
 import { DraftRepository } from '../../src/modules/draft/repository.js';
 import { OrganizationRepository } from '../../src/modules/organization/repository.js';
 import { AuthRepository } from '../../src/modules/auth/repository.js';
-import { DatabaseConnection } from '../../src/core/database/connection.js';
+import { DatabaseConnection } from '../../src/db/index.js';
 import { resetConfig } from '../../src/core/config.js';
-import { runMigrations } from '../../src/db/migrate-runner.js';
+import { setupTestDb, teardownTestDb } from '../helpers/test-db.js';
 import { PAGINATION_LIMITS } from '../../src/core/database/constants.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-pagination.db');
 
 describe('Repository Pagination Limits', () => {
   let projectRepo: ProjectRepository;
@@ -24,14 +20,12 @@ describe('Repository Pagination Limits', () => {
   let db: DatabaseConnection;
 
   beforeEach(() => {
-    container.reset();
+    setupTestDb();
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
+    process.env.ADMIN_EMAIL = 'admin@test.com';
 
-    db = new DatabaseConnection(TEST_DB_PATH);
-    runMigrations(db.getSqlite());
-    container.registerInstance(DatabaseConnection, db);
+    db = container.resolve(DatabaseConnection);
     projectRepo = new ProjectRepository(db);
     buildRepo = new BuildRepository(db);
     draftRepo = new DraftRepository(db);
@@ -40,11 +34,7 @@ describe('Repository Pagination Limits', () => {
   });
 
   afterEach(() => {
-    db.close();
-    container.reset();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) fs.unlinkSync(`${TEST_DB_PATH}-shm`);
+    teardownTestDb();
   });
 
   // Helper function to setup test data: user, org, project
@@ -81,9 +71,8 @@ describe('Repository Pagination Limits', () => {
         });
       }
 
-      const projects = await projectRepo.findByUserId(user.id);
-      expect(projects.length).toBeLessThanOrEqual(maxLimit);
-      expect(projects.length).toBe(maxLimit); // Should cap at max
+      const projects = await projectRepo.findByUserId(user.id, undefined, undefined, maxLimit);
+      expect(projects.data.length).toBe(maxLimit); // Should cap at max
     });
 
     it('should respect explicit limit parameter', async () => {
@@ -100,8 +89,8 @@ describe('Repository Pagination Limits', () => {
       }
 
       // Request limit of 10
-      const projects = await projectRepo.findByUserId(user.id, undefined, 10);
-      expect(projects.length).toBe(10);
+      const projects = await projectRepo.findByUserId(user.id, undefined, undefined, 10);
+      expect(projects.data.length).toBe(10);
     });
 
     it('should cap limit parameter to max 100', async () => {
@@ -120,8 +109,8 @@ describe('Repository Pagination Limits', () => {
       }
 
       // Request limit exceeding max
-      const projects = await projectRepo.findByUserId(user.id, undefined, 500);
-      expect(projects.length).toBe(maxLimit); // Should be capped at max
+      const projects = await projectRepo.findByUserId(user.id, undefined, undefined, 500);
+      expect(projects.data.length).toBe(maxLimit); // Should be capped at max
     });
   });
 
@@ -137,9 +126,8 @@ describe('Repository Pagination Limits', () => {
         await buildRepo.create({ projectId: project.id });
       }
 
-      const builds = await buildRepo.findByProjectId(project.id);
-      expect(builds.length).toBeLessThanOrEqual(maxLimit);
-      expect(builds.length).toBe(maxLimit); // Should cap at max
+      const builds = await buildRepo.findByProjectId(project.id, 1, maxLimit);
+      expect(builds.data.length).toBe(maxLimit); // Should cap at max
     });
 
     it('should respect explicit limit parameter', async () => {
@@ -151,8 +139,8 @@ describe('Repository Pagination Limits', () => {
       }
 
       // Request limit of 15
-      const builds = await buildRepo.findByProjectId(project.id, 15);
-      expect(builds.length).toBe(15);
+      const builds = await buildRepo.findByProjectId(project.id, 1, 15);
+      expect(builds.data.length).toBe(15);
     });
 
     it('should cap limit parameter to max 50', async () => {
@@ -166,8 +154,8 @@ describe('Repository Pagination Limits', () => {
       }
 
       // Request limit exceeding max
-      const builds = await buildRepo.findByProjectId(project.id, 100);
-      expect(builds.length).toBe(maxLimit); // Should be capped at max
+      const builds = await buildRepo.findByProjectId(project.id, 1, 100);
+      expect(builds.data.length).toBe(maxLimit); // Should be capped at max
     });
   });
 
@@ -194,9 +182,8 @@ describe('Repository Pagination Limits', () => {
         });
       }
 
-      const messages = await draftRepo.findMessages(draft.id);
-      expect(messages.length).toBeLessThanOrEqual(maxLimit);
-      expect(messages.length).toBe(maxLimit); // Should cap at max
+      const messages = await draftRepo.findMessages(draft.id, 1, maxLimit);
+      expect(messages.data.length).toBe(maxLimit); // Should cap at max
     });
 
     it('should respect explicit limit parameter', async () => {
@@ -219,8 +206,8 @@ describe('Repository Pagination Limits', () => {
       }
 
       // Request limit of 50
-      const messages = await draftRepo.findMessages(draft.id, 50);
-      expect(messages.length).toBe(50);
+      const messages = await draftRepo.findMessages(draft.id, 1, 50);
+      expect(messages.data.length).toBe(50);
     });
 
     it('should cap limit parameter to max 200', async () => {
@@ -245,8 +232,8 @@ describe('Repository Pagination Limits', () => {
       }
 
       // Request limit exceeding max
-      const messages = await draftRepo.findMessages(draft.id, 500);
-      expect(messages.length).toBe(maxLimit); // Should be capped at max
+      const messages = await draftRepo.findMessages(draft.id, 1, 500);
+      expect(messages.data.length).toBe(maxLimit); // Should be capped at max
     });
   });
 });

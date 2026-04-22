@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { singleton, inject } from 'tsyringe';
+import { singleton, inject, delay } from 'tsyringe';
 import { OrganizationService } from '../modules/organization/organization.module.js';
 import { AuthService } from '../modules/auth/auth.module.js';
 import { ProjectService } from '../modules/project/project.module.js';
@@ -11,8 +11,8 @@ import type { SelectProject, OrgRole } from '../db/schema/index.js';
 export class PermissionService {
   constructor(
     @inject(AuthService) private readonly authService: AuthService,
-    @inject(OrganizationService) private readonly orgService: OrganizationService,
-    @inject(ProjectService) private readonly projectService: ProjectService
+    @inject(delay(() => OrganizationService)) private readonly orgService: OrganizationService,
+    @inject(delay(() => ProjectService)) private readonly projectService: ProjectService
   ) {}
 
   async isSuperAdmin(userId: number): Promise<boolean> {

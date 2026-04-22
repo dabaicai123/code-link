@@ -1,34 +1,22 @@
 import "reflect-metadata";
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { DatabaseConnection } from '../../src/db/connection.js';
+import { DatabaseConnection, createSqliteDb, runMigrations } from '../../src/db/index.js';
 import { BaseRepository } from '../../src/core/database/base.repository.js';
 import { resetConfig } from '../../src/core/config.js';
-import path from 'path';
-import fs from 'fs';
-
-const TEST_DB_PATH = path.join(process.cwd(), 'test-db-phase1.db');
 
 describe('DatabaseConnection', () => {
   let db: DatabaseConnection;
 
   beforeEach(() => {
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
-    db = new DatabaseConnection(TEST_DB_PATH);
+    const sqlite = createSqliteDb(':memory:');
+    runMigrations(sqlite);
+    db = DatabaseConnection.fromSqlite(sqlite);
   });
 
   afterEach(() => {
     db.close();
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
-    if (fs.existsSync(`${TEST_DB_PATH}-wal`)) {
-      fs.unlinkSync(`${TEST_DB_PATH}-wal`);
-    }
-    if (fs.existsSync(`${TEST_DB_PATH}-shm`)) {
-      fs.unlinkSync(`${TEST_DB_PATH}-shm`);
-    }
   });
 
   it('should create database connection', () => {
@@ -72,16 +60,14 @@ describe('BaseRepository', () => {
 
   beforeEach(() => {
     resetConfig();
-    process.env.DB_PATH = TEST_DB_PATH;
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
-    db = new DatabaseConnection(TEST_DB_PATH);
+    const sqlite = createSqliteDb(':memory:');
+    runMigrations(sqlite);
+    db = DatabaseConnection.fromSqlite(sqlite);
   });
 
   afterEach(() => {
     db.close();
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
   });
 
   it('should provide access to query builder', () => {
