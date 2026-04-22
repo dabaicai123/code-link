@@ -16,16 +16,25 @@ interface CollaborationPanelProps {
   projectId?: number;
   currentUserId?: number;
   currentUserName?: string;
+  newlyCreatedDraft?: Draft | null;  // when set, auto-select this draft
 }
 
 export function CollaborationPanel({
   projectId,
   currentUserId,
   currentUserName,
+  newlyCreatedDraft,
 }: CollaborationPanelProps) {
   const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null);
   const [members, setMembers] = useState<DraftMember[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+
+  // Auto-select newly created draft
+  useEffect(() => {
+    if (newlyCreatedDraft) {
+      setSelectedDraft(newlyCreatedDraft);
+    }
+  }, [newlyCreatedDraft]);
 
   // WebSocket for online users
   const { onlineUsers: wsOnlineUsers } = useDraftSocket({
