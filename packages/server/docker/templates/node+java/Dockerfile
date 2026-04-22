@@ -24,13 +24,19 @@ RUN npm install -g @anthropic-ai/claude-code
 RUN mkdir -p /home/codelink/.claude && \
     chown -R codelink:codelink /home/codelink/.claude
 
-# 内置 settings.json（bypass 权限白名单）
+# 内置 settings.json（bypass 权限白名单 + 启用 superpowers 插件）
 COPY claude-settings.json /home/codelink/.claude/settings.json
 RUN chown codelink:codelink /home/codelink/.claude/settings.json
 
 # 内置 ~/.claude.json（跳过 onboarding）
 COPY claude.json /home/codelink/.claude.json
 RUN chown codelink:codelink /home/codelink/.claude.json
+
+# 构建时安装 superpowers 插件和 ui-ux-pro-max 技能
+COPY setup-plugins.sh /tmp/setup-plugins.sh
+RUN --mount=type=cache,target=/home/codelink/.claude/plugins/cache \
+    bash /tmp/setup-plugins.sh && \
+    rm /tmp/setup-plugins.sh
 
 # 创建工作目录并授权
 WORKDIR /workspace
