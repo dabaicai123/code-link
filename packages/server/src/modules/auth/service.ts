@@ -84,4 +84,15 @@ export class AuthService {
     const user = await this.repo.findById(userId);
     return user ?? null;
   }
+
+  async verifyToken(token: string): Promise<number> {
+    const config = getConfig();
+    const payload = jwt.verify(token, config.jwtSecret);
+
+    if (typeof payload !== 'object' || payload === null || typeof (payload as any).userId !== 'number') {
+      throw new AuthError('无效的令牌');
+    }
+
+    return (payload as any).userId;
+  }
 }

@@ -1,6 +1,6 @@
 import { singleton, inject } from 'tsyringe';
 import { DockerService } from '../../container/lib/docker.service.js';
-import { getPortManager } from '../../build/lib/port-manager.js';
+import { PortManager } from '../../build/lib/port-manager.js';
 import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('code-server-manager');
@@ -15,10 +15,13 @@ interface CodeServerInfo {
 export class CodeServerManager {
   private codeServerInfo: Map<number, CodeServerInfo> = new Map();
 
-  constructor(@inject(DockerService) private readonly docker: DockerService) {}
+  constructor(
+    @inject(DockerService) private readonly docker: DockerService,
+    @inject(PortManager) private readonly portManager: PortManager
+  ) {}
 
   async startCodeServer(projectId: number, containerId: string): Promise<number> {
-    const portManager = getPortManager();
+    const portManager = this.portManager;
 
     const existing = this.codeServerInfo.get(projectId);
     if (existing && existing.running) {
@@ -62,7 +65,7 @@ export class CodeServerManager {
       // Process might not exist after container restart
     }
 
-    const portManager = getPortManager();
+    const portManager = this.portManager;
     portManager.releasePort(info.port);
     this.codeServerInfo.delete(projectId);
     logger.info('code-server stopped', { projectId });

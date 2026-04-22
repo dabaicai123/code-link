@@ -30,10 +30,6 @@ export class DockerService implements IDockerService {
     this.client = new Docker(dockerOptions);
   }
 
-  getClient(): Docker {
-    return this.client;
-  }
-
   async createProjectContainer(
     projectId: number,
     templateType: TemplateType,
