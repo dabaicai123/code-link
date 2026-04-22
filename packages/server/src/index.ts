@@ -18,6 +18,7 @@ import { registerBuildModule, createBuildRoutes, BuildController } from './modul
 import { registerGitProviderModule, createGitProviderRoutes, GitProviderController } from './modules/gitprovider/gitprovider.module.js';
 import { registerClaudeConfigModule, createClaudeConfigRoutes, ClaudeConfigController } from './modules/claude-config/claude-config.module.js';
 import { registerContainerModule, createContainerRoutes, ContainerController } from './modules/container/container.module.js';
+import { registerCodeModule, createCodeRoutes, CodeController } from './modules/code/code.module.js';
 import { DockerService } from './modules/container/lib/docker.service.js';
 
 // 核心服务
@@ -53,6 +54,7 @@ export function createApp(dbConnection?: DatabaseConnection): express.Express {
   registerGitProviderModule();
   registerClaudeConfigModule();
   registerContainerModule();
+  registerCodeModule();
 
   // 获取配置
   const config = getConfig();
@@ -113,6 +115,7 @@ export function createApp(dbConnection?: DatabaseConnection): express.Express {
   const gitProviderController = container.resolve(GitProviderController);
   const claudeConfigController = container.resolve(ClaudeConfigController);
   const containerController = container.resolve(ContainerController);
+  const codeController = container.resolve(CodeController);
 
   // 注册路由
   app.use('/api/auth', createAuthRoutes(authController));
@@ -120,6 +123,7 @@ export function createApp(dbConnection?: DatabaseConnection): express.Express {
   app.use('/api/invitations', createInvitationRoutes(orgController));
   app.use('/api/projects', createProjectRoutes(projectController));
   app.use('/api/projects', createContainerRoutes(containerController));
+  app.use('/api/projects', createCodeRoutes(codeController));
   app.use('/api/drafts', createDraftRoutes(draftController));
   app.use('/api/builds', createBuildRoutes(buildController));
 
