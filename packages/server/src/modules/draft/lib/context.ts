@@ -5,8 +5,13 @@ import { DockerService } from '../../container/lib/docker.service.js';
 import { DraftRepository } from '../repository.js';
 
 const logger = createLogger('ai-context');
-const draftRepo = container.resolve(DraftRepository);
-const dockerService = container.resolve(DockerService);
+
+// Lazy-resolved to avoid triggering DI resolution at module load time
+let _draftRepo: DraftRepository | null = null;
+let _dockerService: DockerService | null = null;
+
+function getDraftRepo() { return _draftRepo ??= container.resolve(DraftRepository); }
+function getDockerService() { return _dockerService ??= container.resolve(DockerService); }
 
 export interface DraftContext {
   draftId: number;
@@ -42,7 +47,7 @@ export interface DraftContext {
  */
 export async function buildContextForDraft(draftId: number): Promise<DraftContext> {
 
-  const contextData = await draftRepo.findDraftContext(draftId);
+  const contextData = await getDraftRepo().findDraftContext(draftId);
   if (!contextData) {
     throw new Error(`Draft ${draftId} not found`);
   }
@@ -51,7 +56,7 @@ export async function buildContextForDraft(draftId: number): Promise<DraftContex
   let container: { id: string; status: string } | undefined;
   if (contextData.draft.containerId) {
     try {
-      const status = await dockerService.getContainerStatus(contextData.draft.containerId);
+      const status = await getDockerService().getContainerStatus(contextData.draft.containerId);
       container = { id: contextData.draft.containerId, status };
     } catch (error) {
       logger.warn('获取容器状态失败', { containerId: contextData.draft.containerId, error });

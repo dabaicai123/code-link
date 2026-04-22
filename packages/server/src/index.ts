@@ -34,7 +34,13 @@ import { success, Errors } from './core/errors/index.js';
 
 const logger = new LoggerService();
 
-export function createApp(): express.Express {
+export function createApp(dbConnection?: DatabaseConnection): express.Express {
+  // Register DatabaseConnection BEFORE module registration to prevent
+  // @singleton() from creating a second empty :memory: instance
+  if (dbConnection) {
+    container.registerInstance(DatabaseConnection, dbConnection);
+  }
+
   const app = express();
 
   // 注册所有模块（@singleton() 装饰器会自动处理 DI）
@@ -74,6 +80,23 @@ export function createApp(): express.Express {
     res.json(success({ status: 'ok' }));
   });
 
+  // Test-only database reset endpoint (only available in test env)
+  if (getConfig().nodeEnv === 'test') {
+    app.post('/api/test/reset', (_req, res) => {
+      const conn = container.resolve(DatabaseConnection);
+      const sqlite = conn.getSqlite();
+      sqlite.exec('PRAGMA foreign_keys = OFF');
+      const tables = sqlite.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+      ).all() as { name: string }[];
+      for (const { name } of tables) {
+        sqlite.exec(`DELETE FROM ${name}`);
+      }
+      sqlite.exec('PRAGMA foreign_keys = ON');
+      res.json(success({ reset: true }));
+    });
+  }
+
   // 获取 Controller 实例
   const authController = container.resolve(AuthController);
   const orgController = container.resolve(OrganizationController);
@@ -112,7 +135,11 @@ export function createApp(): express.Express {
 }
 
 export function startServer(port: number = 3001): void {
-  const app = createApp();
+  const sqlite = createSqliteDb();
+  initSchema(sqlite);
+  const dbConnection = DatabaseConnection.fromSqlite(sqlite);
+
+  const app = createApp(dbConnection);
   const server = createServer(app);
 
   // 初始化 Socket.IO 服务器
@@ -150,13 +177,9 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
   const sqlite = createSqliteDb(':memory:');
   initSchema(sqlite);
 
-  // Register in-memory DatabaseConnection before DI resolves
-  const { container } = await import('tsyringe');
-  container.reset();
   const conn = DatabaseConnection.fromSqlite(sqlite);
-  container.registerInstance(DatabaseConnection, conn);
-
-  const app = createApp();
+  // createApp(conn) registers the connection BEFORE module registration
+  const app = createApp(conn);
   const server = createServer(app);
 
   return new Promise((resolve, reject) => {
@@ -184,15 +207,6 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
 
 // 启动入口
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
-  const sqlite = createSqliteDb();
-  initSchema(sqlite);
-
-  // 注册 DatabaseConnection 到 DI 容器
-  const dbConnection = DatabaseConnection.fromSqlite(sqlite);
-  container.registerInstance(DatabaseConnection, dbConnection);
-
-  await initDefaultAdmin(dbConnection);
-
   // 设置加密密钥
   const encryptionKey = process.env.CLAUDE_CONFIG_ENCRYPTION_KEY || '';
   if (!encryptionKey) {
@@ -203,5 +217,9 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
   // 初始化 AI 客户端
   initAIClient();
 
+  // startServer handles db init + schema + DI registration
   startServer(process.env.PORT ? parseInt(process.env.PORT) : 4000);
+
+  // Create default admin after server starts (needs DI-registered DatabaseConnection)
+  await initDefaultAdmin();
 }

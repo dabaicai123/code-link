@@ -10,14 +10,19 @@ import { Errors } from '../core/errors/index.js';
 import { parseIdParam } from '../utils/params.js';
 import type { OrgRole } from '../db/schema/index.js';
 
-const authRepo = container.resolve(AuthRepository);
-const orgRepo = container.resolve(OrganizationRepository);
-const projectRepo = container.resolve(ProjectRepository);
+// Lazy-resolved to avoid triggering DI resolution at module load time
+let _authRepo: AuthRepository | null = null;
+let _orgRepo: OrganizationRepository | null = null;
+let _projectRepo: ProjectRepository | null = null;
+
+function getAuthRepo() { return _authRepo ??= container.resolve(AuthRepository); }
+function getOrgRepo() { return _orgRepo ??= container.resolve(OrganizationRepository); }
+function getProjectRepo() { return _projectRepo ??= container.resolve(ProjectRepository); }
 
 interface ProjectAccessResult {
   projectId: number;
   userId: number;
-  project: NonNullable<Awaited<ReturnType<typeof projectRepo.findById>>>;
+  project: NonNullable<Awaited<ReturnType<ProjectRepository['findById']>>>;
   membership: { role: OrgRole };
 }
 
@@ -37,13 +42,13 @@ export async function getProjectAccess(
   userId: number
 ): Promise<{ success: true; data: ProjectAccessResult } | { success: false; error: { status: number; body: any } }> {
   // 获取项目
-  const project = await projectRepo.findById(projectId);
+  const project = await getProjectRepo().findById(projectId);
   if (!project) {
     return { success: false, error: { status: 404, body: Errors.notFound('项目') } };
   }
 
   // 检查用户邮箱判断超级管理员
-  const userEmail = await authRepo.findEmailById(userId);
+  const userEmail = await getAuthRepo().findEmailById(userId);
   if (userEmail && isSuperAdmin(userEmail)) {
     // Create a synthetic membership for super admin
     const syntheticMembership: { role: OrgRole } = { role: 'owner' };
@@ -54,7 +59,7 @@ export async function getProjectAccess(
   }
 
   // 检查组织成员
-  const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+  const membership = await getOrgRepo().findUserMembership(project.organizationId, userId);
   if (!membership) {
     return { success: false, error: { status: 403, body: Errors.forbidden() } };
   }
@@ -132,7 +137,7 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
     }
 
     // 检查超级管理员
-    const userEmail = await authRepo.findEmailById(userId);
+    const userEmail = await getAuthRepo().findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
       req.orgRole = 'owner';
       next();
@@ -140,7 +145,7 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
     }
 
     // 检查组织成员
-    const membership = await orgRepo.findUserMembership(orgId, userId);
+    const membership = await getOrgRepo().findUserMembership(orgId, userId);
     if (!membership) {
       res.status(403).json(Errors.forbidden());
       return;

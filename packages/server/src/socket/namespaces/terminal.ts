@@ -20,10 +20,17 @@ import { CardType } from '../../modules/draft/file-types.js';
 
 const logger = createLogger('socket-terminal');
 
-const projectRepo = container.resolve(ProjectRepository);
-const claudeConfigRepo = container.resolve(ClaudeConfigRepository);
-const orgRepo = container.resolve(OrganizationRepository);
-const dockerService = container.resolve(DockerService);
+// Lazy-resolved to avoid triggering DI resolution at module load time,
+// which would create a DatabaseConnection before registerInstance completes
+let _projectRepo: ProjectRepository | null = null;
+let _claudeConfigRepo: ClaudeConfigRepository | null = null;
+let _orgRepo: OrganizationRepository | null = null;
+let _dockerService: DockerService | null = null;
+
+function getProjectRepo() { return _projectRepo ??= container.resolve(ProjectRepository); }
+function getClaudeConfigRepo() { return _claudeConfigRepo ??= container.resolve(ClaudeConfigRepository); }
+function getOrgRepo() { return _orgRepo ??= container.resolve(OrganizationRepository); }
+function getDockerService() { return _dockerService ??= container.resolve(DockerService); }
 
 export function setupTerminalNamespace(namespace: Namespace): void {
   namespace.on('connection', async (socket) => {
@@ -44,13 +51,13 @@ export function setupTerminalNamespace(namespace: Namespace): void {
       const { projectId, cols, rows } = parsed.data;
 
       // 权限检查
-      const project = await projectRepo.findById(projectId);
+      const project = await getProjectRepo().findById(projectId);
       if (!project) {
         socket.emit('error', { message: '项目不存在或无权访问' });
         return;
       }
 
-      const membership = await orgRepo.findUserMembership(project.organizationId, userId);
+      const membership = await getOrgRepo().findUserMembership(project.organizationId, userId);
       if (!membership) {
         socket.emit('error', { message: '项目不存在或无权访问' });
         return;
@@ -63,7 +70,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
 
       // 检查容器状态
       try {
-        const status = await dockerService.getContainerStatus(project.containerId);
+        const status = await getDockerService().getContainerStatus(project.containerId);
         if (status !== 'running') {
           socket.emit('error', { message: '容器未运行，请先启动容器' });
           return;
@@ -75,7 +82,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
       }
 
       // 获取用户配置
-      const configRow = await claudeConfigRepo.findByUserId(userId);
+      const configRow = await getClaudeConfigRepo().findByUserId(userId);
       if (!configRow) {
         socket.emit('error', { message: '请先在「设置 → Claude Code 配置」中完成配置后再使用终端' });
         return;

@@ -73,6 +73,12 @@ export class TestApi {
     await this.delete(`/projects/${projectId}`);
   }
 
+  // === Test Support ===
+
+  async resetDatabase(): Promise<void> {
+    await this.postRaw('/test/reset');
+  }
+
   // === Low-level HTTP Methods ===
 
   private async get<T>(path: string): Promise<T> {
@@ -104,6 +110,17 @@ export class TestApi {
       body: JSON.stringify(body),
     });
     return this.handleResponse<T>(response);
+  }
+
+  private async postRaw(path: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api${path}`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`POST ${path} failed: ${response.status} ${text}`);
+    }
   }
 
   private getHeaders(): Record<string, string> {
