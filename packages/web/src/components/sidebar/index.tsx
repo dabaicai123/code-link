@@ -5,7 +5,6 @@ import { ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { ProjectCard } from './project-card';
 import { UserSection } from './user-section';
 import { useOrganizationStore } from '@/lib/stores';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Project, User } from '@/types';
 import { useSidebarProjects } from '@/hooks/use-sidebar-projects';
@@ -45,7 +44,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
 
   return (
     <div className="w-[var(--sidebar-width)] h-full bg-bg-secondary flex flex-col border-r border-border-default">
-      <div className="p-3.5 border-b border-border">
+      <div className="px-4 py-3.5 border-b border-border-default">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-accent-primary text-white rounded-lg flex items-center justify-center font-bold text-sm">C</div>
           <div>
@@ -55,27 +54,24 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
         </div>
       </div>
 
-      <div className={cn(
-        "flex-1 p-3",
-        (runningProjects.length + stoppedProjects.length) > 10 ? "overflow-auto" : "overflow-visible"
-      )}>
-        {/* 组织选择器 */}
-        <div className="mb-3">
+      {/* 组织选择器 — outside scrollable area */}
+      <div className="px-3 pt-3 pb-2">
+        <div>
           <div
             onClick={() => setShowOrgDropdown(!showOrgDropdown)}
             className={cn(
-              "w-full px-3 py-2 border border-border rounded-md",
+              "w-full px-3 py-2 border border-border-default rounded-lg",
               "text-[13px] cursor-pointer flex items-center justify-between relative",
               "transition-colors duration-150",
-              showOrgDropdown ? "bg-primary/5" : "bg-card"
+              showOrgDropdown ? "bg-accent-primary/5" : "bg-bg-card"
             )}
           >
-            <span>{currentOrganization?.name || '选择组织'}</span>
-            <span className="text-muted-foreground text-[10px]">{showOrgDropdown ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}</span>
+            <span className="text-text-primary font-medium">{currentOrganization?.name || '选择组织'}</span>
+            <span className="text-text-muted text-[10px]">{showOrgDropdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}</span>
           </div>
 
           {showOrgDropdown && organizations.length > 0 && (
-            <div className="absolute w-[calc(var(--sidebar-width)-24px)] mt-1 bg-card border border-border rounded-md z-[100]">
+            <div className="absolute w-[calc(var(--sidebar-width)-24px)] mt-1 bg-bg-card border border-border-default rounded-lg z-[100]">
               {organizations.map((org, index) => (
                 <div
                   key={org.id}
@@ -84,9 +80,9 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                     setShowOrgDropdown(false);
                   }}
                   className={cn(
-                    "px-3 py-2.5 text-[13px] cursor-pointer transition-colors duration-150",
-                    currentOrganization?.id === org.id ? "text-primary" : "text-foreground",
-                    index !== organizations.length - 1 && "border-b border-border"
+                    "px-3 py-2.5 text-[13px] cursor-pointer transition-colors duration-150 hover:bg-bg-hover",
+                    currentOrganization?.id === org.id ? "text-accent-primary" : "text-text-primary",
+                    index !== organizations.length - 1 && "border-b border-border-default"
                   )}
                 >
                   {org.name}
@@ -96,22 +92,27 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
             </div>
           )}
         </div>
+      </div>
 
-        <Button
-          variant="ghost"
+      {/* 新建项目按钮 — outside scrollable area */}
+      <div className="px-3 pb-3">
+        <button
           onClick={onCreateProject}
-          className="w-full mb-4 border border-dashed border-border-light text-muted-foreground"
+          className="w-full h-9 border border-dashed border-border-light rounded-lg text-text-muted text-[13px] font-medium hover:bg-bg-hover hover:border-border-default hover:text-text-secondary transition-all"
         >
           + 新建项目
-        </Button>
+        </button>
+      </div>
 
+      {/* 项目列表 — scrollable area */}
+      <div className="flex-1 px-3 overflow-y-auto">
         {loading ? (
-          <div className="text-muted-foreground text-center p-5">加载中...</div>
+          <div className="text-text-muted text-center p-5">加载中...</div>
         ) : (
           <>
             {runningProjects.length > 0 && (
               <div className="mb-4">
-                <div className="text-muted-foreground text-[11px] mb-2 pl-2.5">
+                <div className="text-text-muted text-[11px] mb-2 px-2.5 uppercase tracking-wide">
                   运行中 ({runningProjects.length})
                 </div>
                 {runningProjects.map((project) => (
@@ -130,7 +131,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
 
             {stoppedProjects.length > 0 && (
               <div className="mb-4">
-                <div className="text-muted-foreground text-[11px] mb-2 pl-2.5">
+                <div className="text-text-muted text-[11px] mb-2 px-2.5 uppercase tracking-wide">
                   已停止 ({stoppedProjects.length})
                 </div>
                 {stoppedProjects.map((project) => (

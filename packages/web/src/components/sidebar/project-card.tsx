@@ -84,11 +84,14 @@ export const ProjectCard = memo(function ProjectCard({
               e.stopPropagation();
               onToggleExpand?.();
             }}
-            className="text-muted-foreground mr-1 cursor-pointer w-4 h-4 flex items-center justify-center"
+            className="text-text-muted mr-1.5 cursor-pointer flex items-center justify-center"
           >
             {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           </span>
-          <span className="text-foreground text-[13px]">
+          <span className={cn(
+            'text-[13px]',
+            isActive ? 'text-text-primary font-medium' : (isRunning ? 'text-text-primary' : 'text-text-muted')
+          )}>
             {project.name}
           </span>
           <span
@@ -100,7 +103,7 @@ export const ProjectCard = memo(function ProjectCard({
           />
         </div>
 
-        <div className="text-muted-foreground text-[11px] ml-5">
+        <div className="text-text-muted text-[11px] ml-5 mt-0.5">
           {TEMPLATE_LABELS[project.templateType]}
         </div>
 
@@ -108,7 +111,7 @@ export const ProjectCard = memo(function ProjectCard({
         {isExpanded && (
           <div className="mt-2">
             {loadingRepos ? (
-              <div className="text-muted-foreground text-xs py-2">
+              <div className="text-text-muted text-xs py-2">
                 加载中...
               </div>
             ) : (
@@ -129,7 +132,7 @@ export const ProjectCard = memo(function ProjectCard({
                     e.stopPropagation();
                     setShowAddRepo(true);
                   }}
-                  className="w-[calc(100%-24px)] h-auto py-1.5 px-0 border border-dashed border-border-light text-muted-foreground text-[11px] mt-1 ml-6 hover:bg-hover hover:text-foreground"
+                  className="w-[calc(100%-24px)] h-auto py-1.5 px-0 border border-dashed border-border-light text-text-muted text-[11px] mt-1 ml-6 hover:bg-bg-hover hover:text-text-primary"
                 >
                   + 添加仓库
                 </Button>
