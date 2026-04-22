@@ -2,6 +2,7 @@ import { singleton } from 'tsyringe';
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
 import { createLogger } from '../core/logger/index.js';
+import { getConfig } from '../core/config.js';
 
 const logger = createLogger('socket-server');
 
@@ -12,9 +13,12 @@ export class SocketServerService {
   create(httpServer: HttpServer): Server {
     if (this.io) return this.io;
 
+    const config = getConfig();
+    const origins = config.corsOrigins ?? [config.corsOrigin];
+
     this.io = new Server(httpServer, {
       cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+        origin: origins,
         credentials: true,
       },
       pingTimeout: 60000,

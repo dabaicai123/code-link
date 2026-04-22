@@ -11,8 +11,6 @@ export class DraftController {
     @inject(DraftService) private readonly service: DraftService
   ) {}
 
-  // ==================== Draft CRUD ====================
-
   async create(req: Request, res: Response): Promise<void> {
     const result = await this.service.create(req.userId!, req.body);
     res.status(201).json(success(result));
@@ -42,8 +40,6 @@ export class DraftController {
     res.status(204).send();
   }
 
-  // ==================== Message Management ====================
-
   async createMessage(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);
     const result = await this.service.createMessage(draftId, req.userId!, req.body);
@@ -56,8 +52,6 @@ export class DraftController {
     const result = await this.service.findMessages(draftId, req.userId!, page, limit);
     res.json(success(result));
   }
-
-  // ==================== Confirmation Management ====================
 
   async confirmMessage(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);
@@ -73,15 +67,11 @@ export class DraftController {
     res.json(success(confirmations));
   }
 
-  // ==================== Card Management ====================
-
   async listCards(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);
     const cards = await this.service.findCards(draftId, req.userId!);
     res.json(success(cards));
   }
-
-  // ==================== Member Management ====================
 
   async addMember(req: Request, res: Response): Promise<void> {
     const draftId = Number(req.params.draftId);

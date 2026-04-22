@@ -6,6 +6,7 @@ import { AuthRepository } from '../modules/auth/repository.js';
 import { OrganizationRepository } from '../modules/organization/repository.js';
 import { ProjectRepository } from '../modules/project/repository.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
+import { ROLE_HIERARCHY, hasRole } from '../utils/roles.js';
 import { Errors } from '../core/errors/index.js';
 import { parseIdParam } from '../utils/params.js';
 import type { OrgRole } from '../db/schema/index.js';
@@ -72,12 +73,6 @@ export async function getProjectAccess(
  * 验证用户是否有权限访问项目，并将项目和成员信息附加到请求对象
  */
 export function createProjectAccessMiddleware(minRole: OrgRole = 'member') {
-  const roleHierarchy: Record<OrgRole, number> = {
-    owner: 3,
-    developer: 2,
-    member: 1,
-  };
-
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = req.userId;
     const projectId = requireProjectId(req);
@@ -99,13 +94,11 @@ export function createProjectAccessMiddleware(minRole: OrgRole = 'member') {
       return;
     }
 
-    // 检查角色权限
-    if (roleHierarchy[result.data.membership.role] < roleHierarchy[minRole]) {
+    if (!hasRole(result.data.membership.role, minRole)) {
       res.status(403).json(Errors.forbidden());
       return;
     }
 
-    // 将信息附加到请求对象
     req.project = result.data.project;
     req.membership = result.data.membership;
     next();
@@ -116,12 +109,6 @@ export function createProjectAccessMiddleware(minRole: OrgRole = 'member') {
  * 组织访问中间件工厂
  */
 export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') {
-  const roleHierarchy: Record<OrgRole, number> = {
-    owner: 3,
-    developer: 2,
-    member: 1,
-  };
-
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const userId = req.userId;
     const orgId = parseIdParam(req.params.orgId || req.params.id || req.body.organization_id);
@@ -136,7 +123,6 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
       return;
     }
 
-    // 检查超级管理员
     const userEmail = await getAuthRepo().findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
       req.orgRole = 'owner';
@@ -144,14 +130,13 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
       return;
     }
 
-    // 检查组织成员
     const membership = await getOrgRepo().findUserMembership(orgId, userId);
     if (!membership) {
       res.status(403).json(Errors.forbidden());
       return;
     }
 
-    if (roleHierarchy[membership.role] < roleHierarchy[minRole]) {
+    if (!hasRole(membership.role, minRole)) {
       res.status(403).json(Errors.forbidden());
       return;
     }

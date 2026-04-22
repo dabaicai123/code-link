@@ -3,17 +3,21 @@ import { container } from 'tsyringe';
 import { DockerService } from './lib/docker.service.js';
 import { ContainerService } from './service.js';
 import { ContainerController } from './controller.js';
+import { setDockerClient } from './lib/docker-exec.js';
 
 export function registerContainerModule(): void {
   container.registerSingleton(DockerService);
   container.registerSingleton(ContainerService);
   container.registerSingleton(ContainerController);
+
+  const dockerService = container.resolve(DockerService);
+  setDockerClient(dockerService.getClient());
 }
 
 export { DockerService } from './lib/docker.service.js';
 export { ContainerService } from './service.js';
 export { ContainerController } from './controller.js';
 export { createContainerRoutes } from './routes.js';
-export { containerIdParamsSchema } from './schemas.js';
-export type { ContainerIdParams } from './schemas.js';
-export type { ContainerStatus, ContainerStartResult, ContainerStopResult } from './types.js';
+export { projectIdParamsSchema } from './schemas.js';
+export type { ProjectIdParams } from './schemas.js';
+export type { ContainerResult } from './types.js';

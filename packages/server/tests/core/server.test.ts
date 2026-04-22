@@ -1,8 +1,8 @@
 // packages/server/tests/server.test.ts
 import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../src/index.js';
-import { DatabaseConnection, createSqliteDb, runMigrations } from '../src/db/index.js';
+import { createApp } from '../../src/index.js';
+import { DatabaseConnection, createSqliteDb, runMigrations } from '../../src/db/index.js';
 import { container } from 'tsyringe';
 
 describe('Express 服务器', () => {

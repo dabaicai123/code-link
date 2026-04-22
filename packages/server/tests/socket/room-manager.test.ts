@@ -10,7 +10,7 @@ import {
   deleteEmptyDraftRoom,
   resetRoomUsers,
   getRoomStats,
-} from '../src/socket/utils/room-manager.js';
+} from '../../src/socket/utils/room-manager.js';
 
 describe('Socket room TTL cleanup', () => {
   beforeEach(() => {

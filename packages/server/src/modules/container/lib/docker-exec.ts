@@ -1,14 +1,14 @@
 import Docker from 'dockerode';
 import { PassThrough, Transform, TransformCallback } from 'stream';
 
-// Docker client singleton for exec operations
 let dockerInstance: Docker | null = null;
 
+export function setDockerClient(client: Docker): void {
+  dockerInstance = client;
+}
+
 function getDockerClient(): Docker {
-  if (!dockerInstance) {
-    dockerInstance = new Docker();
-  }
-  return dockerInstance;
+  return dockerInstance ?? new Docker();
 }
 
 export interface ExecSession {

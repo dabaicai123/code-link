@@ -17,12 +17,17 @@ interface PreviewContainer {
 @singleton()
 export class PreviewContainerManager {
   private containers: Map<string, PreviewContainer> = new Map();
-  private docker: Docker;
   private readonly portManager: PortManager;
 
-  constructor(@inject(PortManager) portManager: PortManager) {
-    this.docker = new Docker();
+  constructor(
+    @inject(DockerService) private readonly dockerService: DockerService,
+    @inject(PortManager) portManager: PortManager
+  ) {
     this.portManager = portManager;
+  }
+
+  private get docker(): Docker {
+    return this.dockerService.getClient();
   }
 
   async createPreviewContainer(
@@ -30,13 +35,10 @@ export class PreviewContainerManager {
     projectId: string,
     env?: Record<string, string>
   ): Promise<number> {
-    // 分配端口
     const port = this.portManager.allocatePort();
 
-    // 停止并移除旧的预览容器（如果存在）
     await this.stopPreviewContainer(projectId);
 
-    // 创建并启动容器
     let container;
     try {
       container = await this.docker.createContainer({
@@ -55,12 +57,10 @@ export class PreviewContainerManager {
 
       await container.start();
     } catch (error) {
-      // 启动失败时释放端口
       this.portManager.releasePort(port);
       throw error;
     }
 
-    // 记录容器信息
     this.containers.set(projectId, {
       containerId: container.id,
       projectId,
@@ -83,7 +83,6 @@ export class PreviewContainerManager {
         logger.error('Failed to stop container', error instanceof Error ? error : new Error(String(error)));
       }
 
-      // 释放端口
       this.portManager.releasePort(info.port);
       this.containers.delete(projectId);
     } else {
@@ -124,7 +123,6 @@ export class PreviewContainerManager {
         logger.error('Failed to cleanup container', error instanceof Error ? error : new Error(String(error)));
       }
 
-      // 释放端口
       this.portManager.releasePort(info.port);
     }
 

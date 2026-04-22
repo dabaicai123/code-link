@@ -4,9 +4,9 @@ import { io as ioClient } from 'socket.io-client';
 import { createServer } from 'http';
 import { container } from 'tsyringe';
 import jwt from 'jsonwebtoken';
-import { resetConfig } from '../src/core/config.js';
-import { setupTestDb, teardownTestDb, createTestUser } from './helpers/test-db.js';
-import { registerSocketModule } from '../src/socket/socket.module.js';
+import { resetConfig } from '../../src/core/config.js';
+import { setupTestDb, teardownTestDb, createTestUser } from '../../helpers/test-db.js';
+import { registerSocketModule } from '../../src/socket/socket.module.js';
 
 // Set JWT_SECRET before any imports that use tsyringe DI
 process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
@@ -14,8 +14,8 @@ process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
 describe('Socket connection rate limiting', () => {
   let httpServer: ReturnType<typeof createServer>;
   let serverPort: number;
-  let createSocketServer: typeof import('../src/socket/index.js').createSocketServer;
-  let resetSocketServerInstance: typeof import('../src/socket/index.js').resetSocketServerInstance;
+  let createSocketServer: typeof import('../../src/socket/index.js').createSocketServer;
+  let resetSocketServerInstance: typeof import('../../src/socket/index.js').resetSocketServerInstance;
   let authToken: string;
 
   beforeEach(async () => {
@@ -34,7 +34,7 @@ describe('Socket connection rate limiting', () => {
     );
 
     // Dynamic import after JWT_SECRET is set and DB is ready
-    const socketModule = await import('../src/socket/index.js');
+    const socketModule = await import('../../src/socket/index.js');
     createSocketServer = socketModule.createSocketServer;
     resetSocketServerInstance = socketModule.resetSocketServerInstance;
 

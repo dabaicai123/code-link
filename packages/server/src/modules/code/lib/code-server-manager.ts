@@ -20,19 +20,14 @@ export class CodeServerManager {
   async startCodeServer(projectId: number, containerId: string): Promise<number> {
     const portManager = getPortManager();
 
-    // If already tracked, return existing port
     const existing = this.codeServerInfo.get(projectId);
     if (existing && existing.running) {
       return existing.port;
     }
 
-    // Allocate port (or recover from existing info)
     const port = existing?.port ?? portManager.allocatePort();
 
     try {
-      // Start code-server inside the container via docker exec
-      // Uses nohup so the process survives after exec exits
-      // Runs as codelink user (container default), --auth none for internal network
       const result = await this.docker.execInContainer(containerId, [
         'sh', '-c',
         'nohup code-server --auth none --bind-addr 0.0.0.0:8080 --disable-telemetry --disable-update-check /workspace > /home/codelink/code-server.log 2>&1 & echo "code-server started"',
@@ -42,7 +37,6 @@ export class CodeServerManager {
         logger.warn('code-server start may have issues', { stderr: result.stderr });
       }
 
-      // Wait for code-server to become ready (poll up to 15 seconds)
       await this.waitForReady(containerId);
 
       const containerIp = await this.getContainerIp(containerId);
@@ -50,7 +44,6 @@ export class CodeServerManager {
       logger.info('code-server started', { projectId, port, containerIp });
       return port;
     } catch (error) {
-      // If startup fails, release the port
       if (!existing) {
         portManager.releasePort(port);
       }
@@ -66,7 +59,7 @@ export class CodeServerManager {
     try {
       await this.docker.execInContainer(containerId, ['pkill', '-f', 'code-server']);
     } catch {
-      // Process might not exist, that's fine
+      // Process might not exist after container restart
     }
 
     const portManager = getPortManager();

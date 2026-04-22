@@ -1,7 +1,6 @@
-// src/modules/gitprovider/repository.ts
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { projectTokens } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
 import { DatabaseConnection } from '../../db/connection.js';
@@ -25,25 +24,16 @@ export class GitProviderRepository extends BaseRepository {
   }
 
   async upsert(data: InsertProjectToken): Promise<SelectProjectToken> {
-    const existing = await this.findByUserAndProvider(data.userId as number, data.provider as GitProvider);
-
-    if (existing) {
-      return this.db.update(projectTokens)
-        .set({
+    return this.db.insert(projectTokens)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [projectTokens.userId, projectTokens.provider],
+        set: {
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
           expiresAt: data.expiresAt,
-        })
-        .where(and(
-          eq(projectTokens.userId, data.userId as number),
-          eq(projectTokens.provider, data.provider as GitProvider)
-        ))
-        .returning()
-        .get();
-    }
-
-    return this.db.insert(projectTokens)
-      .values(data)
+        },
+      })
       .returning()
       .get();
   }
@@ -58,8 +48,15 @@ export class GitProviderRepository extends BaseRepository {
   }
 
   async hasToken(userId: number, provider: GitProvider): Promise<boolean> {
-    const token = await this.findByUserAndProvider(userId, provider);
-    return token !== undefined;
+    const result = await this.db.select({ exists: sql`1` })
+      .from(projectTokens)
+      .where(and(
+        eq(projectTokens.userId, userId),
+        eq(projectTokens.provider, provider)
+      ))
+      .limit(1)
+      .get();
+    return result !== undefined;
   }
 
   isTokenExpired(token: SelectProjectToken): boolean {
@@ -68,7 +65,6 @@ export class GitProviderRepository extends BaseRepository {
     const expiresAt = new Date(token.expiresAt);
     const now = new Date();
 
-    // 提前 5 分钟视为过期
     return now.getTime() >= expiresAt.getTime() - 5 * 60 * 1000;
   }
 }

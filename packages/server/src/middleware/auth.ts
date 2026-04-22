@@ -1,22 +1,25 @@
 import "reflect-metadata";
 import { container } from "tsyringe";
-import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { createLogger } from '../core/logger/index.js';
 import { Errors } from '../core/errors/index.js';
-import { getConfig } from '../core/config.js';
+import { AuthService } from '../modules/auth/auth.module.js';
 import { AuthMiddlewareService } from './auth-middleware.service.js';
 import type { OrgRole } from '../db/schema/index.js';
 
 const logger = createLogger('auth');
 
-// 延迟获取 AuthMiddlewareService 实例（避免模块加载时解析）
-let _authService: AuthMiddlewareService | null = null;
-function getAuthService(): AuthMiddlewareService {
-  return _authService ??= container.resolve(AuthMiddlewareService);
+let _authService: AuthService | null = null;
+function getAuthService(): AuthService {
+  return _authService ??= container.resolve(AuthService);
 }
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+let _authMiddlewareService: AuthMiddlewareService | null = null;
+function getAuthMiddlewareService(): AuthMiddlewareService {
+  return _authMiddlewareService ??= container.resolve(AuthMiddlewareService);
+}
+
+export async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     logger.debug('No auth token provided');
@@ -32,15 +35,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   }
 
   try {
-    const config = getConfig();
-    const payload = jwt.verify(token, config.jwtSecret);
-    if (typeof payload !== 'object' || payload === null || typeof payload.userId !== 'number') {
-      logger.warn('Invalid token payload structure');
-      res.status(401).json(Errors.unauthorized());
-      return;
-    }
-    logger.debug(`Token verified for userId=${payload.userId}`);
-    req.userId = payload.userId;
+    const userId = await getAuthService().verifyToken(token);
+    logger.debug(`Token verified for userId=${userId}`);
+    req.userId = userId;
     next();
   } catch (err) {
     logger.warn('Token verification failed', { error: err instanceof Error ? err.message : String(err) });
@@ -54,7 +51,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
  */
 export function createOrgMemberMiddleware(minRole: OrgRole) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const authService = getAuthService();
+    const authService = getAuthMiddlewareService();
     const userId = req.userId;
     const orgIdParam = req.params.orgId || req.params.id || req.body.organization_id;
     const orgId = parseInt(Array.isArray(orgIdParam) ? orgIdParam[0] : orgIdParam || '', 10);
@@ -88,7 +85,7 @@ export function createOrgMemberMiddleware(minRole: OrgRole) {
  */
 export function createProjectMemberMiddleware(minRole: OrgRole) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const authService = getAuthService();
+    const authService = getAuthMiddlewareService();
     const userId = req.userId;
     const projectIdParam = req.params.id || req.params.projectId;
     const projectId = parseInt(Array.isArray(projectIdParam) ? projectIdParam[0] : projectIdParam || '', 10);
@@ -125,7 +122,7 @@ export function createProjectMemberMiddleware(minRole: OrgRole) {
  */
 export function createCanCreateOrgMiddleware() {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const authService = getAuthService();
+    const authService = getAuthMiddlewareService();
     const userId = req.userId;
 
     if (!userId) {

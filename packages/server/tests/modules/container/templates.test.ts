@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import { describe, it, expect } from 'vitest';
-import { getTemplateConfig, TEMPLATE_TYPES, isValidTemplate } from '../src/modules/container/lib/templates.ts';
+import { getTemplateConfig, TEMPLATE_TYPES, isValidTemplate } from '../../../src/modules/container/lib/templates.ts';
 
 describe('Template Config', () => {
   it('should have valid template types', () => {

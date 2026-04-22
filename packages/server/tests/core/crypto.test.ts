@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { encrypt, decrypt, isEncryptionKeySet, setEncryptionKey } from '../src/crypto/aes.js';
+import { encrypt, decrypt, isEncryptionKeySet, setEncryptionKey } from '../../src/crypto/aes.js';
 
 describe('AES-256-GCM Crypto', () => {
   const testKey = 'test-encryption-key-32-bytes!!!!!';

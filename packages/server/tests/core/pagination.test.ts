@@ -1,15 +1,15 @@
 import "reflect-metadata";
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { container } from 'tsyringe';
-import { ProjectRepository } from '../src/modules/project/repository.js';
-import { BuildRepository } from '../src/modules/build/repository.js';
-import { DraftRepository } from '../src/modules/draft/repository.js';
-import { OrganizationRepository } from '../src/modules/organization/repository.js';
-import { AuthRepository } from '../src/modules/auth/repository.js';
-import { DatabaseConnection } from '../src/core/database/connection.js';
-import { resetConfig } from '../src/core/config.js';
-import { runMigrations } from '../src/db/migrate-runner.js';
-import { PAGINATION_LIMITS } from '../src/core/database/constants.js';
+import { ProjectRepository } from '../../src/modules/project/repository.js';
+import { BuildRepository } from '../../src/modules/build/repository.js';
+import { DraftRepository } from '../../src/modules/draft/repository.js';
+import { OrganizationRepository } from '../../src/modules/organization/repository.js';
+import { AuthRepository } from '../../src/modules/auth/repository.js';
+import { DatabaseConnection } from '../../src/core/database/connection.js';
+import { resetConfig } from '../../src/core/config.js';
+import { runMigrations } from '../../src/db/migrate-runner.js';
+import { PAGINATION_LIMITS } from '../../src/core/database/constants.js';
 import path from 'path';
 import fs from 'fs';
 

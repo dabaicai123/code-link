@@ -37,8 +37,8 @@ export class OrganizationRepository extends BaseRepository {
 
   async findByUserId(userId: number, page?: number, limit?: number): Promise<PaginatedResult<OrganizationWithRole>> {
     const effectiveLimit = limit !== undefined
-      ? Math.min(limit, PAGINATION_LIMITS.projects.max)
-      : PAGINATION_LIMITS.projects.default;
+      ? Math.min(limit, PAGINATION_LIMITS.organizations.max)
+      : PAGINATION_LIMITS.organizations.default;
     const effectivePage = page ?? 1;
     const offset = computeOffset(effectivePage, effectiveLimit);
 
@@ -145,14 +145,15 @@ export class OrganizationRepository extends BaseRepository {
 
   async isOwnerOfAny(userId: number): Promise<boolean> {
     const result = await this.db
-      .select()
+      .select({ exists: sql`1` })
       .from(organizationMembers)
       .where(and(
         eq(organizationMembers.userId, userId),
         eq(organizationMembers.role, 'owner')
       ))
+      .limit(1)
       .get();
-    return !!result;
+    return result !== undefined;
   }
 
   // === Invitation Methods ===
@@ -272,14 +273,15 @@ export class OrganizationRepository extends BaseRepository {
 
   async hasPendingInvitation(orgId: number, email: string): Promise<boolean> {
     const result = await this.db
-      .select()
+      .select({ exists: sql`1` })
       .from(organizationInvitations)
       .where(and(
         eq(organizationInvitations.organizationId, orgId),
         eq(organizationInvitations.email, email),
         eq(organizationInvitations.status, 'pending')
       ))
+      .limit(1)
       .get();
-    return !!result;
+    return result !== undefined;
   }
 }

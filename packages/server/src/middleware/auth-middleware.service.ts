@@ -1,47 +1,33 @@
 import 'reflect-metadata';
 import { singleton, inject } from 'tsyringe';
-import jwt from 'jsonwebtoken';
-import { AuthRepository } from '../modules/auth/repository.js';
 import { OrganizationRepository } from '../modules/organization/repository.js';
 import { ProjectRepository } from '../modules/project/repository.js';
-import { isSuperAdmin } from '../utils/super-admin.js';
-import { ROLE_HIERARCHY } from '../utils/roles.js';
-import { Errors } from '../core/errors/index.js';
-import { getConfig } from '../core/config.js';
+import { hasRole } from '../utils/roles.js';
 import type { OrgRole } from '../db/schema/index.js';
 import type { SelectProject } from '../db/schema/index.js';
+import { AuthService } from '../modules/auth/auth.module.js';
 
 @singleton()
 export class AuthMiddlewareService {
   constructor(
-    @inject(AuthRepository) private readonly authRepo: AuthRepository,
+    @inject(AuthService) private readonly authService: AuthService,
     @inject(OrganizationRepository) private readonly orgRepo: OrganizationRepository,
     @inject(ProjectRepository) private readonly projectRepo: ProjectRepository,
   ) {}
 
-  async verifyToken(token: string): Promise<number> {
-    const config = getConfig();
-    const payload = jwt.verify(token, config.jwtSecret);
-    if (typeof payload !== 'object' || payload === null || typeof (payload as any).userId !== 'number') {
-      throw new Error('无效的令牌');
-    }
-    return (payload as any).userId;
-  }
-
-  async findUserEmail(userId: number): Promise<string | undefined> {
-    return this.authRepo.findEmailById(userId);
+  verifyToken(token: string): Promise<number> {
+    return this.authService.verifyToken(token);
   }
 
   async isSuperAdminUser(userId: number): Promise<boolean> {
-    const email = await this.authRepo.findEmailById(userId);
-    return email ? isSuperAdmin(email) : false;
+    return this.authService.isSuperAdminCheck(userId);
   }
 
   async checkOrgMembership(userId: number, orgId: number, minRole: OrgRole): Promise<{ role: OrgRole } | undefined> {
     if (await this.isSuperAdminUser(userId)) return { role: 'owner' };
     const membership = await this.orgRepo.findUserMembership(orgId, userId);
     if (!membership) return undefined;
-    if (ROLE_HIERARCHY[membership.role] < ROLE_HIERARCHY[minRole]) return undefined;
+    if (!hasRole(membership.role, minRole)) return undefined;
     return membership;
   }
 
@@ -55,7 +41,7 @@ export class AuthMiddlewareService {
     if (await this.isSuperAdminUser(userId)) return project;
     const membership = await this.orgRepo.findUserMembership(project.organizationId, userId);
     if (!membership) return undefined;
-    if (ROLE_HIERARCHY[membership.role] < ROLE_HIERARCHY[minRole]) return undefined;
+    if (!hasRole(membership.role, minRole)) return undefined;
     return project;
   }
 

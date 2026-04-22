@@ -4,7 +4,7 @@ import {
   ProjectEvents,
   DraftEvents,
   TerminalEvents,
-} from '../src/socket/types';
+} from '../../src/socket/types';
 
 describe('WebSocket Message Types', () => {
   describe('ProjectEvents', () => {

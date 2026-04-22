@@ -230,32 +230,17 @@ export class DraftRepository extends BaseRepository {
   // ==================== Confirmation Operations ====================
 
   async upsertConfirmation(data: InsertMessageConfirmation): Promise<SelectMessageConfirmation> {
-    // SQLite doesn't support true upsert with ON CONFLICT DO UPDATE in Drizzle easily
-    // Check if exists, then update or insert
-    const existing = this.db
-      .select()
-      .from(messageConfirmations)
-      .where(
-        and(
-          eq(messageConfirmations.messageId, data.messageId),
-          eq(messageConfirmations.userId, data.userId)
-        )
-      )
-      .get();
-
-    if (existing) {
-      return this.db
-        .update(messageConfirmations)
-        .set({
+    return this.db.insert(messageConfirmations)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [messageConfirmations.messageId, messageConfirmations.userId],
+        set: {
           type: data.type,
           comment: data.comment,
-        })
-        .where(eq(messageConfirmations.id, existing.id))
-        .returning()
-        .get();
-    }
-
-    return this.db.insert(messageConfirmations).values(data).returning().get();
+        },
+      })
+      .returning()
+      .get();
   }
 
   async findConfirmations(messageId: number): Promise<MessageConfirmationWithUser[]> {

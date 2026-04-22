@@ -8,7 +8,7 @@ import { AIClientFactory } from '../../core/ai/ai-client-factory.js';
 import { ParamError, NotFoundError, PermissionError } from '../../core/errors/index.js';
 import { parseAICommand, executeAICommand, isAICommand } from './lib/commands.js';
 import { listCards } from '../../ai/transcript.js';
-import type { AICommand, SuperpowersCommand, FreeChatCommand } from './lib/commands.js';
+import type { AICommand } from './lib/commands.js';
 import type { PaginatedResult } from '../../core/database/pagination.js';
 import type { SelectDraft, InsertDraftMessage } from '../../db/schema/index.js';
 import type { CreateDraftInput, CreateDraftMessageInput, ConfirmMessageInput } from './schemas.js';
@@ -24,10 +24,7 @@ export class DraftService {
     @inject(AIClientFactory) private readonly aiClient: AIClientFactory
   ) {}
 
-  // ==================== Draft CRUD ====================
-
   async create(userId: number, input: CreateDraftInput): Promise<SelectDraft> {
-    // Validate title
     const trimmedTitle = input.title.trim();
     if (!trimmedTitle) {
       throw new ParamError('标题不能为空');
@@ -36,7 +33,6 @@ export class DraftService {
       throw new ParamError('标题最多200个字符');
     }
 
-    // Check project access
     const project = await this.projectService.getProjectById(input.projectId);
     if (!project) {
       throw new NotFoundError('项目');
@@ -44,14 +40,12 @@ export class DraftService {
 
     await this.permissionService.checkProjectAccess(userId, project.id);
 
-    // Create draft with owner
     const draft = await this.draftRepo.createWithOwner({
       projectId: input.projectId,
       title: trimmedTitle,
       createdBy: userId,
     }, userId);
 
-    // Add additional members if provided
     if (input.memberIds && input.memberIds.length > 0) {
       for (const memberId of input.memberIds) {
         const memberUser = await this.authService.findById(memberId);
@@ -99,7 +93,6 @@ export class DraftService {
 
     await this.checkDraftAccess(draftId, userId);
 
-    // Only owner or admin can delete
     const member = await this.draftRepo.findMember(draftId, userId);
     const isSuperAdmin = await this.permissionService.isSuperAdmin(userId);
 
@@ -109,8 +102,6 @@ export class DraftService {
 
     await this.draftRepo.delete(draftId);
   }
-
-  // ==================== Member Management ====================
 
   async addMember(draftId: number, userId: number, newUserId: number): Promise<void> {
     await this.checkDraftAccess(draftId, userId);
@@ -128,8 +119,6 @@ export class DraftService {
 
     await this.draftRepo.removeMember(draftId, memberId);
   }
-
-  // ==================== Message Management ====================
 
   async createMessage(
     draftId: number,
@@ -166,8 +155,6 @@ export class DraftService {
 
     return this.draftRepo.findMessages(draftId, page, limit);
   }
-
-  // ==================== Confirmation Management ====================
 
   async confirmMessage(
     draftId: number,
@@ -211,8 +198,6 @@ export class DraftService {
     return this.draftRepo.findConfirmations(messageId);
   }
 
-  // ==================== Card Management ====================
-
   async findCards(draftId: number, userId: number): Promise<Array<import('../draft/file-types.js').CardData>> {
     await this.checkDraftAccess(draftId, userId);
 
@@ -223,8 +208,6 @@ export class DraftService {
 
     return listCards(draft.projectId, draftId);
   }
-
-  // ==================== AI Command Handling ====================
 
   async handleAICommand(
     draftId: number,
@@ -242,7 +225,6 @@ export class DraftService {
       throw new ParamError('无效的 AI 命令格式');
     }
 
-    // Create user message first
     await this.draftRepo.createMessage({
       draftId,
       userId,
@@ -250,7 +232,7 @@ export class DraftService {
       messageType: 'ai_command',
     });
 
-    // superpowers/free_chat go through Terminal Socket (Claude Code), not executeAICommand
+    // superpowers/free_chat go through Terminal Socket (Claude Code)
     if (command.type === 'superpowers' || command.type === 'free_chat') {
       return {
         success: true,
@@ -259,14 +241,12 @@ export class DraftService {
       };
     }
 
-    // Execute legacy AI command via Anthropic API
     const result = await executeAICommand(draftId, command as AICommand, userId, this.aiClient);
 
-    // Create AI response message (using userId of the user who triggered the command)
     if (result.success && result.response) {
       await this.draftRepo.createMessage({
         draftId,
-        userId, // User who triggered the AI command
+        userId,
         content: result.response,
         messageType: 'ai_response',
         metadata: JSON.stringify({ commandType: result.commandType }),
@@ -289,8 +269,6 @@ export class DraftService {
     return isAICommand(content);
   }
 
-  // ==================== Utility Methods ====================
-
   async isMember(draftId: number, userId: number): Promise<boolean> {
     const member = await this.draftRepo.findMember(draftId, userId);
     return !!member;
@@ -306,10 +284,7 @@ export class DraftService {
     return draft?.projectId ?? null;
   }
 
-  // ==================== Private Helpers ====================
-
   private async checkDraftAccess(draftId: number, userId: number): Promise<void> {
-    // Super admin always has access
     if (await this.permissionService.isSuperAdmin(userId)) {
       return;
     }

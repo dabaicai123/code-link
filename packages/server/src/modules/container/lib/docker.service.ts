@@ -40,12 +40,11 @@ export class DockerService implements IDockerService {
 
     const containerName = `${CONTAINER_NAME_PREFIX}${projectId}`;
 
-    // 检查是否已存在同名容器
     try {
       const existing = await this.client.getContainer(containerName).inspect();
       return existing.Id;
     } catch {
-      // 不存在，继续创建
+      // Container doesn't exist yet, proceed to create
     }
 
     const container = await this.client.createContainer({

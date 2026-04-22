@@ -32,6 +32,10 @@ RUN chown codelink:codelink /home/codelink/.claude/settings.json
 COPY claude.json /home/codelink/.claude.json
 RUN chown codelink:codelink /home/codelink/.claude.json
 
+# 预置 marketplace 注册信息（让 plugin install 能找到 claude-plugins-official）
+COPY known_marketplaces.json /home/codelink/.claude/plugins/known_marketplaces.json
+RUN chown codelink:codelink /home/codelink/.claude/plugins/known_marketplaces.json
+
 # 构建时安装 superpowers 插件和 ui-ux-pro-max 技能
 COPY setup-plugins.sh /tmp/setup-plugins.sh
 RUN --mount=type=cache,target=/home/codelink/.claude/plugins/cache \

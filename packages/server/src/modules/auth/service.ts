@@ -81,8 +81,6 @@ export class AuthService {
     return rest;
   }
 
-  // ==================== Facade methods for cross-module access ====================
-
   async findEmailById(userId: number): Promise<string | null> {
     const user = await this.repo.findById(userId);
     return user?.email ?? null;

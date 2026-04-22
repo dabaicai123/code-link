@@ -4,13 +4,8 @@ import { OrganizationService } from '../modules/organization/organization.module
 import { AuthService } from '../modules/auth/auth.module.js';
 import { ProjectService } from '../modules/project/project.module.js';
 import { PermissionError, NotFoundError } from '../core/errors/index.js';
+import { ROLE_HIERARCHY, hasRole } from '../utils/roles.js';
 import type { SelectProject, OrgRole } from '../db/schema/index.js';
-
-const ROLE_HIERARCHY: Record<OrgRole, number> = {
-  owner: 3,
-  developer: 2,
-  member: 1,
-};
 
 @singleton()
 export class PermissionService {
@@ -34,7 +29,7 @@ export class PermissionService {
       throw new PermissionError('您不是该组织的成员');
     }
 
-    if (ROLE_HIERARCHY[membership] < ROLE_HIERARCHY[minRole]) {
+    if (!hasRole(membership, minRole)) {
       throw new PermissionError(`需要 ${minRole} 或更高权限`);
     }
   }

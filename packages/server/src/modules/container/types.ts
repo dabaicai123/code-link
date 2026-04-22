@@ -1,14 +1,4 @@
-export interface ContainerStatus {
-  containerId: string;
-  status: string;
-}
-
-export interface ContainerStartResult {
-  containerId: string;
-  status: string;
-}
-
-export interface ContainerStopResult {
+export interface ContainerResult {
   containerId: string;
   status: string;
 }

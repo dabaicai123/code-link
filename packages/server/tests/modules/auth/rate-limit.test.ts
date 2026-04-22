@@ -3,9 +3,9 @@ process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../src/index.js';
-import { resetConfig } from '../src/core/config.js';
-import { setupTestDb, teardownTestDb } from './helpers/test-db.js';
+import { createApp } from '../../src/index.js';
+import { resetConfig } from '../../src/core/config.js';
+import { setupTestDb, teardownTestDb } from '../../helpers/test-db.js';
 
 describe('Auth rate limiting', () => {
   beforeEach(() => {

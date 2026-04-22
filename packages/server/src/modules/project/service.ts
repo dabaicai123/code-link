@@ -5,6 +5,7 @@ import { PermissionService } from '../../shared/permission.service.js';
 import { ParamError } from '../../core/errors/index.js';
 import type { SelectProject, SelectProjectRepo } from '../../db/schema/index.js';
 import type { PaginatedResult } from '../../core/database/pagination.js';
+import { isValidTemplate } from '../container/lib/templates.js';
 import type { CreateProjectInput, AddRepoInput } from './schemas.js';
 import type { ProjectDetail, ParsedRepoUrl } from './types.js';
 
@@ -21,8 +22,7 @@ export class ProjectService {
       throw new ParamError('项目名称必须是 1-100 字符');
     }
 
-    const validTemplateTypes = ['node', 'node+java', 'node+python'];
-    if (!validTemplateTypes.includes(input.templateType)) {
+    if (!isValidTemplate(input.templateType)) {
       throw new ParamError('无效的模板类型，必须是 node, node+java 或 node+python');
     }
 
@@ -127,8 +127,6 @@ export class ProjectService {
 
     await this.repo.deleteRepo(repoId);
   }
-
-  // ==================== Facade methods for cross-module access ====================
 
   async getProjectById(projectId: number): Promise<SelectProject | null> {
     const project = await this.repo.findById(projectId);
