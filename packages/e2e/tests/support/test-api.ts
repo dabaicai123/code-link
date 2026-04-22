@@ -122,8 +122,8 @@ export class TestApi {
   }
 
   async getDraftCards(draftId: number): Promise<TestCard[]> {
-    const response = await this.get<ApiResponse<{ cards: TestCard[] }>>(`/drafts/${draftId}/cards`);
-    return response.data.cards;
+    const response = await this.get<ApiResponse<TestCard[]>>(`/drafts/${draftId}/cards`);
+    return response.data;
   }
 
   async getDraftMessages(draftId: number): Promise<DraftMessagesResponse> {

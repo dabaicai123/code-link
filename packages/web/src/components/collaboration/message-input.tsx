@@ -122,6 +122,7 @@ export function MessageInput({ draftId, replyTo, onSend, onCancelReply, ref }: M
                     <textarea
                       {...field}
                       ref={textareaRef}
+                      data-testid="collab-message-input"
                       onKeyDown={handleKeyDown}
                       placeholder={
                         messageType === 'code' ? '输入代码...' :

@@ -693,7 +693,7 @@ export function CollaborationTimeline({
         onExecutePlan={(card) => { /* 后续接入 AI 执行流程 */ }}
         onStartCoding={(card) => { /* 后续接入 AI 执行流程 */ }}
         onResume={(card) => { /* 后续接入 AI 执行流程 */ }}
-        onAbort={(card) => { /* 后续接入 AI 执行流程 */ }}
+        onAbort={(card) => { setSelectedCard(null); /* 后续接入 AI 执行流程 */ }}
       />
 
       {contextMenu && (

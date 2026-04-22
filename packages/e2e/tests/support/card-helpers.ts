@@ -2,7 +2,19 @@ import fs from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 
-const TRANSCRIPTS_DIR = process.env.TRANSCRIPTS_DIR || path.join(process.cwd(), 'data', 'transcripts');
+// The server starts from packages/server, so its cwd-based default is packages/server/transcripts.
+// E2E tests run from packages/e2e (or the project root), so we need a way to point to the
+// server's transcripts directory. Set TRANSCRIPTS_DIR env before importing this module, or
+// call setTranscriptsDir() at runtime.
+let TRANSCRIPTS_DIR = process.env.TRANSCRIPTS_DIR || path.join(process.cwd(), 'transcripts');
+
+export function setTranscriptsDir(dir: string): void {
+  TRANSCRIPTS_DIR = dir;
+}
+
+export function getTranscriptsDir(): string {
+  return TRANSCRIPTS_DIR;
+}
 
 export interface CreateCardParams {
   projectId: number;
