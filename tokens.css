@@ -1,0 +1,104 @@
+/* ======================================================================
+   Design Tokens — Single Source of Truth
+   ----------------------------------------------------------------------
+   Consumed by:
+     • src/styles/globals.css  (via @theme inline — generates Tailwind v4 utilities)
+     • HTML preview files       (via <link rel="stylesheet">)
+   Naming rule:
+     • Non-conflicting with Tailwind v4 namespaces (--color-*, --spacing-*,
+       --radius-*, --shadow-*, --font-*). Use --corner-*, --elev-*, --ff-*
+       where a direct collision would occur.
+   ====================================================================== */
+
+:root {
+  /* ─── Colors · Background ──────────────────────────────────── */
+  --bg-primary:   #faf6f0;
+  --bg-secondary: #f2ebe2;
+  --bg-card:      rgba(255, 249, 242, 0.72);
+  --bg-hover:     #e9e0d4;
+  --bg-active:    #f5ddd4;
+
+  /* ─── Colors · Accent ──────────────────────────────────────── */
+  --accent-primary: #c0553a;
+  --accent-hover:   #a84530;
+  --accent-light:   #f5ddd4;
+
+  /* ─── Colors · Text ────────────────────────────────────────── */
+  --text-primary:   #2d1f14;
+  --text-secondary: #6b5a4d;
+  --text-muted:     #9a8b7d;
+
+  /* ─── Colors · Border ──────────────────────────────────────── */
+  --border-default: #ddd0c0;
+  --border-light:   #eee8d5;
+
+  /* ─── Colors · Status ──────────────────────────────────────── */
+  --status-running: #5d8a54;
+  --status-stopped: #c0553a;
+  --status-warning: #e8be5c;
+  --status-info:    #5b8fb9;
+
+  /* ─── Shadcn HSL tokens (kept for shadcn component compat) ─── */
+  --background:            30 33% 96%;
+  --foreground:            15 35% 13%;
+  --card:                  30 40% 97%;
+  --card-foreground:       15 35% 13%;
+  --popover:               30 40% 97%;
+  --popover-foreground:    15 35% 13%;
+  --primary:               14 60% 47%;
+  --primary-foreground:    0 0% 100%;
+  --secondary:             30 23% 90%;
+  --secondary-foreground:  15 35% 13%;
+  --muted:                 30 20% 87%;
+  --muted-foreground:      25 18% 52%;
+  --accent:                14 60% 47%;
+  --accent-foreground:     0 0% 100%;
+  --destructive:           0 72% 51%;
+  --destructive-foreground:0 0% 100%;
+  --border:                30 22% 82%;
+  --input:                 30 22% 82%;
+  --ring:                  14 60% 47%;
+
+  /* ─── Sizing · Control heights (inputs, buttons, selects) ── */
+  --size-control-sm: 2.25rem;   /* 36px */
+  --size-control-md: 2.75rem;   /* 44px — default */
+  --size-control-lg: 3rem;      /* 48px */
+
+  /* ─── Sizing · Layout ──────────────────────────────────────── */
+  --size-sidebar: 250px;
+
+  /* ─── Spacing · Form gaps ──────────────────────────────────── */
+  --gap-field-label: 0.5rem;    /* 8px  — label ↔ input */
+  --gap-field:       1rem;      /* 16px — field ↔ field */
+  --gap-section:     1.5rem;    /* 24px — section breaks */
+
+  /* ─── Spacing · Control inner padding ─────────────────────── */
+  --pad-control-x: 1rem;        /* 16px */
+  --pad-control-y: 0.625rem;    /* 10px */
+
+  /* ─── Radius (named --corner-* to avoid --radius-* namespace) ── */
+  --corner-sm: 0.5rem;          /* 8px  */
+  --corner-md: 0.625rem;        /* 10px */
+  --corner-lg: 0.75rem;         /* 12px */
+  --corner-xl: 1rem;            /* 16px */
+  --corner-2xl: 1.25rem;        /* 20px */
+
+  /* ─── Shadow (named --elev-* to avoid --shadow-* namespace) ─── */
+  --elev-warm:    0 8px 32px rgba(45, 31, 20, 0.08);
+  --elev-warm-sm: 0 4px 16px rgba(45, 31, 20, 0.04);
+
+  /* ─── Typography (named --ff-* to avoid --font-* namespace) ── */
+  --ff-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans CJK SC', Roboto, sans-serif;
+  --ff-mono: Menlo, Monaco, Consolas, 'Courier New', monospace;
+
+  /* ─── Legacy aliases — keep existing code working ─────────── */
+  /* Prefer the canonical names above. These exist only so that raw
+     var() calls in older files don't break. Do not add new usages. */
+  --sidebar-width:  var(--size-sidebar);
+  --radius:         var(--corner-lg);
+  --accent-color:   var(--accent-primary);
+  --border-color:   var(--border-default);
+  --text-disabled:  var(--text-muted);
+  --status-success: var(--status-running);
+  --status-error:   var(--status-stopped);
+}

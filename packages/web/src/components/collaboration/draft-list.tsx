@@ -26,7 +26,7 @@ export function DraftList({ projectId, onSelectDraft, selectedDraftId }: DraftLi
     try {
       setLoading(true);
       const result = await api.getDrafts(projectId);
-      setDrafts(result.drafts);
+      setDrafts(result.drafts ?? []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载失败');
