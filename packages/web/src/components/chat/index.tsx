@@ -130,10 +130,6 @@ export function ChatWorkspace({
     <div data-testid="chat-workspace" className="h-full flex flex-col bg-bg-primary">
       <ChatHeader
         project={project}
-        agent={state.agent}
-        permissionMode={state.permissionMode}
-        onAgentChange={setAgent}
-        onModeChange={setPermissionMode}
         onRestart={onRestart}
       />
       <MessageList
