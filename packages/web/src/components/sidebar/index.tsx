@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { ProjectCard } from './project-card';
 import { UserSection } from './user-section';
 import { useOrganizationStore } from '@/lib/stores';
@@ -45,8 +46,13 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
   return (
     <div className="w-[var(--sidebar-width)] h-full bg-bg-secondary flex flex-col border-r border-border-default">
       <div className="p-3.5 border-b border-border">
-        <div className="text-primary font-medium text-[13px]">Code Link</div>
-        <div className="text-muted-foreground text-[11px] mt-0.5">v1.0.0</div>
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-accent-primary text-white rounded-lg flex items-center justify-center font-bold text-sm">C</div>
+          <div>
+            <div className="text-text-primary font-bold text-[13px]">Code Link</div>
+            <div className="text-text-muted text-[11px]">v1.0.0</div>
+          </div>
+        </div>
       </div>
 
       <div className={cn(
@@ -65,7 +71,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
             )}
           >
             <span>{currentOrganization?.name || '选择组织'}</span>
-            <span className="text-muted-foreground text-[10px]">{showOrgDropdown ? '▲' : '▼'}</span>
+            <span className="text-muted-foreground text-[10px]">{showOrgDropdown ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}</span>
           </div>
 
           {showOrgDropdown && organizations.length > 0 && (
@@ -84,7 +90,7 @@ export function Sidebar({ user, activeProjectId, refreshKey, onProjectSelect, on
                   )}
                 >
                   {org.name}
-                  {currentOrganization?.id === org.id && <span className="ml-2 text-[11px]">✓</span>}
+                  {currentOrganization?.id === org.id && <Check className="w-3 h-3 ml-2 text-accent-primary" />}
                 </div>
               ))}
             </div>

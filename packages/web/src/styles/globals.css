@@ -1,179 +1,119 @@
 /* packages/web/src/styles/globals.css */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "./tokens.css";
+@import "tailwindcss";
 
-@theme {
-  /* Shadcn HSL 颜色 — v4 格式 */
-  --color-background: hsl(30 33% 96%);
-  --color-foreground: hsl(15 35% 13%);
-  --color-card: hsl(30 40% 97%);
-  --color-card-foreground: hsl(15 35% 13%);
-  --color-popover: hsl(30 40% 97%);
-  --color-popover-foreground: hsl(15 35% 13%);
-  --color-primary: hsl(14 60% 47%);
-  --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(30 23% 90%);
-  --color-secondary-foreground: hsl(15 35% 13%);
-  --color-muted: hsl(30 20% 87%);
-  --color-muted-foreground: hsl(25 18% 52%);
-  --color-accent: hsl(14 60% 47%);
-  --color-accent-foreground: hsl(0 0% 100%);
-  --color-destructive: hsl(0 72% 51%);
-  --color-destructive-foreground: hsl(0 0% 100%);
-  --color-border: hsl(30 22% 82%);
-  --color-input: hsl(30 22% 82%);
-  --color-ring: hsl(14 60% 47%);
+/* ======================================================================
+   Tailwind v4 Theme Layer
+   ----------------------------------------------------------------------
+   @theme inline resolves var() references at build time, so Tailwind
+   utilities (bg-*, h-*, space-y-*, rounded-*, shadow-*, font-*) use the
+   values from tokens.css. Single source of truth — change tokens.css,
+   both utilities AND runtime var() calls update.
+   ====================================================================== */
 
-  /* 语义颜色 — 直接映射 */
-  --color-bg-primary: var(--bg-primary);
+@theme inline {
+  /* ─── Colors · Semantic (generates bg-*, text-*, border-* utilities) ── */
+  --color-bg-primary:   var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);
-  --color-bg-card: var(--bg-card);
-  --color-bg-hover: var(--bg-hover);
-  --color-bg-active: var(--bg-active);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-muted: var(--text-muted);
+  --color-bg-card:      var(--bg-card);
+  --color-bg-hover:     var(--bg-hover);
+  --color-bg-active:    var(--bg-active);
+
   --color-accent-primary: var(--accent-primary);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-light: var(--accent-light);
+  --color-accent-hover:   var(--accent-hover);
+  --color-accent-light:   var(--accent-light);
+
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted:     var(--text-muted);
+
   --color-border-default: var(--border-default);
-  --color-border-light: var(--border-light);
+  --color-border-light:   var(--border-light);
 
-  /* 新增语义 token */
-  --color-success: var(--status-running);
-  --color-warning: var(--status-warning);
-  --color-info: #5b8fb9;
-  --color-success-foreground: hsl(0 0% 100%);
-  --color-warning-foreground: hsl(0 0% 100%);
-  --color-info-foreground: hsl(0 0% 100%);
-
-  /* 状态颜色 */
   --color-status-running: var(--status-running);
   --color-status-stopped: var(--status-stopped);
   --color-status-warning: var(--status-warning);
-  --color-status-info: var(--status-info);
+  --color-status-info:    var(--status-info);
 
-  /* 阴影 */
-  --shadow-warm: 0 8px 32px rgba(45, 31, 20, 0.08);
-  --shadow-warm-sm: 0 4px 16px rgba(45, 31, 20, 0.04);
+  /* ─── Colors · Shadcn HSL mapping ─────────────────────────── */
+  --color-background:             hsl(var(--background));
+  --color-foreground:             hsl(var(--foreground));
+  --color-card:                   hsl(var(--card));
+  --color-card-foreground:        hsl(var(--card-foreground));
+  --color-popover:                hsl(var(--popover));
+  --color-popover-foreground:     hsl(var(--popover-foreground));
+  --color-primary:                hsl(var(--primary));
+  --color-primary-foreground:     hsl(var(--primary-foreground));
+  --color-secondary:              hsl(var(--secondary));
+  --color-secondary-foreground:   hsl(var(--secondary-foreground));
+  --color-muted:                  hsl(var(--muted));
+  --color-muted-foreground:       hsl(var(--muted-foreground));
+  --color-accent:                 hsl(var(--accent));
+  --color-accent-foreground:      hsl(var(--accent-foreground));
+  --color-destructive:            hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border:                 hsl(var(--border));
+  --color-input:                  hsl(var(--input));
+  --color-ring:                   hsl(var(--ring));
 
-  /* 圆角 */
-  --radius-lg: 0.75rem;
-  --radius-md: 10px;
-  --radius-sm: 8px;
+  /* ─── Sizing · Control heights ────────────────────────────── */
+  /* Via --spacing-* namespace → enables h-control-md, w-control-md, etc. */
+  --spacing-control-sm: var(--size-control-sm);
+  --spacing-control-md: var(--size-control-md);
+  --spacing-control-lg: var(--size-control-lg);
+
+  /* ─── Spacing · Form gaps ─────────────────────────────────── */
+  /* Enables space-y-field-label, gap-field, p-section, etc. */
+  --spacing-field-label: var(--gap-field-label);
+  --spacing-field:       var(--gap-field);
+  --spacing-section:     var(--gap-section);
+
+  /* ─── Spacing · Control inner padding ─────────────────────── */
+  --spacing-control-x: var(--pad-control-x);
+  --spacing-control-y: var(--pad-control-y);
+
+  /* ─── Radius ───────────────────────────────────────────────── */
+  --radius-sm:  var(--corner-sm);
+  --radius-md:  var(--corner-md);
+  --radius-lg:  var(--corner-lg);
+  --radius-xl:  var(--corner-xl);
+  --radius-2xl: var(--corner-2xl);
+
+  /* ─── Shadow ───────────────────────────────────────────────── */
+  --shadow-warm:    var(--elev-warm);
+  --shadow-warm-sm: var(--elev-warm-sm);
+
+  /* ─── Typography ──────────────────────────────────────────── */
+  --font-sans: var(--ff-sans);
+  --font-mono: var(--ff-mono);
 }
 
-@layer base {
-  :root {
-    /* 背景色 — 和风暖色调 */
-    --bg-primary: #faf6f0;
-    --bg-secondary: #f2ebe2;
-    --bg-card: rgba(255, 249, 242, 0.72);
-    --bg-hover: #e9e0d4;
-    --bg-active: #f5ddd4;
-
-    /* 强调色 */
-    --accent-primary: #c0553a;
-    --accent-hover: #a84530;
-    --accent-light: #f5ddd4;
-
-    /* 文本色 */
-    --text-primary: #2d1f14;
-    --text-secondary: #6b5a4d;
-    --text-muted: #9a8b7d;
-
-    /* 状态色 */
-    --status-running: #5d8a54;
-    --status-stopped: #c0553a;
-    --status-warning: #e8be5c;
-    --status-info: #5b8fb9;
-
-    /* 边框色 */
-    --border-default: #ddd0c0;
-    --border-light: #eee8d5;
-
-    /* 尺寸 */
-    --sidebar-width: 250px;
-    --radius-sm: 8px;
-    --radius-md: 10px;
-    --radius-lg: 16px;
-    --radius: 0.75rem;
-
-    /* 字体 */
-    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans CJK SC', Roboto, sans-serif;
-    --font-mono: Menlo, Monaco, monospace;
-
-    /* 阴影 */
-    --shadow-warm: 0 8px 32px rgba(45, 31, 20, 0.08);
-    --shadow-warm-sm: 0 4px 16px rgba(45, 31, 20, 0.04);
-
-    /* Shadcn 主题变量 — 和风暖色调 HSL */
-    --background: 30 33% 96%;
-    --foreground: 15 35% 13%;
-    --card: 30 40% 97%;
-    --card-foreground: 15 35% 13%;
-    --popover: 30 40% 97%;
-    --popover-foreground: 15 35% 13%;
-    --primary: 14 60% 47%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 30 23% 90%;
-    --secondary-foreground: 15 35% 13%;
-    --muted: 30 20% 87%;
-    --muted-foreground: 25 18% 52%;
-    --accent: 14 60% 47%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 30 22% 82%;
-    --input: 30 22% 82%;
-    --ring: 14 60% 47%;
-
-    /* 向后兼容别名 */
-    --accent-color: var(--accent-primary);
-    --border-color: var(--border-default);
-    --status-success: var(--status-running);
-    --status-error: var(--status-stopped);
-    --text-disabled: var(--text-muted);
-  }
-}
-
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* ======================================================================
+   Base Overrides (only what Tailwind preflight doesn't cover)
+   ====================================================================== */
 
 html, body {
   height: 100%;
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
 
-#__next { height: 100%; }
+a { color: var(--accent-primary); }
+a:hover { color: var(--accent-hover); }
 
-a { color: var(--accent-primary); text-decoration: none; }
-a:hover { color: var(--accent-light); }
-
-/* 滚动条 */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
-/* 动画 */
+/* Animations */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50%      { opacity: 0.4; }
 }
 
 @keyframes blink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  50%      { opacity: 0.3; }
 }
-

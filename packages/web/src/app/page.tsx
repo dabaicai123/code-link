@@ -18,7 +18,7 @@ export default function HomePage() {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)' }}>
+      <div className="flex items-center justify-center h-screen bg-bg-primary text-text-muted">
         加载中...
       </div>
     );

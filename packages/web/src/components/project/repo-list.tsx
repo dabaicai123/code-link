@@ -173,7 +173,7 @@ export function RepoList({ projectId, containerId }: RepoListProps) {
                 disabled={!containerId || pushingRepoId === repo.id}
                 className="px-3 py-1.5 text-[13px] font-medium rounded-md border-none cursor-pointer transition-colors"
                 style={{
-                  backgroundColor: !containerId || pushingRepoId === repo.id ? 'var(--bg-hover)' : 'rgba(124, 58, 237, 0.1)',
+                  backgroundColor: !containerId || pushingRepoId === repo.id ? 'var(--bg-hover)' : 'var(--accent-light)',
                   color: !containerId || pushingRepoId === repo.id ? 'var(--text-muted)' : 'var(--accent-primary)',
                   cursor: !containerId || pushingRepoId === repo.id ? 'not-allowed' : 'pointer',
                 }}

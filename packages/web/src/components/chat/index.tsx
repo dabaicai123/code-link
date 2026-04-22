@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useCallback } from 'react';
+import { Flower2 } from 'lucide-react';
 import { ChatHeader } from './chat-header';
 import { MessageList } from './message-list';
 import { ChatInput } from './chat-input';
@@ -118,7 +119,7 @@ export function ChatWorkspace({
     return (
       <div data-testid="chat-workspace" className="h-full flex flex-col bg-bg-primary items-center justify-center">
         <div className="text-center">
-          <div className="text-5xl mb-4 text-accent-primary opacity-30">✿</div>
+          <Flower2 className="w-10 h-10 text-accent-primary opacity-30 mb-4" />
           <div className="text-text-muted text-sm">选择一个项目开始对话</div>
         </div>
       </div>

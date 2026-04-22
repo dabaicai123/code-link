@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect, KeyboardEvent } from 'react';
+import { Send, Square, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlashCommandMenu } from './slash-command-menu';
 import { AttachmentTray } from './attachment-tray';
@@ -93,7 +94,7 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
         {elements.map((el) => (
           <span key={el.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-accent-primary/15 border border-accent-primary rounded-sm font-mono text-[11px] text-accent-primary whitespace-nowrap">
             &lt;{el.tagName}&gt;
-            <span className="remove" onClick={() => onRemoveElement(el.id)}>✕</span>
+            <X className="w-3 h-3" onClick={() => onRemoveElement(el.id)} />
           </span>
         ))}
 
@@ -116,7 +117,7 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
 
         {isRunning ? (
           <button onClick={onAbort} type="button" className="send-btn w-[44px] h-[44px] rounded-xl bg-accent-primary text-white flex items-center justify-center">
-            ⏹
+            <Square className="w-5 h-5" />
           </button>
         ) : (
           <button
@@ -130,7 +131,7 @@ export function ChatInput({ elements, onRemoveElement, onSend, onAbort, isRunnin
                 : 'bg-bg-hover text-text-muted'
             )}
           >
-            ➤
+            <Send className="w-5 h-5" />
           </button>
         )}
       </div>

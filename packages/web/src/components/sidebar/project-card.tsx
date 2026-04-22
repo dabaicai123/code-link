@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, memo } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -83,9 +84,9 @@ export const ProjectCard = memo(function ProjectCard({
               e.stopPropagation();
               onToggleExpand?.();
             }}
-            className="text-[10px] text-muted-foreground mr-1 cursor-pointer w-4 text-center"
+            className="text-muted-foreground mr-1 cursor-pointer w-4 h-4 flex items-center justify-center"
           >
-            {isExpanded ? '▼' : '▶'}
+            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           </span>
           <span className="text-foreground text-[13px]">
             {project.name}

@@ -19,7 +19,7 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
 
   if (isLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+      <div className="text-center py-10 text-text-secondary">
         加载中...
       </div>
     );
@@ -27,9 +27,9 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
 
   if (error) {
     return (
-      <div style={{ padding: '20px', backgroundColor: 'rgba(248, 113, 113, 0.1)', border: '1px solid var(--status-error)', borderRadius: 'var(--radius-md)', color: 'var(--status-error)' }}>
+      <div className="p-5 bg-destructive/10 border border-destructive rounded-md text-destructive">
         {error.message}
-        <Button onClick={() => refetch()} variant="secondary" style={{ marginLeft: '12px' }}>
+        <Button onClick={() => refetch()} variant="secondary" className="ml-3">
           重试
         </Button>
       </div>
@@ -38,8 +38,8 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
 
   if (organizations.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <div style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>您尚未加入任何组织</div>
+      <div className="text-center py-10">
+        <div className="text-text-secondary mb-4">您尚未加入任何组织</div>
         <Button onClick={onCreateOrganization} variant="default">
           创建组织
         </Button>
@@ -49,8 +49,8 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+      <div className="flex justify-between items-center mb-4">
+        <div className="text-text-secondary text-[13px]">
           共 {organizations.length} 个组织
         </div>
         <Button onClick={onCreateOrganization} variant="default">
@@ -58,46 +58,31 @@ export function OrganizationList({ onCreateOrganization }: OrganizationListProps
         </Button>
       </div>
 
-      <div style={{ display: 'grid', gap: '12px' }}>
+      <div className="grid gap-3">
         {organizations.map((org) => (
           <div
             key={org.id}
             onClick={() => handleClick(org.id)}
-            style={{
-              padding: '16px',
-              backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-md)',
-              cursor: 'pointer',
-              transition: 'border-color 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--accent-color)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-color)';
-            }}
+            className="p-4 bg-bg-card border border-border-default rounded-md cursor-pointer transition-all hover:border-accent-primary"
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>
+            <div className="flex items-center justify-between">
+              <div className="text-text-primary text-[15px] font-medium">
                 {org.name}
               </div>
               {org.role && (
                 <span
+                  className="px-2 py-0.5 rounded-md text-[11px] border"
                   style={{
-                    padding: '2px 8px',
                     backgroundColor: `${ROLE_COLORS[org.role]}20`,
-                    border: `1px solid ${ROLE_COLORS[org.role]}`,
-                    borderRadius: 'var(--radius-sm)',
+                    borderColor: ROLE_COLORS[org.role],
                     color: ROLE_COLORS[org.role],
-                    fontSize: '11px',
                   }}
                 >
                   {ROLE_LABELS[org.role]}
                 </span>
               )}
             </div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginTop: '4px' }}>
+            <div className="text-text-secondary text-[12px] mt-1">
               创建于 {new Date(org.createdAt).toLocaleDateString('zh-CN')}
             </div>
           </div>

@@ -2,6 +2,7 @@
 'use client';
 
 import { useRef } from 'react';
+import { X, Paperclip } from 'lucide-react';
 import type { Attachment } from '@/types/chat';
 
 interface AttachmentTrayProps {
@@ -42,12 +43,7 @@ export function AttachmentTray({ attachments, onAdd, onRemove, maxCount = 4 }: A
               <img src={att.url} alt={att.name} className="w-8 h-8 rounded object-cover" />
               <span className="truncate max-w-[120px]">{att.name}</span>
               {att.status === 'error' && <span className="text-accent-primary text-xs">失败</span>}
-              <span
-                className="cursor-pointer text-text-muted hover:text-accent-primary ml-1"
-                onClick={() => onRemove(att.id)}
-              >
-                ✕
-              </span>
+              <X className="w-3.5 h-3.5 cursor-pointer text-text-muted hover:text-accent-primary ml-1" onClick={() => onRemove(att.id)} />
             </div>
           ))}
         </div>
@@ -58,7 +54,7 @@ export function AttachmentTray({ attachments, onAdd, onRemove, maxCount = 4 }: A
         title="添加图片"
         type="button"
       >
-        📎
+        <Paperclip className="w-4 h-4" />
       </button>
     </>
   );

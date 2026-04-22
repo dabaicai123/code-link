@@ -1,5 +1,7 @@
 'use client';
 
+import { Settings } from 'lucide-react';
+
 interface User {
   id: number;
   email: string;
@@ -14,7 +16,7 @@ interface UserSectionProps {
 export function UserSection({ user, onLogout }: UserSectionProps) {
   return (
     <div className="p-3 border-t border-border flex items-center gap-2">
-      <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-white text-[11px] font-medium">
+      <div className="w-7 h-7 rounded bg-accent-primary flex items-center justify-center text-white text-[11px] font-medium">
         {user.name.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
@@ -23,10 +25,10 @@ export function UserSection({ user, onLogout }: UserSectionProps) {
       </div>
       <button
         onClick={onLogout}
-        className="text-muted-foreground hover:text-foreground text-sm"
+        className="text-muted-foreground hover:text-foreground p-1"
         title="退出登录"
       >
-        ⚙
+        <Settings className="w-4 h-4" />
       </button>
     </div>
   );

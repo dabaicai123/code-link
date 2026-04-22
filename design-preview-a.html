@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>方案 A — 左右分栏 · 品牌展示</title>
+
+  <!-- Single source of truth for design tokens, shared with the Next.js app. -->
+  <link rel="stylesheet" href="./packages/web/src/styles/tokens.css">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Mirror the token mapping from src/styles/globals.css @theme inline.
+    tailwind.config = {
+      corePlugins: {
+        preflight: true,  // Enable Tailwind's reset to match the Next.js app
+      },
+      theme: {
+        extend: {
+          colors: {
+            'bg-primary':     'var(--bg-primary)',
+            'bg-secondary':   'var(--bg-secondary)',
+            'bg-card':        'var(--bg-card)',
+            'bg-hover':       'var(--bg-hover)',
+            'bg-active':      'var(--bg-active)',
+            'accent-primary': 'var(--accent-primary)',
+            'accent-hover':   'var(--accent-hover)',
+            'accent-light':   'var(--accent-light)',
+            'text-primary':   'var(--text-primary)',
+            'text-secondary': 'var(--text-secondary)',
+            'text-muted':     'var(--text-muted)',
+            'border-default': 'var(--border-default)',
+            'border-light':   'var(--border-light)',
+            'status-running': 'var(--status-running)',
+            'status-stopped': 'var(--status-stopped)',
+            'status-warning': 'var(--status-warning)',
+          },
+          height: {
+            'control-sm': 'var(--size-control-sm)',
+            'control-md': 'var(--size-control-md)',
+            'control-lg': 'var(--size-control-lg)',
+          },
+          width: {
+            'control-sm': 'var(--size-control-sm)',
+            'control-md': 'var(--size-control-md)',
+            'control-lg': 'var(--size-control-lg)',
+          },
+          spacing: {
+            'field-label':  'var(--gap-field-label)',
+            'field':        'var(--gap-field)',
+            'section':      'var(--gap-section)',
+            'control-x':    'var(--pad-control-x)',
+            'control-y':    'var(--pad-control-y)',
+          },
+          borderRadius: {
+            'sm':  'var(--corner-sm)',
+            'md':  'var(--corner-md)',
+            'lg':  'var(--corner-lg)',
+            'xl':  'var(--corner-xl)',
+            '2xl': 'var(--corner-2xl)',
+          },
+          boxShadow: {
+            'warm':    'var(--elev-warm)',
+            'warm-sm': 'var(--elev-warm-sm)',
+          },
+          fontFamily: {
+            sans: 'var(--ff-sans)',
+            mono: 'var(--ff-mono)',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: var(--bg-primary); color: var(--text-primary); font-family: var(--ff-sans); }
+  </style>
+</head>
+<body class="antialiased font-sans">
+
+  <!-- 方案 A: 左右分栏 — 左侧品牌展示，右侧表单 -->
+  <div class="h-screen flex">
+    <!-- 左侧品牌区 -->
+    <div class="w-1/2 bg-bg-secondary border-r border-border-default flex flex-col items-center justify-center px-16">
+      <div class="max-w-lg w-full">
+        <div class="w-20 h-20 bg-accent-primary text-white rounded-2xl flex items-center justify-center text-3xl font-bold shadow-warm mb-10">C</div>
+        <h1 class="text-4xl font-bold text-text-primary mb-4 leading-tight">Code Link</h1>
+        <p class="text-lg text-text-secondary leading-relaxed mb-12">
+          开发环境管理平台<br>连接代码与容器，让开发更简单
+        </p>
+        <div class="space-y-5">
+          <div class="flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-accent-light flex items-center justify-center">
+              <svg class="w-5 h-5 text-accent-primary" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+            </div>
+            <span class="text-base text-text-secondary">一键启动开发容器</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-accent-light flex items-center justify-center">
+              <svg class="w-5 h-5 text-accent-primary" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><path d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </div>
+            <span class="text-base text-text-secondary">多项目并行管理</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-accent-light flex items-center justify-center">
+              <svg class="w-5 h-5 text-accent-primary" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <span class="text-base text-text-secondary">AI 驱动的协作工具</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧表单区 -->
+    <div class="flex-1 flex items-center justify-center px-20">
+      <div class="w-full max-w-[480px]">
+        <h2 class="text-3xl font-bold text-text-primary mb-3">欢迎回来</h2>
+        <p class="text-base text-text-muted mb-10">登录以继续使用 Code Link</p>
+
+        <div class="mb-5">
+          <label class="text-base font-medium text-text-secondary mb-2 block">邮箱地址</label>
+          <input type="email" placeholder="name@example.com" class="w-full h-12 px-4 text-base bg-bg-primary border border-border-default rounded-lg text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary outline-none transition-all">
+        </div>
+
+        <div class="mb-8">
+          <label class="text-base font-medium text-text-secondary mb-2 block">密码</label>
+          <input type="password" placeholder="输入密码" class="w-full h-12 px-4 text-base bg-bg-primary border border-border-default rounded-lg text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary outline-none transition-all">
+        </div>
+
+        <button class="w-full h-12 bg-accent-primary hover:bg-accent-hover text-white rounded-lg text-base font-medium shadow-warm-sm transition-colors">登录</button>
+
+        <div class="mt-8 text-text-muted text-base text-center">
+          没有账户？ <a href="#" class="text-accent-primary font-medium">注册</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

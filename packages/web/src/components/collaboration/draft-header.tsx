@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ChevronDown, Users } from 'lucide-react';
 import type { Draft, DraftStatus, DraftMember } from '../../types/draft';
 import { DRAFT_STATUS_LABELS, DRAFT_STATUS_COLORS } from '../../types/draft';
 import { api } from '@/lib/api';
@@ -81,7 +82,7 @@ export function DraftHeader({
             style={{ backgroundColor: DRAFT_STATUS_COLORS[draft.status], color: 'white', borderColor: 'transparent' }}
           >
             {DRAFT_STATUS_LABELS[draft.status]}
-            <span className="text-[8px] ml-1">▼</span>
+            <ChevronDown className="w-3 h-3 ml-1" />
           </Button>
 
           {showStatusMenu && (
@@ -129,7 +130,7 @@ export function DraftHeader({
           onClick={() => setShowMemberMenu(!showMemberMenu)}
           className="text-[10px]"
         >
-          👥 {members.length} 成员
+          <Users className="w-4 h-4" /> {members.length} 成员
         </Button>
       </div>
 

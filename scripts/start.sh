@@ -7,16 +7,41 @@ set -e
 
 echo "启动 code-link 开发环境..."
 
-# 杀掉可能存在的旧进程
+# 清理旧进程和端口占用
 echo "清理旧进程..."
+# 1. 通过 PID 文件杀旧进程
 for pidfile in /tmp/code-link-backend.pid /tmp/code-link-frontend.pid; do
   if [ -f "$pidfile" ]; then
-    kill $(cat "$pidfile") 2>/dev/null || true
+    pid=$(cat "$pidfile")
+    kill "$pid" 2>/dev/null || true
+    rm -f "$pidfile"
   fi
 done
-# killall 按进程名杀，WSL2 下 lsof/fuser 可能无法获取 PID
-killall node 2>/dev/null || true
-sleep 1
+
+# 2. 确保端口 3000 和 4000 没有被占用
+for port in 3000 4000; do
+  pid=$(lsof -t -i:$port 2>/dev/null || true)
+  if [ -n "$pid" ]; then
+    echo "端口 $port 被占用 (PID: $pid)，正在清理..."
+    kill "$pid" 2>/dev/null || true
+  fi
+done
+
+# 3. 用 fuser 作为 lsof 的 fallback（WSL2 下 lsof 可能不准）
+for port in 3000 4000; do
+  fuser -k "$port/tcp" 2>/dev/null || true
+done
+
+sleep 2
+
+# 最终确认端口空闲
+for port in 3000 4000; do
+  if lsof -t -i:$port 2>/dev/null || fuser "$port/tcp" 2>/dev/null; then
+    echo "警告: 端口 $port 仍被占用，请手动清理: kill $(lsof -t -i:$port 2>/dev/null || echo 'unknown')"
+    exit 1
+  fi
+done
+echo "端口 3000 和 4000 已空闲"
 
 # 构建后端
 echo "构建后端..."

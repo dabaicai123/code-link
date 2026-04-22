@@ -58,7 +58,6 @@ export function OrganizationMemberList({
       return;
     }
 
-    // 检查是否是最后一个 owner
     const ownerCount = members.filter(m => m.role === 'owner').length;
     if (memberRole === 'owner' && ownerCount <= 1) {
       toast.error('不能移除最后一个 owner');
@@ -82,25 +81,17 @@ export function OrganizationMemberList({
 
   return (
     <div>
-      <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+      <div className="text-text-secondary text-[13px] mb-3">
         共 {members.length} 名成员
       </div>
 
       {error && (
-        <div style={{
-          padding: '12px',
-          backgroundColor: 'rgba(248, 113, 113, 0.1)',
-          border: '1px solid var(--status-error)',
-          borderRadius: 'var(--radius-md)',
-          color: 'var(--status-error)',
-          fontSize: '13px',
-          marginBottom: '12px',
-        }}>
+        <div className="p-3 bg-accent-light border border-accent-primary rounded-md text-accent-primary text-[13px] mb-3">
           {error}
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: '8px' }}>
+      <div className="grid gap-2">
         {members.map((member) => {
           const isEditing = editingUserId === member.id;
           const isCurrentUser = member.id === currentUserId;
@@ -108,57 +99,35 @@ export function OrganizationMemberList({
           return (
             <div
               key={member.id}
-              style={{
-                padding: '12px',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-              }}
+              className="p-3 bg-bg-card border border-border-default rounded-md flex items-center gap-3"
             >
               {/* Avatar */}
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  backgroundColor: 'var(--accent-color)',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                }}
-              >
+              <div className="w-8 h-8 bg-accent-primary rounded-md flex items-center justify-center text-white text-[13px] font-medium">
                 {(member.name || '?').charAt(0).toUpperCase()}
               </div>
 
               {/* Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500 }}>
+              <div className="flex-1 min-w-0">
+                <div className="text-text-primary text-[13px] font-medium">
                   {member.name}
                   {isCurrentUser && (
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '11px', marginLeft: '6px' }}>
+                    <span className="text-text-secondary text-[11px] ml-1.5">
                       (我)
                     </span>
                   )}
                 </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+                <div className="text-text-secondary text-[12px]">
                   {member.email}
                 </div>
               </div>
 
               {/* Role */}
               {isEditing ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="flex items-center gap-2">
                   <select
                     value={selectedRole}
                     onChange={(e) => setSelectedRole(e.target.value as OrgRole)}
-                    className="input"
-                    style={{ width: '120px', padding: '6px 8px' }}
+                    className="w-[120px] px-2 py-1.5 bg-bg-primary border border-border-default rounded-md text-text-primary text-[13px]"
                   >
                     {ROLE_OPTIONS.map((r) => (
                       <option key={r} value={r}>{ROLE_LABELS[r]}</option>
@@ -168,7 +137,7 @@ export function OrganizationMemberList({
                     onClick={() => handleSaveRole(member.id)}
                     disabled={isUpdating}
                     variant="default"
-                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                    size="sm"
                   >
                     {isUpdating ? '保存中...' : '保存'}
                   </Button>
@@ -176,21 +145,19 @@ export function OrganizationMemberList({
                     onClick={handleCancelEdit}
                     disabled={isUpdating}
                     variant="secondary"
-                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                    size="sm"
                   >
                     取消
                   </Button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="flex items-center gap-2">
                   <span
+                    className="px-2 py-0.5 rounded-md text-[11px] border"
                     style={{
-                      padding: '2px 8px',
                       backgroundColor: `${ROLE_COLORS[member.role]}20`,
-                      border: `1px solid ${ROLE_COLORS[member.role]}`,
-                      borderRadius: 'var(--radius-sm)',
+                      borderColor: ROLE_COLORS[member.role],
                       color: ROLE_COLORS[member.role],
-                      fontSize: '11px',
                     }}
                   >
                     {ROLE_LABELS[member.role]}
@@ -201,14 +168,15 @@ export function OrganizationMemberList({
                       <Button
                         onClick={() => handleEditRole(member.id, member.role)}
                         variant="secondary"
-                        style={{ padding: '4px 8px', fontSize: '12px' }}
+                        size="sm"
                       >
                         修改角色
                       </Button>
                       <Button
                         onClick={() => handleRemoveMember(member.id, member.role)}
                         variant="secondary"
-                        style={{ padding: '4px 8px', fontSize: '12px', color: 'var(--status-error)' }}
+                        size="sm"
+                        className="text-destructive"
                       >
                         移除
                       </Button>

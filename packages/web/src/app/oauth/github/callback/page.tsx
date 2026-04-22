@@ -5,22 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useCurrentUser } from '@/lib/queries';
-
-const spinnerStyle = { animation: 'spin 1s linear infinite', height: '32px', width: '32px', color: 'var(--accent-color)', margin: '0 auto' };
-
-function LoadingSpinner() {
-  return (
-    <svg style={spinnerStyle} fill="none" viewBox="0 0 24 24">
-      <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-    </svg>
-  );
-}
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 function PageContainer({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)' }}>
-      <div style={{ textAlign: 'center' }}>{children}</div>
+    <div className="min-h-screen flex items-center justify-center bg-bg-primary">
+      <div className="text-center">{children}</div>
     </div>
   );
 }
@@ -72,8 +63,8 @@ function GitHubCallbackContent() {
   if (authLoading) {
     return (
       <PageContainer>
-        <LoadingSpinner />
-        <p style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>加载中...</p>
+        <Loader2 className="w-8 h-8 text-accent-primary animate-spin mx-auto" />
+        <p className="mt-2 text-text-secondary">加载中...</p>
       </PageContainer>
     );
   }
@@ -81,8 +72,8 @@ function GitHubCallbackContent() {
   if (status === 'loading') {
     return (
       <PageContainer>
-        <LoadingSpinner />
-        <p style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>正在授权 GitHub...</p>
+        <Loader2 className="w-8 h-8 text-accent-primary animate-spin mx-auto" />
+        <p className="mt-2 text-text-secondary">正在授权 GitHub...</p>
       </PageContainer>
     );
   }
@@ -90,38 +81,24 @@ function GitHubCallbackContent() {
   if (status === 'success') {
     return (
       <PageContainer>
-        <svg style={{ height: '48px', width: '48px', color: 'var(--status-success)', margin: '0 auto' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-        <p style={{ marginTop: '8px', color: 'var(--text-primary)', fontWeight: 500 }}>GitHub 授权成功！</p>
-        <p style={{ marginTop: '4px', color: 'var(--text-secondary)', fontSize: '13px' }}>正在跳转到控制台...</p>
+        <CheckCircle2 className="w-12 h-12 text-status-running mx-auto" />
+        <p className="mt-2 text-text-primary font-medium">GitHub 授权成功！</p>
+        <p className="mt-1 text-text-secondary text-[13px]">正在跳转到控制台...</p>
       </PageContainer>
     );
   }
 
   return (
     <PageContainer>
-      <svg style={{ height: '48px', width: '48px', color: 'var(--status-error)', margin: '0 auto' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-      </svg>
-      <p style={{ marginTop: '8px', color: 'var(--text-primary)', fontWeight: 500 }}>GitHub 授权失败</p>
-      {errorMessage && <p style={{ marginTop: '4px', color: 'var(--text-secondary)', fontSize: '13px' }}>{errorMessage}</p>}
-      <button
+      <XCircle className="w-12 h-12 text-destructive mx-auto" />
+      <p className="mt-2 text-text-primary font-medium">GitHub 授权失败</p>
+      {errorMessage && <p className="mt-1 text-text-secondary text-[13px]">{errorMessage}</p>}
+      <Button
         onClick={() => router.push('/dashboard')}
-        style={{
-          marginTop: '16px',
-          padding: '8px 16px',
-          fontSize: '13px',
-          fontWeight: 500,
-          color: 'white',
-          backgroundColor: 'var(--accent-color)',
-          border: 'none',
-          borderRadius: 'var(--radius-md)',
-          cursor: 'pointer',
-        }}
+        className="mt-4"
       >
         返回控制台
-      </button>
+      </Button>
     </PageContainer>
   );
 }
@@ -131,8 +108,8 @@ export default function GitHubOAuthCallback() {
     <Suspense
       fallback={
         <PageContainer>
-          <LoadingSpinner />
-          <p style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>加载中...</p>
+          <Loader2 className="w-8 h-8 text-accent-primary animate-spin mx-auto" />
+          <p className="mt-2 text-text-secondary">加载中...</p>
         </PageContainer>
       }
     >

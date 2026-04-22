@@ -3,6 +3,7 @@
 import { useReducer, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { MousePointer2, X } from 'lucide-react';
 
 export interface SelectedElement {
   id: string;
@@ -332,7 +333,7 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
               : 'bg-primary text-white'
           )}
         >
-          {state.selectMode ? '✕ 取消' : '🎯 选择'}
+          {state.selectMode ? '取消' : <><MousePointer2 className="w-3.5 h-3.5 mr-1 inline" /> 选择</>}
         </button>
       </div>
 
@@ -407,7 +408,7 @@ export function DisplayPanel({ onAddElement }: DisplayPanelProps) {
                   variant="secondary"
                   className="px-2 py-1.5 text-[11px] shadow-lg"
                 >
-                  ✕
+                  <X className="w-3.5 h-3.5" />
                 </Button>
               </div>
             )}

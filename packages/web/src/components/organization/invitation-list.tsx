@@ -23,7 +23,6 @@ export function InvitationList({ invitations, onRefresh }: InvitationListProps) 
     try {
       await api.acceptInvitation(invId);
       onRefresh();
-      // 成功后跳转到组织详情
       router.push('/organizations');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : '接受邀请失败');
@@ -48,7 +47,7 @@ export function InvitationList({ invitations, onRefresh }: InvitationListProps) 
 
   if (invitations.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+      <div className="text-center py-10 text-text-secondary">
         暂无待处理的邀请
       </div>
     );
@@ -56,51 +55,44 @@ export function InvitationList({ invitations, onRefresh }: InvitationListProps) 
 
   return (
     <div>
-      <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+      <div className="text-text-secondary text-[13px] mb-3">
         共 {invitations.length} 个待处理邀请
       </div>
 
-      <div style={{ display: 'grid', gap: '12px' }}>
+      <div className="grid gap-3">
         {invitations.map((inv) => {
           const isProcessing = processingId === inv.id;
 
           return (
             <div
               key={inv.id}
-              style={{
-                padding: '16px',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
-              }}
+              className="p-4 bg-bg-card border border-border-default rounded-md"
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 500 }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-text-primary text-[15px] font-medium">
                   {inv.organizationName || `组织 #${inv.organizationId}`}
                 </div>
                 <span
+                  className="px-2 py-0.5 rounded-md text-[11px] border"
                   style={{
-                    padding: '2px 8px',
                     backgroundColor: `${ROLE_COLORS[inv.role]}20`,
-                    border: `1px solid ${ROLE_COLORS[inv.role]}`,
-                    borderRadius: 'var(--radius-sm)',
+                    borderColor: ROLE_COLORS[inv.role],
                     color: ROLE_COLORS[inv.role],
-                    fontSize: '11px',
                   }}
                 >
                   {ROLE_LABELS[inv.role]}
                 </span>
               </div>
 
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+              <div className="text-text-secondary text-[12px]">
                 邀请人: {inv.invitedByName || '未知'}
               </div>
 
-              <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '4px' }}>
+              <div className="text-text-muted text-[11px] mt-1">
                 邀请时间: {new Date(inv.createdAt).toLocaleDateString('zh-CN')}
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <div className="flex gap-2 mt-3">
                 <Button
                   onClick={() => handleAccept(inv.id)}
                   disabled={isProcessing}

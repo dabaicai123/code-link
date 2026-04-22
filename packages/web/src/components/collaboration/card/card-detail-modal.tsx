@@ -2,6 +2,7 @@
 
 import type { Card } from '@/types/card';
 import { STATUS_COLORS, STATUS_LABELS, CARD_TYPE_COLORS, CARD_TYPE_LABELS } from '@/types/card';
+import { X } from 'lucide-react';
 
 interface CardDetailModalProps {
   card: Card | null;
@@ -66,9 +67,9 @@ export function CardDetailModal({
             </div>
             <button
               onClick={onClose}
-              className="text-muted-foreground hover:text-muted-foreground text-xl"
+              className="text-muted-foreground hover:text-foreground p-1"
             >
-              ✕
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
