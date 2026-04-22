@@ -2,9 +2,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { io as ioClient } from 'socket.io-client';
 import { createServer } from 'http';
+import { container } from 'tsyringe';
 import jwt from 'jsonwebtoken';
 import { resetConfig } from '../src/core/config.js';
 import { setupTestDb, teardownTestDb, createTestUser } from './helpers/test-db.js';
+import { registerSocketModule } from '../src/socket/socket.module.js';
 
 // Set JWT_SECRET before any imports that use tsyringe DI
 process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
@@ -20,6 +22,10 @@ describe('Socket connection rate limiting', () => {
     resetConfig();
     setupTestDb();
 
+    // Register SocketServerService in DI container
+    container.reset();
+    registerSocketModule();
+
     // Create a test user and generate valid JWT token
     const user = createTestUser({ name: 'Test User', email: 'test@example.com' });
     authToken = jwt.sign(
@@ -31,8 +37,6 @@ describe('Socket connection rate limiting', () => {
     const socketModule = await import('../src/socket/index.js');
     createSocketServer = socketModule.createSocketServer;
     resetSocketServerInstance = socketModule.resetSocketServerInstance;
-
-    resetSocketServerInstance();
 
     httpServer = createServer();
     createSocketServer(httpServer);
@@ -46,8 +50,9 @@ describe('Socket connection rate limiting', () => {
   });
 
   afterEach(() => {
-    httpServer.close();
     resetSocketServerInstance();
+    httpServer.close();
+    container.reset();
     teardownTestDb();
     resetConfig();
   });

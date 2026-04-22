@@ -1,21 +1,23 @@
 // packages/server/src/socket/index.ts
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
+import { container } from 'tsyringe';
+import { SocketServerService } from './socket-server.service.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { setupProjectNamespace } from './namespaces/project.js';
 import { setupDraftNamespace } from './namespaces/draft.js';
 import { setupTerminalNamespace } from './namespaces/terminal.js';
-import { setupCleanupInterval, stopCleanupInterval, resetRoomUsers } from './utils/room-manager.js';
+import { setupCleanupInterval, stopCleanupInterval } from './utils/room-manager.js';
 import { createLogger } from '../core/logger/index.js';
 
 const logger = createLogger('socket-server');
 
-let ioInstance: Server | null = null;
-
-// In-memory rate limiting for socket connections
+// In-memory rate limiting for socket connections (request-level state, not DI)
 const connectionAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 10; // 10 connections per minute per IP
+
+let rateLimitCleanupInterval: NodeJS.Timeout | null = null;
 
 function checkConnectionRateLimit(ip: string): boolean {
   const now = Date.now();
@@ -40,32 +42,33 @@ function checkConnectionRateLimit(ip: string): boolean {
   return true;
 }
 
-// Cleanup old entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, attempts] of connectionAttempts.entries()) {
-    if (now - attempts.lastAttempt > RATE_LIMIT_WINDOW) {
-      connectionAttempts.delete(ip);
+function startRateLimitCleanup(): void {
+  if (rateLimitCleanupInterval) return;
+
+  rateLimitCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, attempts] of connectionAttempts.entries()) {
+      if (now - attempts.lastAttempt > RATE_LIMIT_WINDOW) {
+        connectionAttempts.delete(ip);
+      }
     }
+  }, RATE_LIMIT_WINDOW);
+}
+
+function stopRateLimitCleanup(): void {
+  if (rateLimitCleanupInterval) {
+    clearInterval(rateLimitCleanupInterval);
+    rateLimitCleanupInterval = null;
   }
-}, RATE_LIMIT_WINDOW);
+  connectionAttempts.clear();
+}
 
 export function createSocketServer(httpServer: HttpServer): Server {
-  if (ioInstance) {
-    return ioInstance;
-  }
-
-  ioInstance = new Server(httpServer, {
-    cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true,
-    },
-    pingTimeout: 60000,
-    pingInterval: 25000,
-  });
+  const socketService = container.resolve(SocketServerService);
+  const io = socketService.create(httpServer);
 
   // Connection rate limiting middleware
-  ioInstance.use((socket, next) => {
+  io.use((socket, next) => {
     const ip = socket.handshake.address || 'unknown';
     if (!checkConnectionRateLimit(ip)) {
       return next(new Error('Connection rate limit exceeded'));
@@ -73,40 +76,40 @@ export function createSocketServer(httpServer: HttpServer): Server {
     next();
   });
 
-  // 全局认证中间件
-  ioInstance.use(createAuthMiddleware());
+  // Global auth middleware
+  io.use(createAuthMiddleware());
 
-  // 设置命名空间
-  setupProjectNamespace(ioInstance.of('/project'));
-  setupDraftNamespace(ioInstance.of('/draft'));
-  setupTerminalNamespace(ioInstance.of('/terminal'));
+  // Setup namespaces
+  setupProjectNamespace(io.of('/project'));
+  setupDraftNamespace(io.of('/draft'));
+  setupTerminalNamespace(io.of('/terminal'));
 
   // Start TTL cleanup for empty rooms
   setupCleanupInterval();
 
+  // Start rate-limit entry cleanup
+  startRateLimitCleanup();
+
   logger.info('Socket.IO server initialized');
 
-  return ioInstance;
-}
-
-export function getSocketServer(): Server | null {
-  return ioInstance;
+  return io;
 }
 
 export function closeSocketServer(): void {
   stopCleanupInterval();
-  if (ioInstance) {
-    ioInstance.close();
-    ioInstance = null;
-  }
+  stopRateLimitCleanup();
+  const socketService = container.resolve(SocketServerService);
+  socketService.close();
 }
 
-// 重置实例（用于测试）
+// Reset for tests: clear rate-limit data and reset the SocketServerService instance
 export function resetSocketServerInstance(): void {
-  ioInstance = null;
+  stopRateLimitCleanup();
   connectionAttempts.clear();
+  const socketService = container.resolve(SocketServerService);
+  socketService.close();
 }
 
-// 导出命名空间函数供外部使用
+// Export namespace functions for external use
 export { broadcastBuildStatus } from './namespaces/project.js';
 export { broadcastDraftMessage, getDraftOnlineUsers } from './namespaces/draft.js';

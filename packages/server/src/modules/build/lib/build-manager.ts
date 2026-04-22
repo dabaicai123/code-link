@@ -4,6 +4,7 @@ import { DockerService } from '../../container/lib/docker.service.js';
 import { BuildRepository } from '../repository.js';
 import { PreviewContainerManager } from './preview-container.js';
 import type { SelectBuild } from '../../../db/schema/index.js';
+import type { PaginatedResult } from '../../../core/database/pagination.js';
 
 @singleton()
 export class BuildManager {
@@ -51,8 +52,8 @@ export class BuildManager {
     return build ?? null;
   }
 
-  async getProjectBuilds(projectId: number): Promise<SelectBuild[]> {
-    return this.buildRepo.findByProjectId(projectId);
+  async getProjectBuilds(projectId: number, page?: number, limit?: number): Promise<PaginatedResult<SelectBuild>> {
+    return this.buildRepo.findByProjectId(projectId, page, limit);
   }
 
   async getLatestBuild(projectId: number): Promise<SelectBuild | null> {

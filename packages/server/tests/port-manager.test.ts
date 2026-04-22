@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { PortManager, getPortManager } from '../src/build/port-manager.ts';
+import 'reflect-metadata';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { PortManager } from '../src/modules/build/lib/port-manager.ts';
 
 describe('PortManager', () => {
   let manager: PortManager;
@@ -73,25 +74,5 @@ describe('PortManager', () => {
     const port = customManager.allocatePort();
     expect(port).toBeGreaterThanOrEqual(50000);
     expect(port).toBeLessThanOrEqual(50010);
-  });
-});
-
-describe('getPortManager', () => {
-  // 保存原始单例以便恢复
-  const originalInstance = (globalThis as { __testPortManager?: PortManager }).__testPortManager;
-
-  afterEach(() => {
-    // 测试后恢复
-    if (originalInstance) {
-      (globalThis as { __testPortManager?: PortManager }).__testPortManager = originalInstance;
-    }
-  });
-
-  it('should return singleton instance', () => {
-    // 由于 getPortManager 使用模块级变量，需要通过重置来测试
-    // 这里直接测试模块的行为
-    const manager1 = getPortManager();
-    const manager2 = getPortManager();
-    expect(manager1).toBe(manager2);
   });
 });

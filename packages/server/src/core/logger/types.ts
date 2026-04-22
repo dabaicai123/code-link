@@ -8,4 +8,5 @@ export interface Logger {
   error(message: string, error?: Error, context?: LogContext): void;
   debug(message: string, context?: LogContext): void;
   child(module: string): Logger;
+  withContext(context: Record<string, unknown>): Logger;
 }

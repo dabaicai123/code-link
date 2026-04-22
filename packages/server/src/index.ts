@@ -7,9 +7,10 @@ import { container } from 'tsyringe';
 import { getConfig } from './core/config.js';
 
 // 数据库初始化
-import { DatabaseConnection, initSchema, initDefaultAdmin, createSqliteDb } from './db/index.js';
+import { DatabaseConnection, initDefaultAdmin, createSqliteDb, runMigrations } from './db/index.js';
 
 // 模块注册
+import { registerCoreModule } from './core/core.module.js';
 import { registerAuthModule, createAuthRoutes, AuthController } from './modules/auth/auth.module.js';
 import { registerOrganizationModule, createOrganizationRoutes, createInvitationRoutes, OrganizationController } from './modules/organization/organization.module.js';
 import { registerProjectModule, createProjectRoutes, ProjectController } from './modules/project/project.module.js';
@@ -19,12 +20,13 @@ import { registerGitProviderModule, createGitProviderRoutes, GitProviderControll
 import { registerClaudeConfigModule, createClaudeConfigRoutes, ClaudeConfigController } from './modules/claude-config/claude-config.module.js';
 import { registerContainerModule, createContainerRoutes, ContainerController } from './modules/container/container.module.js';
 import { registerCodeModule, createCodeRoutes, CodeController } from './modules/code/code.module.js';
-import { DockerService } from './modules/container/lib/docker.service.js';
+import { registerSocketModule } from './socket/socket.module.js';
 
 // 核心服务
 import { LoggerService } from './core/logger/logger.js';
 import { PermissionService } from './shared/permission.service.js';
 import { createErrorHandler } from './core/errors/handler.js';
+import { requestIdMiddleware } from './middleware/request-id.js';
 
 // WebSocket
 import { createSocketServer } from './socket/index.js';
@@ -32,31 +34,33 @@ import { handleCodeServerWebSocketUpgrade } from './modules/code/proxy.js';
 import { CodeServerManager } from './modules/code/code.module.js';
 
 // 其他初始化
-import { setEncryptionKey } from './crypto/aes.js';
-import { initAIClient } from './modules/draft/lib/client.js';
 import { success, Errors } from './core/errors/index.js';
 
 const logger = new LoggerService();
 
-export function createApp(dbConnection?: DatabaseConnection): express.Express {
-  // Register DatabaseConnection BEFORE module registration to prevent
-  // @singleton() from creating a second empty :memory: instance
-  if (dbConnection) {
-    container.registerInstance(DatabaseConnection, dbConnection);
-  }
-
+export function createApp(): express.Express {
   const app = express();
 
-  // 注册所有模块（@singleton() 装饰器会自动处理 DI）
+  // 注册核心模块（EncryptionService, LoggerService 等）
+  registerCoreModule();
+
+  // 注册 Socket 模块（SocketServerService）
+  registerSocketModule();
+
+  // 注册业务模块 — 顺序确保依赖的服务先注册：
+  // Auth → Organization (depends on AuthService)
+  // → Project (depends on PermissionService)
+  // → ClaudeConfig → Build → Container (depends on ProjectService, ClaudeConfigService)
+  // → Draft (depends on ProjectService, AuthService) → GitProvider
   registerAuthModule();
   registerOrganizationModule();
   registerProjectModule();
-  registerDraftModule();
-  registerBuildModule();
-  registerGitProviderModule();
   registerClaudeConfigModule();
+  registerBuildModule();
   registerContainerModule();
   registerCodeModule();
+  registerDraftModule();
+  registerGitProviderModule();
 
   // 获取配置
   const config = getConfig();
@@ -79,34 +83,22 @@ export function createApp(dbConnection?: DatabaseConnection): express.Express {
   };
   app.use(cors(corsOptions));
   app.use(express.json());
+  app.use(requestIdMiddleware);
+
+  // Request-context logging — each request gets a child logger with requestId & userId
+  app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    const rootLogger = container.resolve(LoggerService);
+    req.log = rootLogger.withContext({
+      requestId: req.requestId,
+      userId: req.userId ?? 'anonymous',
+    });
+    next();
+  });
 
   // 健康检查
   app.get('/api/health', (_req, res) => {
     res.json(success({ status: 'ok' }));
   });
-
-  // Test-only database reset endpoint (only available in test env)
-  if (getConfig().nodeEnv === 'test') {
-    app.post('/api/test/reset', (_req, res) => {
-      const conn = container.resolve(DatabaseConnection);
-      const sqlite = conn.getSqlite();
-      sqlite.exec('PRAGMA foreign_keys = OFF');
-      const tables = sqlite.prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-      ).all() as { name: string }[];
-      for (const { name } of tables) {
-        sqlite.exec(`DELETE FROM ${name}`);
-      }
-      sqlite.exec('PRAGMA foreign_keys = ON');
-      res.json(success({ reset: true }));
-    });
-
-    app.post('/api/test/cleanup-containers', async (_req, res) => {
-      const dockerService = container.resolve(DockerService);
-      await dockerService.cleanupTestContainers();
-      res.json(success({ cleanup: true }));
-    });
-  }
 
   // 获取 Controller 实例
   const authController = container.resolve(AuthController);
@@ -148,11 +140,7 @@ export function createApp(dbConnection?: DatabaseConnection): express.Express {
 }
 
 export function startServer(port: number = 3001): void {
-  const sqlite = createSqliteDb();
-  initSchema(sqlite);
-  const dbConnection = DatabaseConnection.fromSqlite(sqlite);
-
-  const app = createApp(dbConnection);
+  const app = createApp();
   const server = createServer(app);
 
   // 初始化 Socket.IO 服务器
@@ -192,11 +180,15 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
   resetConfig();
 
   const sqlite = createSqliteDb(':memory:');
-  initSchema(sqlite);
+  runMigrations(sqlite);
 
+  // Register in-memory DatabaseConnection before DI resolves
+  const { container } = await import('tsyringe');
+  container.reset();
   const conn = DatabaseConnection.fromSqlite(sqlite);
-  // createApp(conn) registers the connection BEFORE module registration
-  const app = createApp(conn);
+  container.registerInstance(DatabaseConnection, conn);
+
+  const app = createApp();
   const server = createServer(app);
 
   // 初始化 code-server WebSocket 反向代理
@@ -228,19 +220,14 @@ export async function startServerForE2E(options?: { port?: number }): Promise<E2
 
 // 启动入口
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'))) {
-  // 设置加密密钥
-  const encryptionKey = process.env.CLAUDE_CONFIG_ENCRYPTION_KEY || '';
-  if (!encryptionKey) {
-    logger.warn('CLAUDE_CONFIG_ENCRYPTION_KEY not set. User config encryption disabled.');
-  }
-  setEncryptionKey(encryptionKey);
+  const sqlite = createSqliteDb();
+  runMigrations(sqlite);
 
-  // 初始化 AI 客户端
-  initAIClient();
+  // 注册 DatabaseConnection 到 DI 容器
+  const dbConnection = DatabaseConnection.fromSqlite(sqlite);
+  container.registerInstance(DatabaseConnection, dbConnection);
 
-  // startServer handles db init + schema + DI registration
+  await initDefaultAdmin(dbConnection);
+
   startServer(process.env.PORT ? parseInt(process.env.PORT) : 4000);
-
-  // Create default admin after server starts (needs DI-registered DatabaseConnection)
-  await initDefaultAdmin();
 }

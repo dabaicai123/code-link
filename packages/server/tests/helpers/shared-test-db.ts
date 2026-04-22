@@ -8,7 +8,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
-import { initSchema } from '../../src/db/init.js';
+import { runMigrations } from '../../src/db/migrate-runner.js';
 import {
   users,
   organizations,
@@ -46,7 +46,7 @@ export interface TestUser {
 export function createMemoryTestDb(): { sqlite: Database.Database; db: DrizzleDb } {
   const sqlite = new Database(':memory:');
   sqlite.pragma('foreign_keys = ON');
-  initSchema(sqlite);
+  runMigrations(sqlite);
   const db = drizzle(sqlite, { schema });
   return { sqlite, db };
 }

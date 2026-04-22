@@ -8,11 +8,16 @@ echo "Building Docker template images..."
 
 build_template() {
   local template=$1
-  local template_dir="$TEMPLATES_DIR/$template"
-  local image_name="code-link-$template:latest"
+  local image_name
+  case "$template" in
+    node)       image_name="code-link-node:latest" ;;
+    node+java)  image_name="code-link-node-java:latest" ;;
+    node+python) image_name="code-link-node-python:latest" ;;
+    *)          image_name="code-link-$template:latest" ;;
+  esac
 
   echo "Building $template template..."
-  docker build -t "$image_name" "$template_dir"
+  docker build -t "$image_name" -f "$TEMPLATES_DIR/$template/Dockerfile" "$TEMPLATES_DIR"
   echo "✓ $image_name built successfully"
 }
 

@@ -12,6 +12,7 @@ import {
 import { BaseRepository } from '../../core/database/base.repository.js';
 import { DatabaseConnection } from '../../db/connection.js';
 import { PAGINATION_LIMITS } from '../../core/database/constants.js';
+import { computeOffset, computeTotalPages, type PaginatedResult } from '../../core/database/pagination.js';
 import type {
   InsertDraft,
   SelectDraft,
@@ -40,17 +41,46 @@ export class DraftRepository extends BaseRepository {
     return this.db.select().from(drafts).where(eq(drafts.id, id)).get();
   }
 
-  async findByUserId(userId: number): Promise<SelectDraft[]> {
-    // Find drafts where user is a member or creator
-    return this.db
+  async findByUserId(userId: number, page?: number, limit?: number): Promise<PaginatedResult<SelectDraft>> {
+    const effectiveLimit = limit !== undefined
+      ? Math.min(limit, PAGINATION_LIMITS.drafts.max)
+      : PAGINATION_LIMITS.drafts.default;
+    const effectivePage = page ?? 1;
+    const offset = computeOffset(effectivePage, effectiveLimit);
+
+    // Count total drafts where user is a member or creator
+    const countResult = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(drafts)
+      .leftJoin(draftMembers, eq(drafts.id, draftMembers.draftId))
+      .where(
+        sql`${drafts.createdBy} = ${userId} OR ${draftMembers.userId} = ${userId}`
+      )
+      .get();
+    const total = countResult?.count ?? 0;
+
+    // Paginated data
+    const data = this.db
       .selectDistinct({ drafts })
       .from(drafts)
       .leftJoin(draftMembers, eq(drafts.id, draftMembers.draftId))
       .where(
         sql`${drafts.createdBy} = ${userId} OR ${draftMembers.userId} = ${userId}`
       )
+      .limit(effectiveLimit)
+      .offset(offset)
       .all()
       .map(row => row.drafts);
+
+    return {
+      data,
+      meta: {
+        page: effectivePage,
+        limit: effectiveLimit,
+        total,
+        totalPages: computeTotalPages(total, effectiveLimit),
+      },
+    };
   }
 
   async updateStatus(id: number, status: 'discussing' | 'brainstorming' | 'reviewing' | 'developing' | 'confirmed' | 'archived'): Promise<SelectDraft> {
@@ -148,13 +178,24 @@ export class DraftRepository extends BaseRepository {
       .get();
   }
 
-  async findMessages(draftId: number, limit?: number): Promise<DraftMessageWithUser[]> {
-    // When no limit specified, use max; otherwise cap provided limit at max
+  async findMessages(draftId: number, page?: number, limit?: number): Promise<PaginatedResult<DraftMessageWithUser>> {
+    // When no limit specified, use default; otherwise cap provided limit at max
     const effectiveLimit = limit !== undefined
       ? Math.min(limit, PAGINATION_LIMITS.messages.max)
-      : PAGINATION_LIMITS.messages.max;
+      : PAGINATION_LIMITS.messages.default;
+    const effectivePage = page ?? 1;
+    const offset = computeOffset(effectivePage, effectiveLimit);
 
-    return this.db
+    // Total count
+    const countResult = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(draftMessages)
+      .where(eq(draftMessages.draftId, draftId))
+      .get();
+    const total = countResult?.count ?? 0;
+
+    // Paginated data
+    const data = this.db
       .select({
         id: draftMessages.id,
         draftId: draftMessages.draftId,
@@ -172,7 +213,18 @@ export class DraftRepository extends BaseRepository {
       .where(eq(draftMessages.draftId, draftId))
       .orderBy(desc(draftMessages.createdAt))
       .limit(effectiveLimit)
+      .offset(offset)
       .all();
+
+    return {
+      data,
+      meta: {
+        page: effectivePage,
+        limit: effectiveLimit,
+        total,
+        totalPages: computeTotalPages(total, effectiveLimit),
+      },
+    };
   }
 
   // ==================== Confirmation Operations ====================

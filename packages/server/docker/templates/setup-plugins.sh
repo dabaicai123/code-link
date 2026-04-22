@@ -7,7 +7,7 @@ set -e
 CLINK_HOME="/home/codelink"
 
 echo "=== Installing superpowers plugin (global) ==="
-claude plugin install superpowers@claude-plugins-official --scope user
+claude plugin install superpowers@claude-plugins-official --scope user || echo "⚠️ superpowers plugin install failed, skipping"
 
 echo "=== Installing ui-ux-pro-max skills (global) ==="
 # ui-ux-pro-max 通过 skills-lock.json 安装，需要先创建工作目录的 .claude 目录

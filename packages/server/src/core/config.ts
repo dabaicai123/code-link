@@ -11,6 +11,8 @@ const configSchema = z.object({
   claudeConfigEncryptionKey: z.string().optional(),
   adminEmails: z.array(z.string()).optional(),
   adminPassword: z.string().optional(),
+  dockerHost: z.string().optional(),
+  dockerPort: z.number().int().positive().optional(),
   nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
 });
 
@@ -42,6 +44,8 @@ export function loadConfig(): Config {
     claudeConfigEncryptionKey: process.env.CLAUDE_CONFIG_ENCRYPTION_KEY,
     adminEmails: process.env.ADMIN_EMAIL ? [process.env.ADMIN_EMAIL] : undefined,
     adminPassword: process.env.ADMIN_PASSWORD,
+    dockerHost: process.env.DOCKER_HOST,
+    dockerPort: process.env.DOCKER_PORT ? parseInt(process.env.DOCKER_PORT, 10) : undefined,
     nodeEnv,
   });
 }

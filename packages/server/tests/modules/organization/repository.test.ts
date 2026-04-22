@@ -5,7 +5,7 @@ import { OrganizationRepository } from '../../../src/modules/organization/reposi
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
 import { DatabaseConnection } from '../../../src/core/database/connection.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { initSchema } from '../../../src/db/init.js';
+import { runMigrations } from '../../../src/db/migrate-runner.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -23,7 +23,7 @@ describe('OrganizationRepository', () => {
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
 
     db = new DatabaseConnection(TEST_DB_PATH);
-    initSchema(db.getSqlite());
+    runMigrations(db.getSqlite());
     container.registerInstance(DatabaseConnection, db);
     repo = new OrganizationRepository(db);
     userRepo = new AuthRepository(db);

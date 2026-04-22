@@ -1,9 +1,11 @@
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { organizations, organizationMembers, users, organizationInvitations } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
 import { DatabaseConnection } from '../../db/connection.js';
+import { PAGINATION_LIMITS } from '../../core/database/constants.js';
+import { computeOffset, computeTotalPages, type PaginatedResult } from '../../core/database/pagination.js';
 import type { SelectOrganization, SelectOrganizationInvitation, OrgRole } from '../../db/schema/index.js';
 import type { OrganizationWithRole, OrganizationMemberWithUser, OrganizationInvitationWithUser } from './types.js';
 
@@ -33,7 +35,23 @@ export class OrganizationRepository extends BaseRepository {
     return this.db.select().from(organizations).where(eq(organizations.id, id)).get();
   }
 
-  async findByUserId(userId: number): Promise<OrganizationWithRole[]> {
+  async findByUserId(userId: number, page?: number, limit?: number): Promise<PaginatedResult<OrganizationWithRole>> {
+    const effectiveLimit = limit !== undefined
+      ? Math.min(limit, PAGINATION_LIMITS.projects.max)
+      : PAGINATION_LIMITS.projects.default;
+    const effectivePage = page ?? 1;
+    const offset = computeOffset(effectivePage, effectiveLimit);
+
+    // Total count
+    const countResult = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(organizations)
+      .innerJoin(organizationMembers, eq(organizations.id, organizationMembers.organizationId))
+      .where(eq(organizationMembers.userId, userId))
+      .get();
+    const total = countResult?.count ?? 0;
+
+    // Paginated data
     const result = await this.db
       .select({
         id: organizations.id,
@@ -45,12 +63,24 @@ export class OrganizationRepository extends BaseRepository {
       .from(organizations)
       .innerJoin(organizationMembers, eq(organizations.id, organizationMembers.organizationId))
       .where(eq(organizationMembers.userId, userId))
+      .limit(effectiveLimit)
+      .offset(offset)
       .all();
 
-    return result.map(r => ({
+    const data = result.map(r => ({
       ...r,
       createdAt: r.createdAt ?? new Date().toISOString(),
     }));
+
+    return {
+      data,
+      meta: {
+        page: effectivePage,
+        limit: effectiveLimit,
+        total,
+        totalPages: computeTotalPages(total, effectiveLimit),
+      },
+    };
   }
 
   async findMembers(orgId: number): Promise<OrganizationMemberWithUser[]> {

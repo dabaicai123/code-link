@@ -1,6 +1,8 @@
 import { singleton } from 'tsyringe';
 import Docker from 'dockerode';
+import type { DockerOptions } from 'dockerode';
 import { createLogger } from '../../../core/logger/index.js';
+import { getConfig } from '../../../core/config.js';
 import { ensureTemplateImage, getTemplateConfig, TemplateType } from './templates.js';
 import type { IDockerService } from '../../../core/interfaces/index.js';
 
@@ -19,7 +21,13 @@ export class DockerService implements IDockerService {
   private client: Docker;
 
   constructor() {
-    this.client = new Docker();
+    const config = getConfig();
+    const dockerOptions: DockerOptions = {};
+    if (config.dockerHost) {
+      dockerOptions.host = config.dockerHost;
+      if (config.dockerPort) dockerOptions.port = config.dockerPort;
+    }
+    this.client = new Docker(dockerOptions);
   }
 
   async createProjectContainer(

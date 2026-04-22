@@ -53,6 +53,7 @@ export async function ensureTemplateImage(docker: Docker, type: TemplateType): P
       src: [
         'claude.json',
         'claude-settings.json',
+        'setup-plugins.sh',
         `${type}/Dockerfile`,
         `${type}/entrypoint.sh`
       ]

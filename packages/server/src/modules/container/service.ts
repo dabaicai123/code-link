@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
-import { ProjectRepository } from '../project/repository.js';
-import { ClaudeConfigRepository } from '../claude-config/repository.js';
+import { ProjectService } from '../project/project.module.js';
+import { ClaudeConfigService } from '../claude-config/claude-config.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { DockerService } from './lib/docker.service.js';
 import { NotFoundError, ParamError } from '../../core/errors/index.js';
@@ -10,8 +10,8 @@ import type { ContainerStatus, ContainerStartResult, ContainerStopResult } from 
 @singleton()
 export class ContainerService {
   constructor(
-    @inject(ProjectRepository) private readonly projectRepo: ProjectRepository,
-    @inject(ClaudeConfigRepository) private readonly claudeConfigRepo: ClaudeConfigRepository,
+    @inject(ProjectService) private readonly projectService: ProjectService,
+    @inject(ClaudeConfigService) private readonly claudeConfigService: ClaudeConfigService,
     @inject(PermissionService) private readonly permService: PermissionService,
     @inject(DockerService) private readonly dockerService: DockerService
   ) {}
@@ -21,7 +21,7 @@ export class ContainerService {
     const project = await this.permService.checkProjectAccess(userId, projectId);
 
     // 检查用户是否有 Claude 配置
-    const hasConfig = await this.claudeConfigRepo.hasConfig(userId);
+    const hasConfig = await this.claudeConfigService.hasConfig(userId);
     if (!hasConfig) {
       throw new ParamError('请先配置 Claude 设置');
     }
@@ -31,7 +31,7 @@ export class ContainerService {
     if (existingContainer) {
       const containerInfo = await existingContainer.inspect();
       await this.dockerService.startContainer(containerInfo.Id);
-      await this.projectRepo.updateStatus(projectId, 'running');
+      await this.projectService.updateStatus(projectId, 'running');
       return {
         containerId: containerInfo.Id,
         status: 'running',
@@ -53,8 +53,8 @@ export class ContainerService {
     );
 
     await this.dockerService.startContainer(containerId);
-    await this.projectRepo.updateContainerId(projectId, containerId);
-    await this.projectRepo.updateStatus(projectId, 'running');
+    await this.projectService.updateContainerId(projectId, containerId);
+    await this.projectService.updateStatus(projectId, 'running');
 
     return {
       containerId,
@@ -74,7 +74,7 @@ export class ContainerService {
 
     const containerInfo = await container.inspect();
     await this.dockerService.stopContainer(containerInfo.Id);
-    await this.projectRepo.updateStatus(projectId, 'stopped');
+    await this.projectService.updateStatus(projectId, 'stopped');
 
     return {
       containerId: containerInfo.Id,
@@ -120,7 +120,7 @@ export class ContainerService {
     await this.dockerService.removeProjectVolume(projectId);
 
     // 更新项目状态
-    await this.projectRepo.updateContainerId(projectId, null);
-    await this.projectRepo.updateStatus(projectId, 'created');
+    await this.projectService.updateContainerId(projectId, null);
+    await this.projectService.updateStatus(projectId, 'created');
   }
 }

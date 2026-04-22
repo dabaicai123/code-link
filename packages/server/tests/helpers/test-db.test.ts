@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createSqliteDb, initSchema } from '../../src/db/index.js';
+import { createSqliteDb, runMigrations } from '../../src/db/index.js';
 import { setupTestDb, teardownTestDb } from './test-db.js';
 
 // Import all helpers to verify they are exported correctly

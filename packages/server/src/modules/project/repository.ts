@@ -1,10 +1,11 @@
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { projects, projectRepos, organizationMembers, users } from '../../db/schema/index.js';
 import { BaseRepository } from '../../core/database/base.repository.js';
 import { DatabaseConnection } from '../../db/connection.js';
 import { PAGINATION_LIMITS } from '../../core/database/constants.js';
+import { computeOffset, computeTotalPages, type PaginatedResult } from '../../core/database/pagination.js';
 import type { InsertProject, SelectProject, SelectProjectRepo } from '../../db/schema/index.js';
 import type { ProjectMemberWithUser } from './types.js';
 
@@ -34,19 +35,32 @@ export class ProjectRepository extends BaseRepository {
     return this.db.update(projects).set({ containerId }).where(eq(projects.id, id)).returning().get();
   }
 
-  async findByUserId(userId: number, organizationId?: number, limit?: number): Promise<SelectProject[]> {
+  async findByUserId(userId: number, organizationId?: number, page?: number, limit?: number): Promise<PaginatedResult<SelectProject>> {
     const conditions = [eq(organizationMembers.userId, userId)];
 
     if (organizationId) {
       conditions.push(eq(projects.organizationId, organizationId));
     }
 
-    // When no limit specified, use max; otherwise cap provided limit at max
     const effectiveLimit = limit !== undefined
       ? Math.min(limit, PAGINATION_LIMITS.projects.max)
-      : PAGINATION_LIMITS.projects.max;
+      : PAGINATION_LIMITS.projects.default;
+    const effectivePage = page ?? 1;
+    const offset = computeOffset(effectivePage, effectiveLimit);
 
-    return this.db.select({
+    // Total count
+    const countResult = this.db.select({ count: sql<number>`count(*)` })
+      .from(projects)
+      .innerJoin(
+        organizationMembers,
+        eq(projects.organizationId, organizationMembers.organizationId)
+      )
+      .where(and(...conditions))
+      .get();
+    const total = countResult?.count ?? 0;
+
+    // Paginated data
+    const data = this.db.select({
       id: projects.id,
       name: projects.name,
       templateType: projects.templateType,
@@ -63,7 +77,18 @@ export class ProjectRepository extends BaseRepository {
       )
       .where(and(...conditions))
       .limit(effectiveLimit)
+      .offset(offset)
       .all();
+
+    return {
+      data,
+      meta: {
+        page: effectivePage,
+        limit: effectiveLimit,
+        total,
+        totalPages: computeTotalPages(total, effectiveLimit),
+      },
+    };
   }
 
   async findByOrganizationId(orgId: number): Promise<SelectProject[]> {

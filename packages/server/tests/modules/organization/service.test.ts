@@ -4,9 +4,13 @@ import { container } from 'tsyringe';
 import { OrganizationService } from '../../../src/modules/organization/service.js';
 import { OrganizationRepository } from '../../../src/modules/organization/repository.js';
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
-import { DatabaseConnection } from '../../../src/core/database/connection.js';
+import { AuthService } from '../../../src/modules/auth/auth.module.js';
+import { ProjectRepository } from '../../../src/modules/project/repository.js';
+import { ProjectService } from '../../../src/modules/project/project.module.js';
+import { PermissionService } from '../../../src/shared/permission.service.js';
+import { DatabaseConnection } from '../../../src/core/database/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { initSchema } from '../../../src/db/init.js';
+import { runMigrations } from '../../../src/db/migrate-runner.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -24,10 +28,14 @@ describe('OrganizationService', () => {
     process.env.ADMIN_EMAIL = 'admin@test.com';
 
     db = new DatabaseConnection(TEST_DB_PATH);
-    initSchema(db.getSqlite());
+    runMigrations(db.getSqlite());
     container.registerInstance(DatabaseConnection, db);
     container.registerSingleton(AuthRepository);
+    container.registerSingleton(AuthService);
     container.registerSingleton(OrganizationRepository);
+    container.registerSingleton(ProjectRepository);
+    container.registerSingleton(ProjectService);
+    container.registerSingleton(PermissionService);
     container.registerSingleton(OrganizationService);
 
     service = container.resolve(OrganizationService);

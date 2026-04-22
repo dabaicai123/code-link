@@ -1,4 +1,5 @@
-import { isAIEnabled, sendAIMessage, type AIMessage } from './client.js';
+import { AIClientFactory } from '../../../core/ai/ai-client-factory.js';
+import type { AIMessage } from '../../../core/ai/ai-client-factory.js';
 import { buildContextForDraft, type DraftContext } from './context.js';
 import { getSystemPrompt, getCommandPrompt } from './prompts.js';
 import { createLogger } from '../../../core/logger/index.js';
@@ -140,9 +141,10 @@ export function parseAICommand(content: string): AICommand | SuperpowersCommand 
 export async function executeAICommand(
   draftId: number,
   command: AICommand,
-  _userId: number
+  _userId: number,
+  aiClient: AIClientFactory
 ): Promise<AICommandResult> {
-  if (!isAIEnabled()) {
+  if (!aiClient.isEnabled()) {
     return {
       success: false,
       commandType: command.type,
@@ -168,7 +170,7 @@ export async function executeAICommand(
     ];
 
     // Send to AI
-    const response = await sendAIMessage(messages, {
+    const response = await aiClient.sendMessage(messages, {
       system: systemPrompt,
       maxTokens: 4096,
       temperature: 0.7,

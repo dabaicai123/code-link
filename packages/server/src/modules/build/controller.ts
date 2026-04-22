@@ -3,6 +3,7 @@ import { singleton, inject } from 'tsyringe';
 import { Request, Response } from 'express';
 import { BuildService } from './service.js';
 import { success } from '../../core/errors/index.js';
+import { buildPaginationSchema } from '../../core/database/pagination.js';
 import type { CreateBuildInput } from './schemas.js';
 
 @singleton()
@@ -19,8 +20,9 @@ export class BuildController {
 
   async listByProject(req: Request, res: Response): Promise<void> {
     const projectId = parseInt(req.params.projectId as string, 10);
-    const builds = await this.service.findByProjectId(req.userId!, projectId);
-    res.json(success(builds));
+    const { page, limit } = buildPaginationSchema.parse(req.query);
+    const result = await this.service.findByProjectId(req.userId!, projectId, page, limit);
+    res.json(success(result));
   }
 
   async get(req: Request, res: Response): Promise<void> {

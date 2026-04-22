@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/index.js';
-import { DatabaseConnection, createSqliteDb, initSchema } from '../src/db/index.js';
+import { DatabaseConnection, createSqliteDb, runMigrations } from '../src/db/index.js';
 import { container } from 'tsyringe';
 
 describe('Express 服务器', () => {
@@ -18,7 +18,7 @@ describe('Express 服务器', () => {
 
   it('GET /api/health 应返回 200', async () => {
     const sqlite = createSqliteDb(':memory:');
-    initSchema(sqlite);
+    runMigrations(sqlite);
     dbConnection = DatabaseConnection.fromSqlite(sqlite);
     container.registerInstance(DatabaseConnection, dbConnection);
 
@@ -30,7 +30,7 @@ describe('Express 服务器', () => {
 
   it('未知路由应返回 404', async () => {
     const sqlite = createSqliteDb(':memory:');
-    initSchema(sqlite);
+    runMigrations(sqlite);
     dbConnection = DatabaseConnection.fromSqlite(sqlite);
     container.registerInstance(DatabaseConnection, dbConnection);
 

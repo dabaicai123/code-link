@@ -1,7 +1,7 @@
 import { singleton, inject } from 'tsyringe';
 import Docker from 'dockerode';
 import { DockerService } from '../../container/lib/docker.service.js';
-import { getPortManager } from './port-manager.js';
+import { PortManager } from './port-manager.js';
 import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('preview');
@@ -18,9 +18,11 @@ interface PreviewContainer {
 export class PreviewContainerManager {
   private containers: Map<string, PreviewContainer> = new Map();
   private docker: Docker;
+  private readonly portManager: PortManager;
 
-  constructor() {
+  constructor(@inject(PortManager) portManager: PortManager) {
     this.docker = new Docker();
+    this.portManager = portManager;
   }
 
   async createPreviewContainer(
@@ -28,10 +30,8 @@ export class PreviewContainerManager {
     projectId: string,
     env?: Record<string, string>
   ): Promise<number> {
-    const portManager = getPortManager();
-
     // 分配端口
-    const port = portManager.allocatePort();
+    const port = this.portManager.allocatePort();
 
     // 停止并移除旧的预览容器（如果存在）
     await this.stopPreviewContainer(projectId);
@@ -56,7 +56,7 @@ export class PreviewContainerManager {
       await container.start();
     } catch (error) {
       // 启动失败时释放端口
-      portManager.releasePort(port);
+      this.portManager.releasePort(port);
       throw error;
     }
 
@@ -72,7 +72,6 @@ export class PreviewContainerManager {
   }
 
   async stopPreviewContainer(projectId: string): Promise<void> {
-    const portManager = getPortManager();
     const info = this.containers.get(projectId);
 
     if (info) {
@@ -85,7 +84,7 @@ export class PreviewContainerManager {
       }
 
       // 释放端口
-      portManager.releasePort(info.port);
+      this.portManager.releasePort(info.port);
       this.containers.delete(projectId);
     } else {
       // 尝试通过名称查找
@@ -98,7 +97,7 @@ export class PreviewContainerManager {
         // 尝试从端口绑定中释放端口
         const portBinding = containerInfo.NetworkSettings?.Ports?.['3000/tcp']?.[0]?.HostPort;
         if (portBinding) {
-          portManager.releasePort(parseInt(portBinding, 10));
+          this.portManager.releasePort(parseInt(portBinding, 10));
         }
       } catch (error) {
         logger.error('Failed to stop container by name', error instanceof Error ? error : new Error(String(error)));
@@ -116,8 +115,6 @@ export class PreviewContainerManager {
   }
 
   async cleanupAll(): Promise<void> {
-    const portManager = getPortManager();
-
     for (const [projectId, info] of this.containers) {
       try {
         const container = this.docker.getContainer(info.containerId);
@@ -128,14 +125,9 @@ export class PreviewContainerManager {
       }
 
       // 释放端口
-      portManager.releasePort(info.port);
+      this.portManager.releasePort(info.port);
     }
 
     this.containers.clear();
   }
-}
-
-// 重置实例（用于测试）
-export function resetPreviewContainerManagerInstance(): void {
-  // PreviewContainerManager is now a singleton managed by DI
 }

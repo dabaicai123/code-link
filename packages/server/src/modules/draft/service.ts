@@ -1,13 +1,15 @@
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
 import { DraftRepository } from './repository.js';
-import { ProjectRepository } from '../project/repository.js';
-import { AuthRepository } from '../auth/repository.js';
+import { ProjectService } from '../project/project.module.js';
+import { AuthService } from '../auth/auth.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
+import { AIClientFactory } from '../../core/ai/ai-client-factory.js';
 import { ParamError, NotFoundError, PermissionError } from '../../core/errors/index.js';
 import { parseAICommand, executeAICommand, isAICommand } from './lib/commands.js';
 import { listCards } from '../../ai/transcript.js';
 import type { AICommand, SuperpowersCommand, FreeChatCommand } from './lib/commands.js';
+import type { PaginatedResult } from '../../core/database/pagination.js';
 import type { SelectDraft, InsertDraftMessage } from '../../db/schema/index.js';
 import type { CreateDraftInput, CreateDraftMessageInput, ConfirmMessageInput } from './schemas.js';
 import type { DraftDetail, DraftMessageWithUser, MessageConfirmationWithUser } from './types.js';
@@ -16,9 +18,10 @@ import type { DraftDetail, DraftMessageWithUser, MessageConfirmationWithUser } f
 export class DraftService {
   constructor(
     @inject(DraftRepository) private readonly draftRepo: DraftRepository,
-    @inject(ProjectRepository) private readonly projectRepo: ProjectRepository,
-    @inject(AuthRepository) private readonly authRepo: AuthRepository,
-    @inject(PermissionService) private readonly permissionService: PermissionService
+    @inject(ProjectService) private readonly projectService: ProjectService,
+    @inject(AuthService) private readonly authService: AuthService,
+    @inject(PermissionService) private readonly permissionService: PermissionService,
+    @inject(AIClientFactory) private readonly aiClient: AIClientFactory
   ) {}
 
   // ==================== Draft CRUD ====================
@@ -34,7 +37,7 @@ export class DraftService {
     }
 
     // Check project access
-    const project = await this.projectRepo.findById(input.projectId);
+    const project = await this.projectService.getProjectById(input.projectId);
     if (!project) {
       throw new NotFoundError('项目');
     }
@@ -51,7 +54,7 @@ export class DraftService {
     // Add additional members if provided
     if (input.memberIds && input.memberIds.length > 0) {
       for (const memberId of input.memberIds) {
-        const memberUser = await this.authRepo.findById(memberId);
+        const memberUser = await this.authService.findById(memberId);
         if (memberUser) {
           await this.draftRepo.addMember(draft.id, memberId, 'participant');
         }
@@ -73,8 +76,8 @@ export class DraftService {
     return { draft, members };
   }
 
-  async findByUserId(userId: number): Promise<SelectDraft[]> {
-    return this.draftRepo.findByUserId(userId);
+  async findByUserId(userId: number, page?: number, limit?: number): Promise<PaginatedResult<SelectDraft>> {
+    return this.draftRepo.findByUserId(userId, page, limit);
   }
 
   async updateStatus(draftId: number, userId: number, status: 'discussing' | 'brainstorming' | 'reviewing' | 'developing' | 'confirmed' | 'archived'): Promise<SelectDraft> {
@@ -112,7 +115,7 @@ export class DraftService {
   async addMember(draftId: number, userId: number, newUserId: number): Promise<void> {
     await this.checkDraftAccess(draftId, userId);
 
-    const newUser = await this.authRepo.findById(newUserId);
+    const newUser = await this.authService.findById(newUserId);
     if (!newUser) {
       throw new NotFoundError('用户');
     }
@@ -151,17 +154,17 @@ export class DraftService {
 
     await this.draftRepo.touch(draftId);
 
-    const user = await this.authRepo.findById(userId);
+    const user = await this.authService.findById(userId);
     return {
       ...message,
       userName: user?.name ?? null,
     };
   }
 
-  async findMessages(draftId: number, userId: number, limit?: number): Promise<DraftMessageWithUser[]> {
+  async findMessages(draftId: number, userId: number, page?: number, limit?: number): Promise<PaginatedResult<DraftMessageWithUser>> {
     await this.checkDraftAccess(draftId, userId);
 
-    return this.draftRepo.findMessages(draftId, limit);
+    return this.draftRepo.findMessages(draftId, page, limit);
   }
 
   // ==================== Confirmation Management ====================
@@ -186,7 +189,7 @@ export class DraftService {
       comment: input.comment,
     });
 
-    const user = await this.authRepo.findById(userId);
+    const user = await this.authService.findById(userId);
     return {
       ...confirmation,
       userName: user?.name ?? '',
@@ -257,7 +260,7 @@ export class DraftService {
     }
 
     // Execute legacy AI command via Anthropic API
-    const result = await executeAICommand(draftId, command as AICommand, userId);
+    const result = await executeAICommand(draftId, command as AICommand, userId, this.aiClient);
 
     // Create AI response message (using userId of the user who triggered the command)
     if (result.success && result.response) {
