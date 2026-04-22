@@ -92,7 +92,7 @@ const CARD_TYPE_NODE_LABELS: Record<CardType, string> = {
 
 function TimelineNodeItem({ node }: { node: TimelineNode }) {
   return (
-    <div className="flex items-center gap-3 text-[12px] text-text-muted">
+    <div data-testid={`timeline-node-${node.id}`} className="flex items-center gap-3 text-[12px] text-text-muted">
       <div
         className={cn(
           'w-5 h-5 rounded-full flex items-center justify-center shrink-0 relative z-10',
@@ -142,6 +142,7 @@ function TimelineCardItem({ item }: { item: TimelineCard }) {
 
   return (
     <div
+      data-testid={`timeline-card-${card.shortId}`}
       className={cn(
         'pl-10 card-item bg-bg-card border rounded-xl p-4 shadow-warm-sm cursor-pointer relative',
         isRunning ? 'border-status-running/20' : 'border-border-default',
@@ -238,7 +239,7 @@ function TimelineCardItem({ item }: { item: TimelineCard }) {
             暂停
           </button>
         )}
-        <button className="px-3 py-1.5 rounded-lg border border-border-default text-[12px] text-text-secondary hover:bg-bg-hover transition-colors">
+        <button data-testid="card-expand-detail" className="px-3 py-1.5 rounded-lg border border-border-default text-[12px] text-text-secondary hover:bg-bg-hover transition-colors">
           展开详情
         </button>
       </div>
