@@ -116,8 +116,8 @@ export class TestApi {
     return response.data;
   }
 
-  async getDraft(draftId: number): Promise<TestDraft> {
-    const response = await this.get<ApiResponse<TestDraft>>(`/drafts/${draftId}`);
+  async getDraft(draftId: number): Promise<{ draft: TestDraft; members: TestUser[] }> {
+    const response = await this.get<ApiResponse<{ draft: TestDraft; members: TestUser[] }>>(`/drafts/${draftId}`);
     return response.data;
   }
 

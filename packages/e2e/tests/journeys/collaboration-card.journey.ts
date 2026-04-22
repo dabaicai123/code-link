@@ -171,7 +171,7 @@ test.describe('协作卡片', () => {
 
     // MessageInput textarea should contain @卡片{shortId}
     const textarea = app.page.getByTestId('collab-message-input');
-    await expect(textarea).toHaveValue(/@卡片/);
+    await expect(textarea).toHaveValue(/@卡片[a-f0-9]{8}/);
   });
 
   // ==================== Test 7 ====================
