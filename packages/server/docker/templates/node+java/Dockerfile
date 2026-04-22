@@ -38,6 +38,13 @@ RUN --mount=type=cache,target=/home/codelink/.claude/plugins/cache \
     bash /tmp/setup-plugins.sh && \
     rm /tmp/setup-plugins.sh
 
+# 安装 code-server（Web 版 VS Code）
+RUN curl -fsSL https://code-server.dev/install.sh | sh && \
+    mkdir -p /home/codelink/.config/code-server && \
+    chown -R codelink:codelink /home/codelink/.config/code-server && \
+    mkdir -p /home/codelink/.local/share/code-server && \
+    chown -R codelink:codelink /home/codelink/.local/share/code-server
+
 # 创建工作目录并授权
 WORKDIR /workspace
 RUN chown -R codelink:codelink /workspace
