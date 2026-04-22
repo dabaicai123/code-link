@@ -319,6 +319,33 @@ export class TestApp {
   }
 
   // ============================================
+  // Collaboration Panel Navigation
+  // ============================================
+
+  async ensureCollabTabActive(): Promise<void> {
+    // Ensure RightPanel's "协作" tab is active
+    const collabTab = this.page.getByRole('button', { name: '协作' });
+    await collabTab.click();
+  }
+
+  async selectDraft(draftTitle: string): Promise<void> {
+    // From DraftList click the specified Draft
+    await this.ensureCollabTabActive();
+    await this.page.getByText(draftTitle).click();
+    // Wait for Timeline view to load — the "返回" back button appears
+    await expect(this.page.getByText('返回')).toBeVisible({ timeout: 5000 });
+  }
+
+  async createDraftViaUI(title: string): Promise<void> {
+    await this.ensureCollabTabActive();
+    await this.page.getByText('新建协作').click();
+    await this.page.getByPlaceholder('协作标题...').fill(title);
+    await this.page.getByRole('button', { name: '创建' }).click();
+    // Wait for DraftList to refresh and show the new draft
+    await expect(this.page.getByText(title)).toBeVisible({ timeout: 5000 });
+  }
+
+  // ============================================
   // Chat Operations
   // ============================================
 
@@ -431,6 +458,42 @@ export class TestApp {
   async assertToolCallStatus(toolName: string, status: 'running' | 'completed' | 'error'): Promise<void> {
     const toolBlock = this.page.locator(`[data-tool-name="${toolName}"]`);
     await expect(toolBlock).toHaveAttribute('data-status', status);
+  }
+
+  // ============================================
+  // Card Operations
+  // ============================================
+
+  async clickCard(shortId: string): Promise<void> {
+    await this.page.getByTestId(`timeline-card-${shortId}`).click();
+  }
+
+  async rightClickCard(shortId: string): Promise<void> {
+    await this.page.getByTestId(`timeline-card-${shortId}`).click({ button: 'right' });
+  }
+
+  async expandCardDetail(shortId: string): Promise<void> {
+    await this.page.getByTestId(`timeline-card-${shortId}`).getByTestId('card-expand-detail').click();
+  }
+
+  async assertCardVisible(shortId: string): Promise<void> {
+    await expect(this.page.getByTestId(`timeline-card-${shortId}`)).toBeVisible({ timeout: 5000 });
+  }
+
+  async assertCardDetailModalVisible(): Promise<void> {
+    await expect(this.page.getByTestId('card-detail-modal')).toBeVisible({ timeout: 5000 });
+  }
+
+  async assertCardDetailModalNotVisible(): Promise<void> {
+    await expect(this.page.getByTestId('card-detail-modal')).not.toBeVisible();
+  }
+
+  async assertContextMenuVisible(): Promise<void> {
+    await expect(this.page.getByTestId('card-context-menu')).toBeVisible({ timeout: 5000 });
+  }
+
+  async clickContextMenuItem(itemText: string): Promise<void> {
+    await this.page.getByTestId('card-context-menu').getByRole('button', { name: itemText }).click();
   }
 
   // ============================================
