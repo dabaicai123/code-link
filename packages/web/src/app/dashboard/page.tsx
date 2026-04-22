@@ -74,7 +74,7 @@ export default function DashboardPage() {
         onCreateProject={() => setIsDialogOpen(true)}
         onLogout={handleLogout}
       />
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-hidden relative bg-bg-primary">
         {isStarting ? (
           <Loading text="正在启动容器..." />
         ) : (
