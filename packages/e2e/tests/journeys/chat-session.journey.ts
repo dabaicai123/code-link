@@ -7,7 +7,8 @@ test.describe('会话管理', () => {
     api.setToken(generateToken(user.id));
     await app.configureClaude({ authToken: 'sk-test-token' });
     const org = await app.createOrganization(createOrganizationParams());
-    await app.createProject(createProjectParams({ organizationId: org!.id }));
+    const project = await app.createProject(createProjectParams({ organizationId: org!.id }));
+    await app.selectProject(project!.name);
   });
 
   test('代理选择器显示', async ({ app }) => {
@@ -20,14 +21,14 @@ test.describe('会话管理', () => {
   });
 
   test('权限模式选择器显示', async ({ app }) => {
-    const modeSelect = app.page.locator('.mode-select');
+    const modeSelect = app.page.locator('[data-testid="chat-input"]').locator('select');
     await expect(modeSelect).toBeVisible();
     await expect(modeSelect).toHaveValue('default');
   });
 
   test('权限模式切换', async ({ app }) => {
     await app.selectPermissionMode('plan');
-    const modeSelect = app.page.locator('.mode-select');
+    const modeSelect = app.page.locator('[data-testid="chat-input"]').locator('select');
     await expect(modeSelect).toHaveValue('plan');
   });
 
@@ -39,7 +40,6 @@ test.describe('会话管理', () => {
   });
 
   test('项目状态指示', async ({ app }) => {
-    const statusDot = app.page.locator('.status-dot');
-    await expect(statusDot).toHaveClass(/status-dot-running|status-dot-stopped/);
+    await app.assertConnectionStatus(true);
   });
 });

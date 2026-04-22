@@ -56,6 +56,8 @@ export class DockerService implements IDockerService {
 
   async startContainer(containerId: string): Promise<void> {
     const container = this.client.getContainer(containerId);
+    const info = await container.inspect();
+    if (info.State.Status === 'running') return;
     await container.start();
   }
 

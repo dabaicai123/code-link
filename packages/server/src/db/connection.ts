@@ -12,7 +12,9 @@ export class DatabaseConnection {
   constructor() {
     const config = getConfig();
     this.sqlite = new Database(config.dbPath);
-    this.sqlite.pragma('journal_mode = WAL');
+    if (config.dbPath !== ':memory:') {
+      this.sqlite.pragma('journal_mode = WAL');
+    }
     this.sqlite.pragma('foreign_keys = ON');
     this.db = drizzle(this.sqlite, { schema });
   }

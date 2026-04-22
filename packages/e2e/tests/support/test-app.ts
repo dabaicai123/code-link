@@ -20,9 +20,9 @@ export class TestApp {
     password: string;
   }): Promise<TestUser> {
     await this.page.goto('/register');
-    await this.page.getByPlaceholder('邮箱地址').fill(params.email);
-    await this.page.getByPlaceholder('用户名').fill(params.name);
-    await this.page.getByPlaceholder('密码').fill(params.password);
+    await this.page.getByLabel('邮箱地址').fill(params.email);
+    await this.page.getByLabel('用户名').fill(params.name);
+    await this.page.getByLabel('密码').fill(params.password);
     await this.page.getByRole('button', { name: '注册' }).click();
     await this.page.waitForURL('**/dashboard', { timeout: 15000 });
 
@@ -36,8 +36,8 @@ export class TestApp {
 
   async login(email: string, password: string): Promise<void> {
     await this.page.goto('/login');
-    await this.page.getByPlaceholder('邮箱地址').fill(email);
-    await this.page.getByPlaceholder('密码').fill(password);
+    await this.page.getByLabel('邮箱地址').fill(email);
+    await this.page.getByLabel('密码').fill(password);
     await this.page.getByRole('button', { name: '登录' }).click();
     await this.page.waitForURL('**/dashboard', { timeout: 15000 });
 
@@ -154,6 +154,15 @@ export class TestApp {
 
   async deleteProject(projectId: number): Promise<void> {
     await this.api.deleteProject(projectId);
+  }
+
+  async selectProject(name: string): Promise<void> {
+    await this.page.goto('/dashboard');
+    await this.page.waitForLoadState('networkidle');
+    // Click the project in the sidebar to make it active
+    await this.page.getByText(name, { exact: true }).first().click();
+    // Wait for chat panel to appear (indicates project is active)
+    await this.page.locator('[data-testid="chat-input"]').waitFor({ state: 'visible', timeout: 15000 });
   }
 
   // ============================================
@@ -387,16 +396,20 @@ export class TestApp {
   // ============================================
 
   async selectAgent(agent: 'claude' | 'codex'): Promise<void> {
-    await this.page.locator('.chat-agent-btn').click();
+    // Agent toggle button in chat input toolbar
+    const agentBtn = this.page.locator('[data-testid="chat-input"]').locator('button').filter({ hasText: /Claude|Codex/ });
+    await agentBtn.click();
   }
 
   async selectPermissionMode(mode: 'default' | 'plan' | 'yolo'): Promise<void> {
-    await this.page.locator('.mode-select').selectOption(mode);
+    // Permission mode dropdown in chat input toolbar
+    const modeSelect = this.page.locator('[data-testid="chat-input"]').locator('select');
+    await modeSelect.selectOption(mode);
   }
 
   async assertAgentSelected(agent: string): Promise<void> {
-    const agentBtn = this.page.locator('.chat-agent-btn');
-    await expect(agentBtn).toContainText(agent);
+    const agentBtn = this.page.locator('[data-testid="chat-input"]').locator('button').filter({ hasText: new RegExp(`^${agent}$`, 'i') });
+    await expect(agentBtn).toBeVisible();
   }
 
   // ============================================
@@ -431,9 +444,12 @@ export class TestApp {
   }
 
   async assertConnectionStatus(connected: boolean): Promise<void> {
-    const statusDot = this.page.locator('.status-dot');
-    const expectedClass = connected ? 'status-dot-running' : 'status-dot-stopped';
-    await expect(statusDot).toHaveClass(new RegExp(expectedClass));
+    const statusDot = this.page.locator('[data-testid="chat-workspace"]').locator('.bg-status-running, .bg-status-stopped').first();
+    if (connected) {
+      await expect(statusDot).toHaveClass(/bg-status-running/);
+    } else {
+      await expect(statusDot).toHaveClass(/bg-status-stopped/);
+    }
   }
 
   // ============================================
