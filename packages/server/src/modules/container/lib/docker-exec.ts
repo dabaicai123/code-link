@@ -208,3 +208,75 @@ export async function execWithUserEnv(
 
   return { exec, execId: exec.id, stream };
 }
+
+/**
+ * Run a claude CLI command inside a container and return the full stdout output.
+ * Uses --print --verbose --output-format stream-json for structured JSONL output.
+ * Non-interactive (no TTY), runs as a one-shot process.
+ */
+export async function execClaudeCommand(
+  containerId: string,
+  prompt: string,
+  userEnv: Record<string, string>,
+  continueSession: boolean = false
+): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+  // Escape the prompt for shell embedding — handle quotes and special chars
+  const escapedPrompt = prompt.replace(/'/g, "'\\''");
+
+  const continueFlag = continueSession ? '--continue' : '';
+  const cmd = [
+    '/bin/sh',
+    '-c',
+    `claude --print --verbose --output-format stream-json --dangerously-skip-permissions ${continueFlag} '${escapedPrompt}'`,
+  ];
+
+  const docker = getDockerClient();
+  const containerObj = docker.getContainer(containerId);
+
+  const env = [
+    'TERM=xterm-256color',
+    ...Object.entries(userEnv)
+      .filter(([_, value]) => value)
+      .map(([key, value]) => `${key}=${value}`),
+  ];
+
+  const exec = await containerObj.exec({
+    Cmd: cmd,
+    AttachStdin: false,
+    AttachStdout: true,
+    AttachStderr: true,
+    Tty: false,
+    Env: env,
+    User: 'codelink',
+    WorkingDir: '/workspace',
+  });
+
+  const stream = await exec.start({ Detach: false, Tty: false });
+  const demuxer = new DockerStreamDemuxer();
+  let stdout = '';
+  let stderr = '';
+
+  stream.pipe(demuxer);
+
+  return new Promise((resolve, reject) => {
+    demuxer.on('data', (frame: { type: number; data: Buffer }) => {
+      const content = frame.data.toString();
+      if (frame.type === 1) {
+        stdout += content;
+      } else if (frame.type === 2) {
+        stderr += content;
+      }
+    });
+
+    stream.on('error', reject);
+
+    stream.on('end', async () => {
+      try {
+        const info = await exec.inspect();
+        resolve({ stdout, stderr, exitCode: info.ExitCode });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}

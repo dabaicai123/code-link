@@ -11,6 +11,7 @@ import {
   writeToExecStream,
   closeExecStdin,
   execWithUserEnv,
+  execClaudeCommand,
   type ExecSession,
 } from './docker-exec.js';
 import { normalizeError, getErrorMessage } from '../../../core/errors/index.js';
@@ -26,6 +27,8 @@ export interface TerminalSession {
   cols: number;
   rows: number;
   createdAt: Date;
+  userEnv: Record<string, string>;
+  hasSessionHistory: boolean;
 }
 
 export interface TerminalMessage {
@@ -79,6 +82,8 @@ class TerminalManagerImpl {
         cols,
         rows,
         createdAt: new Date(),
+        userEnv: userEnv ?? {},
+        hasSessionHistory: false,
       };
 
       // 监听容器输出
@@ -258,6 +263,115 @@ class TerminalManagerImpl {
       logger.info(`Message sent to terminal session ${sessionId}`);
     } catch (error) {
       logger.error(`Failed to send message to session ${sessionId}`, normalizeError(error));
+    }
+  }
+
+  /**
+   * Run a Claude CLI command as a separate process and emit structured events.
+   * Uses --print --verbose --output-format stream-json for JSONL output.
+   * First message starts a new session; subsequent messages use --continue
+   * to maintain conversation context within the same session.
+   */
+  async runClaudeCommand(sessionId: string, prompt: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      logger.warn(`Session ${sessionId} not found for claude command`);
+      this.sendToWebSocket(session.ws, {
+        type: 'claudeError',
+        sessionId,
+        message: 'Terminal session not found',
+      });
+      return;
+    }
+
+    try {
+      const result = await execClaudeCommand(
+        session.containerId,
+        prompt,
+        session.userEnv,
+        session.hasSessionHistory
+      );
+
+      // Mark that this session now has conversation history for future --continue
+      session.hasSessionHistory = true;
+
+      if (result.exitCode !== 0 && !result.stdout) {
+        this.sendToWebSocket(session.ws, {
+          type: 'claudeError',
+          sessionId,
+          message: result.stderr || `Claude command failed (exit code ${result.exitCode})`,
+        });
+        return;
+      }
+
+      // Parse JSONL output from stdout
+      const lines = result.stdout.split('\n').filter(line => line.trim());
+      for (const line of lines) {
+        try {
+          const event = JSON.parse(line);
+          switch (event.type) {
+            case 'system':
+              // Init event — no action needed for chat
+              break;
+            case 'assistant':
+              if (event.message?.content) {
+                for (const block of event.message.content) {
+                  if (block.type === 'text') {
+                    this.sendToWebSocket(session.ws, {
+                      type: 'claudeStream',
+                      sessionId,
+                      text: block.text,
+                    });
+                  } else if (block.type === 'tool_use') {
+                    this.sendToWebSocket(session.ws, {
+                      type: 'toolStart',
+                      sessionId,
+                      toolUseId: block.id,
+                      name: block.name,
+                      input: JSON.stringify(block.input),
+                    });
+                  }
+                }
+              }
+              break;
+            case 'tool_result':
+              this.sendToWebSocket(session.ws, {
+                type: 'toolEnd',
+                sessionId,
+                toolUseId: event.tool_use_id,
+                result: event.content,
+              });
+              break;
+            case 'result':
+              this.sendToWebSocket(session.ws, {
+                type: 'claudeDone',
+                sessionId,
+                cost: event.total_cost_usd ? {
+                  inputTokens: event.usage?.input_tokens ?? 0,
+                  outputTokens: event.usage?.output_tokens ?? 0,
+                  totalCost: event.total_cost_usd,
+                } : undefined,
+              });
+              break;
+            case 'error':
+              this.sendToWebSocket(session.ws, {
+                type: 'claudeError',
+                sessionId,
+                message: event.message || 'Unknown error',
+              });
+              break;
+          }
+        } catch {
+          // Not JSON — skip
+        }
+      }
+    } catch (error) {
+      logger.error(`Failed to run claude command for session ${sessionId}`, normalizeError(error));
+      this.sendToWebSocket(session.ws, {
+        type: 'claudeError',
+        sessionId,
+        message: normalizeError(error).message || 'Failed to execute Claude command',
+      });
     }
   }
 

@@ -191,16 +191,20 @@ export function setupTerminalNamespace(namespace: Namespace): void {
       }
     });
 
-    // 发送 Claude 消息到终端
-    socket.on('claude-message', (data: unknown) => {
+    // 发送 Claude 消息 — 启动独立的 claude --print 进程
+    socket.on('claude-message', async (data: unknown) => {
       const parsed = TerminalEvents.claudeMessage.safeParse(data);
       if (!parsed.success || !currentSessionId) return;
 
       const { sessionId, data: encodedMessage, mode, agent } = parsed.data;
       if (sessionId !== currentSessionId) return;
 
-      // Mode and agent are handled by CLI itself via message format
-      terminalManager.sendToTerminal(sessionId, encodedMessage);
+      // Decode the base64 message to get the user prompt text
+      const prompt = Buffer.from(encodedMessage, 'base64').toString('utf-8').trim();
+
+      // Run claude as a separate --print process with stream-json output
+      // This produces JSONL events that the frontend can parse
+      await terminalManager.runClaudeCommand(sessionId, prompt);
     });
 
     // Ping
