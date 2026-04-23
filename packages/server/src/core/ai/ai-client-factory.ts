@@ -66,10 +66,7 @@ export class AIClientFactory implements IAIService {
         max_tokens: maxTokens,
         temperature,
         system,
-        messages: messages.map(m => ({
-          role: m.role,
-          content: m.content,
-        })),
+        messages,
       });
 
       const textContent = response.content

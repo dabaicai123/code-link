@@ -1,17 +1,10 @@
 import { z } from 'zod';
 import { PAGINATION_LIMITS } from './constants.js';
 
-/**
- * Base pagination schema — per-endpoint schemas override the limit defaults.
- */
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(PAGINATION_LIMITS.projects.max).default(PAGINATION_LIMITS.projects.default),
 });
 
-/**
- * Per-resource pagination schemas with appropriate defaults and max caps.
- */
 export const projectPaginationSchema = paginationSchema.extend({
   limit: z.coerce.number().int().min(1).max(PAGINATION_LIMITS.projects.max).default(PAGINATION_LIMITS.projects.default),
   organizationId: z.coerce.number().int().positive().optional(),
@@ -58,9 +51,6 @@ export function computeTotalPages(total: number, limit: number): number {
   return Math.ceil(total / limit);
 }
 
-/**
- * Helper to build a PaginatedResult from raw data + total count.
- */
 export function paginate<T>(data: T[], total: number, page: number, limit: number): PaginatedResult<T> {
   return {
     data,

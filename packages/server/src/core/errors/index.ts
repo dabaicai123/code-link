@@ -6,13 +6,10 @@ export {
   AuthError,
   ConflictError,
   ParamError,
+  ErrorCode,
   isAppError,
-  isNotFoundError,
-  isPermissionError,
-  isValidationError,
   isError,
   getErrorMessage,
-  getErrorStack,
   normalizeError,
 } from './errors.js';
 

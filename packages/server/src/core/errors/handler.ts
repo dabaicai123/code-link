@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { isAppError } from './errors.js';
+import { isAppError, ErrorCode } from './errors.js';
 import { errorResponse } from './response.js';
 import { LoggerService } from '../logger/logger.js';
 import type { Logger } from '../logger/types.js';
@@ -19,7 +19,7 @@ export function createErrorHandler(logger: LoggerService | Logger) {
 
     reqLog.error('Unexpected error', err, { requestId });
     res.status(500).json(
-      errorResponse(10001, '服务器内部错误')
+      errorResponse(ErrorCode.INTERNAL, '服务器内部错误')
     );
   };
 }

@@ -1,8 +1,3 @@
-/**
- * Pagination limits to prevent unbounded queries.
- * These constants ensure repository queries are bounded to reasonable limits
- * to prevent memory issues and slow queries when data grows.
- */
 export const PAGINATION_LIMITS = {
   projects: { default: 50, max: 100 },
   organizations: { default: 50, max: 100 },

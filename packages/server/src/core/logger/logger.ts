@@ -9,10 +9,8 @@ export class LoggerService implements Logger {
 
   constructor(levelOrParent?: string | PinoLogger) {
     if (typeof levelOrParent === 'object') {
-      // 子 logger，使用父 logger
       this.logger = levelOrParent;
     } else {
-      // 主 logger
       this.logger = pino({
         level: levelOrParent || 'info',
         transport: process.env.NODE_ENV !== 'test'
@@ -60,7 +58,11 @@ export class LoggerService implements Logger {
   }
 }
 
+let rootLogger: LoggerService | null = null;
+
 export function createLogger(module: string): Logger {
-  const service = new LoggerService(process.env.LOG_LEVEL || 'info');
-  return service.child(module);
+  if (!rootLogger) {
+    rootLogger = new LoggerService(process.env.LOG_LEVEL || 'info');
+  }
+  return rootLogger.child(module);
 }
