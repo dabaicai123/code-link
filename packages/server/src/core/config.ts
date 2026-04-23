@@ -1,52 +1,44 @@
 import { z } from 'zod';
 
 const configSchema = z.object({
-  port: z.number().int().positive().default(4000),
+  serverPort: z.coerce.number().default(4000),
   dbPath: z.string().default('data/code-link.db'),
   jwtSecret: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  claudeConfigEncryptionKey: z.string().min(1, 'CLAUDE_CONFIG_ENCRYPTION_KEY must be set'),
   corsOrigin: z.string().default('http://localhost:3000'),
-  corsOrigins: z.array(z.string()).optional(), // Multiple origins for production
+  corsOrigins: z.array(z.string()).optional(),
   logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   anthropicApiKey: z.string().optional(),
-  claudeConfigEncryptionKey: z.string().optional(),
   adminEmails: z.array(z.string()).optional(),
   adminPassword: z.string().optional(),
+  superAdminEmails: z.string().default('admin@example.com'),
   dockerHost: z.string().optional(),
-  dockerPort: z.number().int().positive().optional(),
+  dockerPort: z.coerce.number().optional(),
   nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
+  webPort: z.coerce.number().default(3000),
 });
 
 export type Config = z.infer<typeof configSchema>;
 
-const TEST_JWT_SECRET = 'e2e-test-secret-key-minimum-32-chars-long';
-
 export function loadConfig(): Config {
   const nodeEnv = process.env.NODE_ENV || 'development';
 
-  const isTest = nodeEnv === 'test';
-
-  if (!isTest && !process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET must be set and at least 32 characters');
-  }
-
-  if (nodeEnv === 'production' && !process.env.ADMIN_PASSWORD) {
-    throw new Error('ADMIN_PASSWORD is required in production');
-  }
-
   return configSchema.parse({
-    port: process.env.PORT ? parseInt(process.env.PORT, 10) : undefined,
+    serverPort: process.env.SERVER_PORT || process.env.PORT,
     dbPath: process.env.DB_PATH,
-    jwtSecret: process.env.JWT_SECRET || (isTest ? TEST_JWT_SECRET : undefined),
+    jwtSecret: process.env.JWT_SECRET,
+    claudeConfigEncryptionKey: process.env.CLAUDE_CONFIG_ENCRYPTION_KEY,
     corsOrigin: process.env.CORS_ORIGIN,
     corsOrigins: process.env.CORS_ORIGINS?.split(',').map(s => s.trim()),
     logLevel: process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error' | undefined,
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-    claudeConfigEncryptionKey: process.env.CLAUDE_CONFIG_ENCRYPTION_KEY,
     adminEmails: process.env.ADMIN_EMAIL ? [process.env.ADMIN_EMAIL] : undefined,
     adminPassword: process.env.ADMIN_PASSWORD,
+    superAdminEmails: process.env.SUPER_ADMIN_EMAILS,
     dockerHost: process.env.DOCKER_HOST,
-    dockerPort: process.env.DOCKER_PORT ? parseInt(process.env.DOCKER_PORT, 10) : undefined,
+    dockerPort: process.env.DOCKER_PORT,
     nodeEnv,
+    webPort: process.env.WEB_PORT,
   });
 }
 

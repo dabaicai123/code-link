@@ -3,17 +3,14 @@ import Database from 'better-sqlite3';
 import * as schema from './schema/index.js';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.resolve(__dirname, '../../..');
-const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 
 /**
  * 获取默认数据库路径
+ * Uses DB_PATH env var, or falls back to cwd-relative path.
+ * Launch scripts must ensure cwd = project root.
  */
 export function getDefaultDbPath(): string {
-  return process.env.DB_PATH || path.join(DATA_DIR, 'code-link.db');
+  return process.env.DB_PATH || path.join(process.cwd(), 'data', 'code-link.db');
 }
 
 /**

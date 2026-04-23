@@ -18,8 +18,15 @@ done
 
 echo "测试容器已清理"
 
-# 停止后端和前端进程
-pkill -f "next dev" 2>/dev/null || true
-pkill -f "node.*dist/index" 2>/dev/null || true
+# 通过 PID 文件停止后端和前端进程
+if [ -f /tmp/code-link-backend.pid ]; then
+    kill "$(cat /tmp/code-link-backend.pid)" 2>/dev/null || true
+    rm /tmp/code-link-backend.pid
+fi
+
+if [ -f /tmp/code-link-frontend.pid ]; then
+    kill "$(cat /tmp/code-link-frontend.pid)" 2>/dev/null || true
+    rm /tmp/code-link-frontend.pid
+fi
 
 echo "E2E 测试环境已停止"

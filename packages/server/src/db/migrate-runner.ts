@@ -7,7 +7,7 @@ import { createLogger } from '../core/logger/index.js';
 const logger = createLogger('migration-runner');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
+const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR || path.join(__dirname, 'migrations');
 
 export function runMigrations(db: Database.Database): void {
   // Temporarily disable foreign keys during migration execution
