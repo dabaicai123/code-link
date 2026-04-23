@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { singleton, inject, container } from 'tsyringe';
 import { DraftRepository } from './repository.js';
 import { ProjectService } from '../project/project.module.js';
+import { OrganizationService } from '../organization/organization.module.js';
 import { AuthService } from '../auth/auth.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { AIClientFactory } from '../../core/ai/ai-client-factory.js';
@@ -14,20 +15,23 @@ import type { SelectDraft, InsertDraftMessage } from '../../db/schema/index.js';
 import type { CreateDraftInput, CreateDraftMessageInput, ConfirmMessageInput } from './schemas.js';
 import type { DraftDetail, DraftMessageWithUser, MessageConfirmationWithUser } from './types.js';
 
-let _permService: PermissionService | null = null;
-function getPermService() { return _permService ??= container.resolve(PermissionService); }
-
-/** Reset lazy getter cache (for tests after container.reset()) */
-export function resetDraftServiceCache(): void { _permService = null; }
-
 @singleton()
 export class DraftService {
   constructor(
     @inject(DraftRepository) private readonly draftRepo: DraftRepository,
     @inject(ProjectService) private readonly projectService: ProjectService,
+    @inject(OrganizationService) private readonly orgService: OrganizationService,
     @inject(AuthService) private readonly authService: AuthService,
+    @inject(PermissionService) private readonly permService: PermissionService,
     @inject(AIClientFactory) private readonly aiClient: AIClientFactory
   ) {}
+
+  private async requireProjectAccess(userId: number, projectId: number): Promise<void> {
+    const project = await this.projectService.getProjectById(projectId);
+    if (!project) throw new NotFoundError('项目');
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
+  }
 
   async create(userId: number, input: CreateDraftInput): Promise<SelectDraft> {
     const trimmedTitle = input.title.trim();
@@ -38,12 +42,7 @@ export class DraftService {
       throw new ParamError('标题最多200个字符');
     }
 
-    const project = await this.projectService.getProjectById(input.projectId);
-    if (!project) {
-      throw new NotFoundError('项目');
-    }
-
-    await getPermService().checkProjectAccess(userId, project.id);
+    await this.requireProjectAccess(userId, input.projectId);
 
     const draft = await this.draftRepo.createWithOwner({
       projectId: input.projectId,
@@ -101,7 +100,7 @@ export class DraftService {
     await this.checkDraftAccess(draftId, userId);
 
     const member = await this.draftRepo.findMember(draftId, userId);
-    const isSuperAdmin = await getPermService().isSuperAdmin(userId);
+    const isSuperAdmin = await this.permService.isSuperAdmin(userId);
 
     if (!isSuperAdmin && (!member || member.role !== 'owner')) {
       throw new PermissionError('只有草稿 owner 可以删除');
@@ -239,7 +238,6 @@ export class DraftService {
       messageType: 'ai_command',
     });
 
-    // superpowers/free_chat go through Terminal Socket (Claude Code)
     if (command.type === 'superpowers' || command.type === 'free_chat') {
       return {
         success: true,
@@ -292,7 +290,7 @@ export class DraftService {
   }
 
   private async checkDraftAccess(draftId: number, userId: number): Promise<void> {
-    if (await getPermService().isSuperAdmin(userId)) {
+    if (await this.permService.isSuperAdmin(userId)) {
       return;
     }
 

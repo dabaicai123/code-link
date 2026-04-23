@@ -1,24 +1,21 @@
 import "reflect-metadata";
-import { singleton, inject, container } from 'tsyringe';
+import { singleton, inject } from 'tsyringe';
 import { ProjectRepository } from './repository.js';
+import { OrganizationService } from '../organization/organization.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
-import { ParamError } from '../../core/errors/index.js';
+import { ParamError, NotFoundError } from '../../core/errors/index.js';
 import type { SelectProject, SelectProjectRepo } from '../../db/schema/index.js';
 import type { PaginatedResult } from '../../core/database/pagination.js';
 import { isValidTemplate } from '../container/lib/templates.js';
 import type { CreateProjectInput, AddRepoInput } from './schemas.js';
 import type { ProjectDetail, ParsedRepoUrl } from './types.js';
 
-let _permService: PermissionService | null = null;
-function getPermService() { return _permService ??= container.resolve(PermissionService); }
-
-/** Reset lazy getter cache (for tests after container.reset()) */
-export function resetProjectServiceCache(): void { _permService = null; }
-
 @singleton()
 export class ProjectService {
   constructor(
-    @inject(ProjectRepository) private readonly repo: ProjectRepository
+    @inject(ProjectRepository) private readonly repo: ProjectRepository,
+    @inject(OrganizationService) private readonly orgService: OrganizationService,
+    @inject(PermissionService) private readonly permService: PermissionService
   ) {}
 
   async create(userId: number, input: CreateProjectInput): Promise<SelectProject> {
@@ -31,7 +28,8 @@ export class ProjectService {
       throw new ParamError('无效的模板类型，必须是 node, node+java 或 node+python');
     }
 
-    await getPermService().checkOrgRole(userId, input.organizationId, 'developer');
+    const role = await this.orgService.getOrgRole(userId, input.organizationId);
+    await this.permService.requireOrgRole(userId, role, 'developer');
 
     return this.repo.create({
       name: trimmedName,
@@ -46,7 +44,13 @@ export class ProjectService {
   }
 
   async findById(userId: number, projectId: number): Promise<ProjectDetail> {
-    const project = await getPermService().checkProjectAccess(userId, projectId);
+    const project = await this.repo.findById(projectId);
+    if (!project) {
+      throw new NotFoundError('项目');
+    }
+
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
     const members = await this.repo.findProjectMembers(project.organizationId);
     const repos = await this.repo.findRepos(projectId);
 
@@ -54,8 +58,14 @@ export class ProjectService {
   }
 
   async delete(userId: number, projectId: number): Promise<void> {
-    const project = await getPermService().checkProjectAccess(userId, projectId);
-    await getPermService().checkOrgOwner(userId, project.organizationId);
+    const project = await this.repo.findById(projectId);
+    if (!project) {
+      throw new NotFoundError('项目');
+    }
+
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
+    await this.permService.requireOrgOwner(userId, role);
     await this.repo.delete(projectId);
   }
 
@@ -86,7 +96,11 @@ export class ProjectService {
 
   async isProjectMember(projectId: number, userId: number): Promise<boolean> {
     try {
-      await getPermService().checkProjectAccess(userId, projectId);
+      const project = await this.repo.findById(projectId);
+      if (!project) return false;
+
+      const role = await this.orgService.getOrgRole(userId, project.organizationId);
+      await this.permService.requireProjectAccess(userId, role);
       return true;
     } catch {
       return false;
@@ -94,12 +108,20 @@ export class ProjectService {
   }
 
   async findRepos(projectId: number, userId: number): Promise<SelectProjectRepo[]> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    const project = await this.repo.findById(projectId);
+    if (!project) throw new NotFoundError('项目');
+
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
     return this.repo.findRepos(projectId);
   }
 
   async addRepo(projectId: number, userId: number, input: AddRepoInput): Promise<SelectProjectRepo> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    const project = await this.repo.findById(projectId);
+    if (!project) throw new NotFoundError('项目');
+
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
 
     const parsed = this.parseRepoUrl(input.url);
     if (!parsed) {
@@ -123,7 +145,11 @@ export class ProjectService {
   }
 
   async deleteRepo(projectId: number, userId: number, repoId: number): Promise<void> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    const project = await this.repo.findById(projectId);
+    if (!project) throw new NotFoundError('项目');
+
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
 
     const repo = await this.repo.findRepo(repoId, projectId);
     if (!repo) {

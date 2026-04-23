@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { singleton, inject, container } from 'tsyringe';
+import { singleton, inject } from 'tsyringe';
 import { OrganizationRepository } from './repository.js';
 import { AuthService } from '../auth/auth.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
@@ -9,27 +9,22 @@ import type { OrgRole } from '../../db/schema/index.js';
 import type { CreateOrganizationInput, UpdateOrganizationInput, InviteMemberInput } from './schemas.js';
 import type { OrganizationWithRole, OrganizationDetail, OrganizationInvitationWithUser } from './types.js';
 
-let _permService: PermissionService | null = null;
-function getPermService() { return _permService ??= container.resolve(PermissionService); }
-
-/** Reset lazy getter cache (for tests after container.reset()) */
-export function resetOrganizationServiceCache(): void { _permService = null; }
-
 @singleton()
 export class OrganizationService {
   constructor(
     @inject(OrganizationRepository) private readonly repo: OrganizationRepository,
-    @inject(AuthService) private readonly authService: AuthService
+    @inject(AuthService) private readonly authService: AuthService,
+    @inject(PermissionService) private readonly permService: PermissionService
   ) {}
 
   private async isAdminOrOwner(orgId: number, userId: number): Promise<boolean> {
-    if (await getPermService().isSuperAdmin(userId)) return true;
+    if (await this.permService.isSuperAdmin(userId)) return true;
     const membership = await this.repo.findUserMembership(orgId, userId);
     return membership?.role === 'owner';
   }
 
   private async isMemberOrAdmin(orgId: number, userId: number): Promise<boolean> {
-    if (await getPermService().isSuperAdmin(userId)) return true;
+    if (await this.permService.isSuperAdmin(userId)) return true;
     const membership = await this.repo.findUserMembership(orgId, userId);
     return !!membership;
   }
@@ -65,7 +60,7 @@ export class OrganizationService {
     }
 
     const members = await this.repo.findMembers(orgId);
-    const isSuperAdmin = await getPermService().isSuperAdmin(userId);
+    const isSuperAdmin = await this.permService.isSuperAdmin(userId);
     const membership = await this.repo.findUserMembership(orgId, userId);
     const role = membership?.role ?? (isSuperAdmin ? 'owner' as const : 'member' as const);
     return {
@@ -158,10 +153,5 @@ export class OrganizationService {
   async getOrgRole(userId: number, orgId: number): Promise<OrgRole | null> {
     const membership = await this.repo.findUserMembership(orgId, userId);
     return membership?.role ?? null;
-  }
-
-  async isOrgOwner(userId: number, orgId: number): Promise<boolean> {
-    const membership = await this.repo.findUserMembership(orgId, userId);
-    return membership?.role === 'owner';
   }
 }

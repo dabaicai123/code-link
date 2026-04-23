@@ -1,28 +1,33 @@
 import "reflect-metadata";
 import { singleton, inject, container } from 'tsyringe';
 import { ProjectService } from '../project/project.module.js';
-import { ClaudeConfigService } from '../claude-config/claude-config.module.js';
+import { OrganizationService } from '../organization/organization.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
+import { ClaudeConfigService } from '../claude-config/claude-config.module.js';
 import { DockerService } from './lib/docker.service.js';
 import { NotFoundError, ParamError } from '../../core/errors/index.js';
 import type { ContainerStartResult, ContainerStopResult, ContainerStatus } from './types.js';
-
-let _permService: PermissionService | null = null;
-function getPermService() { return _permService ??= container.resolve(PermissionService); }
-
-/** Reset lazy getter cache (for tests after container.reset()) */
-export function resetContainerServiceCache(): void { _permService = null; }
 
 @singleton()
 export class ContainerService {
   constructor(
     @inject(ProjectService) private readonly projectService: ProjectService,
+    @inject(OrganizationService) private readonly orgService: OrganizationService,
+    @inject(PermissionService) private readonly permService: PermissionService,
     @inject(ClaudeConfigService) private readonly claudeConfigService: ClaudeConfigService,
     @inject(DockerService) private readonly dockerService: DockerService
   ) {}
 
+  private async requireProjectAccess(userId: number, projectId: number): Promise<import('../../db/schema/index.js').SelectProject> {
+    const project = await this.projectService.getProjectById(projectId);
+    if (!project) throw new NotFoundError('项目');
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
+    return project;
+  }
+
   async start(userId: number, projectId: number): Promise<ContainerStartResult> {
-    const project = await getPermService().checkProjectAccess(userId, projectId);
+    const project = await this.requireProjectAccess(userId, projectId);
 
     const hasConfig = await this.claudeConfigService.hasConfig(userId);
     if (!hasConfig) {
@@ -60,7 +65,7 @@ export class ContainerService {
   }
 
   async stop(userId: number, projectId: number): Promise<ContainerStopResult> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    await this.requireProjectAccess(userId, projectId);
 
     const container = await this.dockerService.getProjectContainer(projectId);
     if (!container) {
@@ -75,7 +80,7 @@ export class ContainerService {
   }
 
   async getStatus(userId: number, projectId: number): Promise<ContainerStatus> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    await this.requireProjectAccess(userId, projectId);
 
     const container = await this.dockerService.getProjectContainer(projectId);
     if (!container) {
@@ -89,8 +94,9 @@ export class ContainerService {
   }
 
   async remove(userId: number, projectId: number): Promise<void> {
-    const project = await getPermService().checkProjectAccess(userId, projectId);
-    await getPermService().checkOrgOwner(userId, project.organizationId);
+    const project = await this.requireProjectAccess(userId, projectId);
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireOrgOwner(userId, role);
 
     const container = await this.dockerService.getProjectContainer(projectId);
     if (container) {

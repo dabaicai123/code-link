@@ -1,22 +1,30 @@
-import { singleton, inject, container } from 'tsyringe';
+import "reflect-metadata";
+import { singleton, inject } from 'tsyringe';
+import { ProjectService } from '../project/project.module.js';
+import { OrganizationService } from '../organization/organization.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { NotFoundError } from '../../core/errors/index.js';
 import { CodeServerManager } from './lib/code-server-manager.js';
-
-let _permService: PermissionService | null = null;
-function getPermService() { return _permService ??= container.resolve(PermissionService); }
-
-/** Reset lazy getter cache (for tests after container.reset()) */
-export function resetCodeServiceCache(): void { _permService = null; }
 
 @singleton()
 export class CodeService {
   constructor(
     @inject(CodeServerManager) private readonly codeServerManager: CodeServerManager,
+    @inject(ProjectService) private readonly projectService: ProjectService,
+    @inject(OrganizationService) private readonly orgService: OrganizationService,
+    @inject(PermissionService) private readonly permService: PermissionService
   ) {}
 
+  private async requireProjectAccess(userId: number, projectId: number): Promise<import('../../db/schema/index.js').SelectProject> {
+    const project = await this.projectService.getProjectById(projectId);
+    if (!project) throw new NotFoundError('项目');
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
+    return project;
+  }
+
   async startCodeServer(userId: number, projectId: number): Promise<{ url: string }> {
-    const project = await getPermService().checkProjectAccess(userId, projectId);
+    const project = await this.requireProjectAccess(userId, projectId);
     if (!project.containerId) throw new NotFoundError('容器');
     await this.codeServerManager.startCodeServer(projectId, project.containerId);
     const url = this.codeServerManager.getCodeServerUrl(projectId);
@@ -25,14 +33,14 @@ export class CodeService {
   }
 
   async stopCodeServer(userId: number, projectId: number): Promise<{ success: boolean }> {
-    const project = await getPermService().checkProjectAccess(userId, projectId);
+    const project = await this.requireProjectAccess(userId, projectId);
     if (!project.containerId) throw new NotFoundError('容器');
     await this.codeServerManager.stopCodeServer(projectId, project.containerId);
     return { success: true };
   }
 
   async getCodeServerStatus(userId: number, projectId: number): Promise<{ running: boolean; url: string | null }> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    await this.requireProjectAccess(userId, projectId);
     const running = this.codeServerManager.isRunning(projectId);
     const url = this.codeServerManager.getCodeServerUrl(projectId);
     return { running, url };

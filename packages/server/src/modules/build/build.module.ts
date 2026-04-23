@@ -16,7 +16,7 @@ export function registerBuildModule(): void {
   container.registerSingleton(BuildController);
 }
 
-export { BuildService, resetBuildServiceCache } from './service.js';
+export { BuildService } from './service.js';
 export { BuildController } from './controller.js';
 export { createBuildRoutes } from './routes.js';
 export {

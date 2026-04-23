@@ -10,7 +10,7 @@ export function registerDraftModule(): void {
   container.registerSingleton(DraftController);
 }
 
-export { DraftService, resetDraftServiceCache } from './service.js';
+export { DraftService } from './service.js';
 export { DraftController } from './controller.js';
 export { createDraftRoutes } from './routes.js';
 export {

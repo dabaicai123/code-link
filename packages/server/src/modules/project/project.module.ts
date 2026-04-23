@@ -10,7 +10,7 @@ export function registerProjectModule(): void {
   container.registerSingleton(ProjectController);
 }
 
-export { ProjectService, resetProjectServiceCache } from './service.js';
+export { ProjectService } from './service.js';
 export { ProjectController } from './controller.js';
 export { createProjectRoutes } from './routes.js';
 export {

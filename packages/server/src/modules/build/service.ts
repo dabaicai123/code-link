@@ -1,6 +1,8 @@
 import "reflect-metadata";
 import { singleton, inject, container } from 'tsyringe';
 import { BuildRepository } from './repository.js';
+import { ProjectService } from '../project/project.module.js';
+import { OrganizationService } from '../organization/organization.module.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { BuildManager } from './lib/build-manager.js';
 import { PreviewContainerManager } from './lib/preview-container.js';
@@ -15,22 +17,26 @@ import type { PreviewInfo } from './types.js';
 
 const logger = createLogger('build-service');
 
-let _permService: PermissionService | null = null;
-function getPermService() { return _permService ??= container.resolve(PermissionService); }
-
-/** Reset lazy getter cache (for tests after container.reset()) */
-export function resetBuildServiceCache(): void { _permService = null; }
-
 @singleton()
 export class BuildService {
   constructor(
     @inject(BuildRepository) private readonly repo: BuildRepository,
     @inject(BuildManager) private readonly buildManager: BuildManager,
-    @inject(PreviewContainerManager) private readonly previewManager: PreviewContainerManager
+    @inject(PreviewContainerManager) private readonly previewManager: PreviewContainerManager,
+    @inject(ProjectService) private readonly projectService: ProjectService,
+    @inject(OrganizationService) private readonly orgService: OrganizationService,
+    @inject(PermissionService) private readonly permService: PermissionService
   ) {}
 
+  private async requireProjectAccess(userId: number, projectId: number): Promise<void> {
+    const project = await this.projectService.getProjectById(projectId);
+    if (!project) throw new NotFoundError('项目');
+    const role = await this.orgService.getOrgRole(userId, project.organizationId);
+    await this.permService.requireProjectAccess(userId, role);
+  }
+
   async create(userId: number, input: CreateBuildInput): Promise<SelectBuild> {
-    const project = await getPermService().checkProjectAccess(userId, input.projectId);
+    await this.requireProjectAccess(userId, input.projectId);
 
     const build = await this.buildManager.createBuild(input.projectId);
 
@@ -38,10 +44,8 @@ export class BuildService {
       const err = normalizeError(error);
       logger.error('Build failed', err, { projectId: input.projectId, buildId: build.id });
 
-      // Update build status to failed
       await this.repo.updateStatus(build.id, 'failed');
 
-      // Broadcast failure via Socket.IO
       const socketService = container.resolve(SocketServerService);
       const io = socketService.getServer();
       broadcastBuildStatus(io.of('/project'), input.projectId, 'failed', undefined, err.message);
@@ -51,7 +55,7 @@ export class BuildService {
   }
 
   async findByProjectId(userId: number, projectId: number, page?: number, limit?: number): Promise<PaginatedResult<SelectBuild>> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    await this.requireProjectAccess(userId, projectId);
 
     return this.buildManager.getProjectBuilds(projectId, page, limit);
   }
@@ -63,13 +67,13 @@ export class BuildService {
       throw new NotFoundError('构建');
     }
 
-    await getPermService().checkProjectAccess(userId, build.projectId);
+    await this.requireProjectAccess(userId, build.projectId);
 
     return build;
   }
 
   async getPreview(userId: number, projectId: number): Promise<PreviewInfo> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    await this.requireProjectAccess(userId, projectId);
 
     const containerInfo = this.previewManager.getContainerInfo(projectId.toString());
 
@@ -84,7 +88,7 @@ export class BuildService {
   }
 
   async stopPreview(userId: number, projectId: number): Promise<void> {
-    await getPermService().checkProjectAccess(userId, projectId);
+    await this.requireProjectAccess(userId, projectId);
 
     await this.previewManager.stopPreviewContainer(projectId.toString());
   }
