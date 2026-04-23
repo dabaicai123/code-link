@@ -15,8 +15,4 @@ if [ -f /tmp/code-link-frontend.pid ]; then
     rm /tmp/code-link-frontend.pid
 fi
 
-# 兜底：杀掉可能残留的进程
-pkill -f "next dev" 2>/dev/null || true
-pkill -f "node.*dist/index" 2>/dev/null || true
-
 echo "code-link 开发环境已停止"
