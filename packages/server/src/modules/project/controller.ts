@@ -4,7 +4,6 @@ import { Request, Response } from 'express';
 import { ProjectService } from './service.js';
 import { success } from '../../core/errors/index.js';
 import { projectPaginationSchema } from '../../core/database/pagination.js';
-import { parseIdParam } from '../../utils/params.js';
 
 @singleton()
 export class ProjectController {

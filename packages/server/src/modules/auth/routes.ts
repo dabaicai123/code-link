@@ -8,22 +8,11 @@ import { authMiddleware } from '../../middleware/auth.js';
 
 const noopMiddleware: RequestHandler = (_req, _res, next) => next();
 
-// Default rate limiters — created when first needed
-function defaultAuthLimiter(): RequestHandler {
+function createLimiter(max: number, message: string): RequestHandler {
   return rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
-    message: { code: 'RATE_LIMIT', message: '请求过于频繁，请稍后再试' },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-}
-
-function defaultLoginLimiter(): RequestHandler {
-  return rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    message: { code: 'RATE_LIMIT', message: '登录尝试过于频繁，请稍后再试' },
+    max,
+    message: { code: 'RATE_LIMIT', message },
     standardHeaders: true,
     legacyHeaders: false,
   });
@@ -39,10 +28,10 @@ export function createAuthRoutes(
   options?: RateLimiterOptions
 ): Router {
   const authLimiter = options?.authLimiter ?? (
-    process.env.NODE_ENV === 'test' ? noopMiddleware : defaultAuthLimiter()
+    process.env.NODE_ENV === 'test' ? noopMiddleware : createLimiter(10, '请求过于频繁，请稍后再试')
   );
   const loginLimiter = options?.loginLimiter ?? (
-    process.env.NODE_ENV === 'test' ? noopMiddleware : defaultLoginLimiter()
+    process.env.NODE_ENV === 'test' ? noopMiddleware : createLimiter(5, '登录尝试过于频繁，请稍后再试')
   );
 
   const router = Router();

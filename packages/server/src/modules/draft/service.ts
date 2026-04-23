@@ -47,10 +47,12 @@ export class DraftService {
     }, userId);
 
     if (input.memberIds && input.memberIds.length > 0) {
-      for (const memberId of input.memberIds) {
-        const memberUser = await this.authService.findById(memberId);
-        if (memberUser) {
-          await this.draftRepo.addMember(draft.id, memberId, 'participant');
+      const members = await Promise.all(
+        input.memberIds.map(id => this.authService.findById(id))
+      );
+      for (const [i, member] of members.entries()) {
+        if (member) {
+          await this.draftRepo.addMember(draft.id, input.memberIds[i], 'participant');
         }
       }
     }

@@ -1,13 +1,10 @@
 import { z } from 'zod';
 import { orgIdParamSchema, invitationIdParamSchema } from '../../shared/schemas.js';
 
-export const createOrganizationSchema = z.object({
-  name: z.string().min(1, '组织名称不能为空').max(100, '组织名称最多100个字符'),
-});
+const organizationNameSchema = z.string().min(1, '组织名称不能为空').max(100, '组织名称最多100个字符');
 
-export const updateOrganizationSchema = z.object({
-  name: z.string().min(1, '组织名称不能为空').max(100, '组织名称最多100个字符'),
-});
+export const createOrganizationSchema = z.object({ name: organizationNameSchema });
+export const updateOrganizationSchema = z.object({ name: organizationNameSchema });
 
 export const inviteMemberSchema = z.object({
   email: z.string().email('邮箱格式不正确'),

@@ -1,5 +1,6 @@
 import httpProxy from 'http-proxy';
 import { CodeServerManager } from './lib/code-server-manager.js';
+import { normalizeError } from '../../core/errors/index.js';
 import { createLogger } from '../../core/logger/index.js';
 
 const logger = createLogger('code-server-proxy');
@@ -9,7 +10,7 @@ const proxy = httpProxy.createProxyServer({
 });
 
 proxy.on('error', (err, _req, _res) => {
-  logger.error('Proxy error', err instanceof Error ? err : new Error(String(err)));
+  logger.error('Proxy error', normalizeError(err));
 });
 
 export function createCodeServerProxy(codeServerManager: CodeServerManager) {
@@ -51,7 +52,7 @@ export function handleCodeServerWebSocketUpgrade(
     req.url = req.url!.replace(prefix, '') || '/';
 
     proxy.ws(req, socket, head, { target }, (err) => {
-      logger.error('WS proxy error', err instanceof Error ? err : new Error(String(err)));
+      logger.error('WS proxy error', normalizeError(err));
       socket.destroy();
     });
   });
