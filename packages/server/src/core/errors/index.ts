@@ -19,7 +19,6 @@ export {
 export {
   success,
   errorResponse,
-  Errors,
   type SuccessResponse,
   type ErrorResponse,
   type ApiResponse,
