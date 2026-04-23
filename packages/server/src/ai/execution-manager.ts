@@ -11,9 +11,9 @@ import type { CardData, CardType, CardStatus } from '../modules/draft/file-types
 
 const logger = createLogger('execution-manager');
 
-// Session max age: 1 hour
 const SESSION_MAX_AGE_MS = 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_OUTPUT_CHUNKS = 500;
 
 export interface ExecutionSession {
   id: string;
@@ -29,12 +29,9 @@ export interface ExecutionSession {
   startedAt: Date;
 }
 
-// 活跃的执行会话（按 terminal session 索引）
 const activeExecutions = new Map<string, ExecutionSession>();
+const executionByCardId = new Map<string, string>();
 
-/**
- * 创建执行会话
- */
 export async function startExecutionSession(input: {
   projectId: number;
   draftId: number;
@@ -47,13 +44,11 @@ export async function startExecutionSession(input: {
 }): Promise<ExecutionSession> {
   const { projectId, draftId, terminalSessionId, userId, userName, cardType, command, parentCardId } = input;
 
-  // 检查是否已有执行
   const existing = activeExecutions.get(terminalSessionId);
   if (existing && existing.status === 'running') {
     throw new Error('当前 Session 正在执行其他任务');
   }
 
-  // 创建卡片
   const card = await createCard({
     projectId,
     draftId,
@@ -63,7 +58,6 @@ export async function startExecutionSession(input: {
     parentCardId,
   });
 
-  // 初始化 transcript
   await appendTranscript(projectId, draftId, card.id, {
     role: 'user',
     content: command,
@@ -84,31 +78,22 @@ export async function startExecutionSession(input: {
   };
 
   activeExecutions.set(terminalSessionId, session);
+  executionByCardId.set(card.id, terminalSessionId);
   logger.info(`Execution session started: ${session.id}`, { cardId: card.id });
 
   return session;
 }
 
-/**
- * 获取执行会话（按 terminal session）
- */
 export function getExecutionByTerminal(sessionId: string): ExecutionSession | undefined {
   return activeExecutions.get(sessionId);
 }
 
-/**
- * 获取执行会话（按 card ID）
- */
 export function getExecutionByCard(cardId: string): ExecutionSession | undefined {
-  for (const session of activeExecutions.values()) {
-    if (session.cardId === cardId) return session;
-  }
-  return undefined;
+  const terminalSessionId = executionByCardId.get(cardId);
+  if (!terminalSessionId) return undefined;
+  return activeExecutions.get(terminalSessionId);
 }
 
-/**
- * 更新执行状态
- */
 export async function updateExecutionStatus(
   terminalSessionId: string,
   status: CardStatus,
@@ -119,21 +104,14 @@ export async function updateExecutionStatus(
 
   session.status = status;
 
-  // 更新卡片状态
-  await updateCard(session.projectId, session.draftId, session.cardId, { cardStatus: status });
-
-  if (output) {
-    session.output.push(output);
-    await appendTranscript(session.projectId, session.draftId, session.cardId, {
-      role: 'assistant',
-      content: output,
-    });
-  }
+  await Promise.all([
+    updateCard(session.projectId, session.draftId, session.cardId, { cardStatus: status }),
+    output
+      ? appendTranscript(session.projectId, session.draftId, session.cardId, { role: 'assistant', content: output })
+      : Promise.resolve(),
+  ]);
 }
 
-/**
- * 追加输出
- */
 export async function appendExecutionOutput(
   terminalSessionId: string,
   chunk: string
@@ -141,12 +119,11 @@ export async function appendExecutionOutput(
   const session = activeExecutions.get(terminalSessionId);
   if (!session || session.status !== 'running') return;
 
-  session.output.push(chunk);
+  if (session.output.length < MAX_OUTPUT_CHUNKS) {
+    session.output.push(chunk);
+  }
 }
 
-/**
- * 完成执行（同时释放驾驶权）
- */
 export async function completeExecution(
   terminalSessionId: string,
   success: boolean,
@@ -155,18 +132,15 @@ export async function completeExecution(
   const session = activeExecutions.get(terminalSessionId);
   if (!session) return null;
 
-  // Guard against double-completion: mark immediately to prevent race
   if (session.status === 'completed' || session.status === 'failed') return null;
+
   const status = success ? 'completed' : 'failed';
   session.status = status;
-
-  // Remove from map before async work to prevent concurrent access
   activeExecutions.delete(terminalSessionId);
+  executionByCardId.delete(session.cardId);
 
-  // 合并所有输出
   const fullOutput = session.output.join('\n');
 
-  // 更新卡片
   const card = await updateCard(session.projectId, session.draftId, session.cardId, {
     cardStatus: status,
     result: fullOutput,
@@ -179,9 +153,6 @@ export async function completeExecution(
   return card;
 }
 
-/**
- * 暂停执行
- */
 export async function pauseExecution(
   terminalSessionId: string
 ): Promise<void> {
@@ -194,9 +165,6 @@ export async function pauseExecution(
   logger.info(`Execution paused: ${session.id}`);
 }
 
-/**
- * 继续执行（从暂停状态）
- */
 export async function resumeExecution(
   terminalSessionId: string,
   newCommand: string
@@ -214,9 +182,6 @@ export async function resumeExecution(
   logger.info(`Execution resumed: ${session.id}`);
 }
 
-/**
- * 生成卡片标题
- */
 function generateCardTitle(cardType: CardType, summary?: string): string {
   const typeLabels: Record<CardType, string> = {
     brainstorming: 'Brainstorming',
@@ -231,33 +196,45 @@ function generateCardTitle(cardType: CardType, summary?: string): string {
   return summary ? `${base} - ${summary.slice(0, 30)}` : base;
 }
 
-/**
- * 清理过期会话
- */
 export async function cleanupExpiredSessions(): Promise<void> {
   const now = new Date();
+  const expired: Array<[string, ExecutionSession]> = [];
+
   for (const [sessionId, session] of activeExecutions) {
-    const elapsed = now.getTime() - session.startedAt.getTime();
-    if (elapsed > SESSION_MAX_AGE_MS) {
+    if (now.getTime() - session.startedAt.getTime() > SESSION_MAX_AGE_MS) {
+      expired.push([sessionId, session]);
+    }
+  }
+
+  await Promise.allSettled(
+    expired.map(async ([sessionId, session]) => {
       try {
         await updateCard(session.projectId, session.draftId, session.cardId, { cardStatus: 'failed' });
       } catch (error) {
         logger.error(`Failed to mark expired card as failed: ${session.cardId}`, normalizeError(error));
       }
       activeExecutions.delete(sessionId);
+      executionByCardId.delete(session.cardId);
       logger.warn(`Cleaned up expired execution: ${sessionId}`);
-    }
-  }
+    })
+  );
 }
 
-// Auto-cleanup interval
 let cleanupInterval: NodeJS.Timeout | null = null;
 
 export function startExecutionCleanup(): void {
   if (cleanupInterval) return;
-  cleanupInterval = setInterval(() => { cleanupExpiredSessions().catch(e => logger.error('Cleanup error', normalizeError(e))); }, CLEANUP_INTERVAL_MS);
+  cleanupInterval = setInterval(
+    () => { cleanupExpiredSessions().catch(e => logger.error('Cleanup error', normalizeError(e))); },
+    CLEANUP_INTERVAL_MS
+  );
 }
 
 export function stopExecutionCleanup(): void {
-  if (cleanupInterval) { clearInterval(cleanupInterval); cleanupInterval = null; }
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+  activeExecutions.clear();
+  executionByCardId.clear();
 }

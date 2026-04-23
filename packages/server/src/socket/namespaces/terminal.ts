@@ -16,7 +16,7 @@ import { sanitizeErrorMessage } from '../utils/error-sanitize.js';
 import { startExecutionSession, getExecutionByTerminal, updateExecutionStatus, appendExecutionOutput, completeExecution, pauseExecution, resumeExecution } from '../../ai/execution-manager.js';
 import { buildAIExecutionContext, generateClaudeCodePrompt } from '../../ai/context-builder.js';
 import { parseSuperpowersCommand, parseFreeChatCommand } from '../../modules/draft/lib/commands.js';
-import { acquireCodingLock, releaseCodingLock } from '../../ai/transcript.js';
+import { acquireCodingLock, releaseCodingLock, toContainerPath } from '../../ai/transcript.js';
 import { CardType } from '../../modules/draft/file-types.js';
 
 const logger = createLogger('socket-terminal');
@@ -282,12 +282,10 @@ export function setupTerminalNamespace(namespace: Namespace): void {
         // Generate full prompt
         let fullPrompt: string;
         if (cardType === 'free_chat') {
-          const containerDiscussionPath = `/workspace/transcripts/${projectId}/${draftId}/discussion.json`;
-          const parts = [`@${containerDiscussionPath}`];
+          const parts = [`@${toContainerPath(projectId, draftId, 'discussion.json')}`];
           if (contextCardId && context.transcriptPath) {
             const filename = path.basename(context.transcriptPath);
-            const containerTranscriptPath = `/workspace/transcripts/${projectId}/${draftId}/${filename}`;
-            parts.push(`@${containerTranscriptPath}`);
+            parts.push(`@${toContainerPath(projectId, draftId, filename)}`);
           }
           parts.push(effectiveCommand);
           fullPrompt = parts.join(' ');
