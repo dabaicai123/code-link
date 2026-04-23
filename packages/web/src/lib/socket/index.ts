@@ -2,7 +2,7 @@
 import { io, Socket } from 'socket.io-client';
 import { getStorage } from '../storage';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || `http://localhost:${process.env.SERVER_PORT || 4000}`;
 
 let projectSocket: Socket | null = null;
 let draftSocket: Socket | null = null;
