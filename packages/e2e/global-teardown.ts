@@ -1,5 +1,5 @@
 // packages/e2e/global-teardown.ts
-const BACKEND_URL = 'http://localhost:4000';
+const BACKEND_URL = process.env.SERVER_URL || `http://localhost:${process.env.SERVER_PORT || 4000}`;
 
 export default async function globalTeardown() {
   // Cleanup all test containers (named with test_ prefix)

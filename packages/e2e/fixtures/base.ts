@@ -3,7 +3,10 @@ import jwt from 'jsonwebtoken';
 import { createDrizzleFromSqlite, seedTestUser, TestUser, DrizzleDb } from '../helpers/test-db';
 import type { E2EServerInstance } from '@code-link/server/dist/index.js';
 
-const TEST_JWT_SECRET = 'e2e-test-secret-key-minimum-32-chars-long';
+const TEST_JWT_SECRET = process.env.JWT_SECRET!;
+if (!TEST_JWT_SECRET) {
+  throw new Error('JWT_SECRET must be set in .env for e2e tests');
+}
 
 export interface E2EFixtures {
   testServer: E2EServerInstance;
