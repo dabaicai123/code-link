@@ -43,6 +43,15 @@ export function setupTerminalNamespace(namespace: Namespace): void {
     let currentSessionId: string | null = null;
     const terminalManager = getTerminalManager();
 
+    async function releaseExecutionLock(execution: { projectId: number; draftId: number }) {
+      try {
+        await releaseCodingLock({ projectId: execution.projectId, draftId: execution.draftId, userId });
+        namespace.emit('codingLockReleased', { projectId: execution.projectId, draftId: execution.draftId });
+      } catch {
+        // Lock may have already been released
+      }
+    }
+
     // 启动终端
     socket.on('start', async (data: unknown) => {
       const parsed = TerminalEvents.start.safeParse(data);
@@ -147,16 +156,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
               });
             }
 
-            // 释放驾驶权
-            await releaseCodingLock({
-              projectId: execution.projectId,
-              draftId: execution.draftId,
-              userId,
-            });
-            namespace.emit('codingLockReleased', {
-              projectId: execution.projectId,
-              draftId: execution.draftId,
-            });
+            await releaseExecutionLock(execution);
           }
         });
       } catch (error) {
@@ -302,7 +302,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
         );
 
       } catch (error) {
-        const message = error instanceof Error ? error.message : '执行失败';
+        const message = normalizeError(error).message || '执行失败';
         socket.emit('aiExecutionError', {
           sessionId: currentSessionId,
           message,
@@ -347,31 +347,8 @@ export function setupTerminalNamespace(namespace: Namespace): void {
         // 如果有活跃的 AI 执行，先完成它（标记为失败，因为连接断开）
         const execution = getExecutionByTerminal(currentSessionId);
         if (execution && (execution.status === 'running' || execution.status === 'pending' || execution.status === 'paused')) {
-          const card = await completeExecution(currentSessionId, false, '连接断开');
-          if (card) {
-            socket.emit('aiExecutionComplete', {
-              sessionId: currentSessionId,
-              projectId: execution.projectId,
-              draftId: execution.draftId,
-              cardId: card.id,
-              success: false,
-              summary: '连接断开',
-            });
-            // 释放驾驶权
-            try {
-              await releaseCodingLock({
-                projectId: execution.projectId,
-                draftId: execution.draftId,
-                userId,
-              });
-              namespace.emit('codingLockReleased', {
-                projectId: execution.projectId,
-                draftId: execution.draftId,
-              });
-            } catch {
-              // Lock may have already been released by exit handler
-            }
-          }
+          await completeExecution(currentSessionId, false, '连接断开');
+          await releaseExecutionLock(execution);
         }
 
         terminalManager.closeSession(currentSessionId);

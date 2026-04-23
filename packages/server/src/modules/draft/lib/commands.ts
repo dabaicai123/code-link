@@ -2,7 +2,7 @@ import { AIClientFactory } from '../../../core/ai/ai-client-factory.js';
 import type { AIMessage } from '../../../core/ai/ai-client-factory.js';
 import { buildContextForDraft, type DraftContext } from './context.js';
 import { getSystemPrompt, getCommandPrompt } from './prompts.js';
-import { normalizeError } from '../../../core/errors/index.js';
+import { normalizeError, getErrorMessage } from '../../../core/errors/index.js';
 import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('ai-commands');
@@ -196,7 +196,7 @@ export async function executeAICommand(
     return {
       success: false,
       commandType: command.type,
-      error: error instanceof Error ? error.message : 'AI 命令执行失败',
+      error: getErrorMessage(error) || 'AI 命令执行失败',
     };
   }
 }

@@ -13,7 +13,7 @@ import {
   execWithUserEnv,
   type ExecSession,
 } from './docker-exec.js';
-import { normalizeError } from '../../../core/errors/index.js';
+import { normalizeError, getErrorMessage } from '../../../core/errors/index.js';
 import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('terminal-mgr');
@@ -111,7 +111,7 @@ class TerminalManagerImpl {
       this.sessions.set(sessionId, session);
       return sessionId;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create terminal session';
+      const message = getErrorMessage(error) || 'Failed to create terminal session';
       this.sendToWebSocket(ws, {
         type: 'error',
         message,

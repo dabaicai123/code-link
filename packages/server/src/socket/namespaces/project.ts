@@ -3,10 +3,10 @@ import type { Namespace, Socket } from 'socket.io';
 import { createLogger } from '../../core/logger/index.js';
 import { ProjectEvents } from '../types.js';
 import {
-  addUserToProjectRoom,
-  removeUserFromProjectRoom,
-  deleteEmptyProjectRoom,
-  getProjectRoomUsers,
+  addUserToRoom,
+  removeUserFromRoom,
+  deleteEmptyRoom,
+  getRoomUsersMap,
 } from '../utils/room-manager.js';
 
 const logger = createLogger('socket-project');
@@ -31,7 +31,7 @@ export function setupProjectNamespace(namespace: Namespace): void {
       socket.join(roomName);
 
       // 记录用户
-      const userCount = addUserToProjectRoom(projectId, socket.id, { userId, userName });
+      const userCount = addUserToRoom('project', projectId, socket.id, { userId, userName });
 
       // 通知其他用户
       socket.to(roomName).emit('userJoined', {
@@ -101,7 +101,7 @@ export function setupProjectNamespace(namespace: Namespace): void {
       logger.info(`Project socket disconnected: userId=${userId}`);
 
       // 清理所有房间
-      for (const [projectId, users] of getProjectRoomUsers()) {
+      for (const [projectId, users] of getRoomUsersMap('project')) {
         if (users.has(socket.id)) {
           leaveProjectRoom(socket, projectId);
         }
@@ -113,7 +113,7 @@ export function setupProjectNamespace(namespace: Namespace): void {
 function leaveProjectRoom(socket: Socket, projectId: number): void {
   const roomName = `project:${projectId}`;
 
-  const { user, remainingCount } = removeUserFromProjectRoom(projectId, socket.id);
+  const { user, remainingCount } = removeUserFromRoom('project', projectId, socket.id);
 
   if (user) {
     socket.to(roomName).emit('userLeft', {
@@ -126,7 +126,7 @@ function leaveProjectRoom(socket: Socket, projectId: number): void {
 
   // Delete empty room immediately
   if (remainingCount === 0) {
-    deleteEmptyProjectRoom(projectId);
+    deleteEmptyRoom('project', projectId);
   }
 
   socket.leave(roomName);

@@ -4,11 +4,11 @@ import { createLogger } from '../../core/logger/index.js';
 import { DraftEvents } from '../types.js';
 import type { z } from 'zod';
 import {
-  addUserToDraftRoom,
-  removeUserFromDraftRoom,
-  deleteEmptyDraftRoom,
-  getDraftRoomUsers,
-  getDraftRoomUserList,
+  addUserToRoom,
+  removeUserFromRoom,
+  deleteEmptyRoom,
+  getRoomUsersMap,
+  getRoomUserList,
 } from '../utils/room-manager.js';
 
 const logger = createLogger('socket-draft');
@@ -31,7 +31,7 @@ export function setupDraftNamespace(namespace: Namespace): void {
 
       socket.join(roomName);
 
-      const memberCount = addUserToDraftRoom(draftId, socket.id, { userId, userName });
+      const memberCount = addUserToRoom('draft', draftId, socket.id, { userId, userName });
 
       // 通知其他用户
       socket.to(roomName).emit('memberJoined', {
@@ -43,7 +43,7 @@ export function setupDraftNamespace(namespace: Namespace): void {
       });
 
       // 确认订阅，返回在线用户列表
-      const onlineUsers = getDraftRoomUserList(draftId);
+      const onlineUsers = getRoomUserList('draft', draftId);
       socket.emit('subscribed', {
         draftId,
         memberCount: onlineUsers.length,
@@ -66,7 +66,7 @@ export function setupDraftNamespace(namespace: Namespace): void {
     socket.on('disconnect', () => {
       logger.info(`Draft socket disconnected: userId=${userId}`);
 
-      for (const [draftId, users] of getDraftRoomUsers()) {
+      for (const [draftId, users] of getRoomUsersMap('draft')) {
         if (users.has(socket.id)) {
           leaveDraftRoom(socket, draftId);
         }
@@ -78,7 +78,7 @@ export function setupDraftNamespace(namespace: Namespace): void {
 function leaveDraftRoom(socket: Socket, draftId: number): void {
   const roomName = `draft:${draftId}`;
 
-  const { user, remainingCount } = removeUserFromDraftRoom(draftId, socket.id);
+  const { user, remainingCount } = removeUserFromRoom('draft', draftId, socket.id);
 
   if (user) {
     socket.to(roomName).emit('memberLeft', {
@@ -92,7 +92,7 @@ function leaveDraftRoom(socket: Socket, draftId: number): void {
 
   // Delete empty room immediately
   if (remainingCount === 0) {
-    deleteEmptyDraftRoom(draftId);
+    deleteEmptyRoom('draft', draftId);
   }
 
   socket.leave(roomName);
@@ -114,7 +114,7 @@ export function broadcastDraftMessage(
 
   if (excludeUserId) {
     // 找到需要排除的 socket
-    const users = getDraftRoomUsers().get(draftId);
+    const users = getRoomUsersMap('draft').get(draftId);
     if (users) {
       for (const [socketId, user] of users) {
         if (user.userId !== excludeUserId) {
@@ -131,5 +131,5 @@ export function broadcastDraftMessage(
 
 // 获取在线用户
 export function getDraftOnlineUsers(draftId: number): Array<{ userId: number; userName: string }> {
-  return getDraftRoomUserList(draftId);
+  return getRoomUserList('draft', draftId);
 }

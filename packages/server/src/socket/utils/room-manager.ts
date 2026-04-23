@@ -70,20 +70,6 @@ export function getRoomUsersMap(type: RoomType): ReadonlyMap<number, ReadonlyMap
   return getRoomMap(type);
 }
 
-// --- Convenience aliases for backward compatibility ---
-export const getProjectRoomUsers = () => getRoomUsersMap('project');
-export const getDraftRoomUsers = () => getRoomUsersMap('draft');
-export const getProjectRoomUserList = (id: number) => getRoomUserList('project', id);
-export const getDraftRoomUserList = (id: number) => getRoomUserList('draft', id);
-export const getProjectRoomUserCount = (id: number) => getRoomUserCount('project', id);
-export const getDraftRoomUserCount = (id: number) => getRoomUserCount('draft', id);
-export const addUserToProjectRoom = (id: number, s: string, u: RoomUser) => addUserToRoom('project', id, s, u);
-export const addUserToDraftRoom = (id: number, s: string, u: RoomUser) => addUserToRoom('draft', id, s, u);
-export const removeUserFromProjectRoom = (id: number, s: string) => removeUserFromRoom('project', id, s);
-export const removeUserFromDraftRoom = (id: number, s: string) => removeUserFromRoom('draft', id, s);
-export const deleteEmptyProjectRoom = (id: number) => deleteEmptyRoom('project', id);
-export const deleteEmptyDraftRoom = (id: number) => deleteEmptyRoom('draft', id);
-
 // --- Cleanup ---
 
 function cleanupEmptyRooms(): void {
@@ -96,7 +82,6 @@ function cleanupEmptyRooms(): void {
     const [type, idStr] = key.split(':') as [RoomType, string];
     const id = parseInt(idStr, 10);
     deleteEmptyRoom(type, id);
-    emptyRoomTimestamps.delete(key);
   }
   if (toRemove.length > 0) logger.info(`TTL cleanup: removed ${toRemove.length} empty room(s)`);
 }

@@ -1,4 +1,5 @@
 // packages/server/src/socket/utils/error-sanitize.ts
+import { getErrorMessage } from '../../core/errors/index.js';
 
 const ALLOWED_ERROR_PATTERNS = [
   /^项目不存在/,
@@ -31,7 +32,7 @@ const INTERNAL_ERROR_PATTERNS = [
 export function sanitizeErrorMessage(error: unknown): string {
   if (!error) return '操作失败';
 
-  const message = error instanceof Error ? error.message : '操作失败';
+  const message = getErrorMessage(error);
 
   for (const pattern of INTERNAL_ERROR_PATTERNS) {
     if (pattern.test(message)) {
