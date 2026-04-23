@@ -19,7 +19,7 @@ pnpm --filter @code-link/server build
 # 启动后端 (端口 4000，使用内存数据库)
 echo "启动后端服务 (内存数据库模式)..."
 cd packages/server
-NODE_ENV=test DB_PATH=:memory: JWT_SECRET=e2e-test-secret-key-minimum-32-chars-long pnpm start &
+NODE_ENV=test DB_PATH=:memory: JWT_SECRET=e2e-test-secret-key-minimum-32-chars-long CLAUDE_CONFIG_ENCRYPTION_KEY=e2e-test-encryption-key-minimum-32-chars pnpm start &
 BACKEND_PID=$!
 cd ../..
 

@@ -63,7 +63,13 @@ export class TestApp {
   // Settings Operations
   // ============================================
 
-  async configureClaude(params: { authToken: string }): Promise<void> {
+  async configureClaude(params: {
+    authToken: string;
+    baseUrl?: string;
+    opusModel?: string;
+    sonnetModel?: string;
+    haikuModel?: string;
+  }): Promise<void> {
     await this.page.goto('/settings');
 
     // Navigate to Claude Code page via sidebar
@@ -71,11 +77,11 @@ export class TestApp {
 
     const config = {
       env: {
-        ANTHROPIC_BASE_URL: '',
+        ANTHROPIC_BASE_URL: params.baseUrl ?? '',
         ANTHROPIC_AUTH_TOKEN: params.authToken,
-        ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-7',
-        ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-4-6',
-        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-4-5',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: params.opusModel ?? 'claude-opus-4-7',
+        ANTHROPIC_DEFAULT_SONNET_MODEL: params.sonnetModel ?? 'claude-sonnet-4-6',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: params.haikuModel ?? 'claude-haiku-4-5',
         CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: '1',
       },
       skipDangerousModePermissionPrompt: true,
