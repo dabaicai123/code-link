@@ -173,7 +173,7 @@ export function getE2EServerInstance(): E2EServerInstance | null {
 export async function startServerForE2E(options?: { port?: number }): Promise<E2EServerInstance> {
   process.env.NODE_ENV = 'test';
   process.env.DB_PATH = ':memory:';
-  process.env.JWT_SECRET = process.env.JWT_SECRET || 'e2e-test-secret-key-minimum-32-chars-long';
+  // JWT_SECRET and CLAUDE_CONFIG_ENCRYPTION_KEY must come from root .env via dotenv-cli
 
   const { resetConfig } = await import('./core/config.js');
   resetConfig();
@@ -228,5 +228,5 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
 
   await initDefaultAdmin(dbConnection);
 
-  startServer(process.env.PORT ? parseInt(process.env.PORT) : 4000);
+  startServer(getConfig().serverPort);
 }
