@@ -8,7 +8,7 @@ import { AuthRepository } from '../../../src/modules/auth/repository.js';
 import { OrganizationRepository } from '../../../src/modules/organization/repository.js';
 import { DatabaseConnection } from '../../../src/core/database/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { registerServiceModules } from '../../helpers/service-modules.js';
+import { registerServiceModules, resetLazyGetterCaches } from '../../helpers/service-modules.js';
 import { createSqliteDb, runMigrations } from '../../../src/db/index.js';
 import { organizationMembers } from '../../../src/db/schema/index.js';
 
@@ -40,6 +40,7 @@ describe('DraftService', () => {
   let orgId: number;
 
   beforeEach(async () => {
+    resetLazyGetterCaches();
     container.reset();
     resetConfig();
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
@@ -78,6 +79,7 @@ describe('DraftService', () => {
 
   afterEach(() => {
     db.close();
+    resetLazyGetterCaches();
     container.reset();
   });
 

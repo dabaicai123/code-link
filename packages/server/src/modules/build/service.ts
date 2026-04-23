@@ -15,17 +15,22 @@ import type { PreviewInfo } from './types.js';
 
 const logger = createLogger('build-service');
 
+let _permService: PermissionService | null = null;
+function getPermService() { return _permService ??= container.resolve(PermissionService); }
+
+/** Reset lazy getter cache (for tests after container.reset()) */
+export function resetBuildServiceCache(): void { _permService = null; }
+
 @singleton()
 export class BuildService {
   constructor(
     @inject(BuildRepository) private readonly repo: BuildRepository,
-    @inject(PermissionService) private readonly permService: PermissionService,
     @inject(BuildManager) private readonly buildManager: BuildManager,
     @inject(PreviewContainerManager) private readonly previewManager: PreviewContainerManager
   ) {}
 
   async create(userId: number, input: CreateBuildInput): Promise<SelectBuild> {
-    const project = await this.permService.checkProjectAccess(userId, input.projectId);
+    const project = await getPermService().checkProjectAccess(userId, input.projectId);
 
     const build = await this.buildManager.createBuild(input.projectId);
 
@@ -46,7 +51,7 @@ export class BuildService {
   }
 
   async findByProjectId(userId: number, projectId: number, page?: number, limit?: number): Promise<PaginatedResult<SelectBuild>> {
-    await this.permService.checkProjectAccess(userId, projectId);
+    await getPermService().checkProjectAccess(userId, projectId);
 
     return this.buildManager.getProjectBuilds(projectId, page, limit);
   }
@@ -58,13 +63,13 @@ export class BuildService {
       throw new NotFoundError('构建');
     }
 
-    await this.permService.checkProjectAccess(userId, build.projectId);
+    await getPermService().checkProjectAccess(userId, build.projectId);
 
     return build;
   }
 
   async getPreview(userId: number, projectId: number): Promise<PreviewInfo> {
-    await this.permService.checkProjectAccess(userId, projectId);
+    await getPermService().checkProjectAccess(userId, projectId);
 
     const containerInfo = this.previewManager.getContainerInfo(projectId.toString());
 
@@ -79,7 +84,7 @@ export class BuildService {
   }
 
   async stopPreview(userId: number, projectId: number): Promise<void> {
-    await this.permService.checkProjectAccess(userId, projectId);
+    await getPermService().checkProjectAccess(userId, projectId);
 
     await this.previewManager.stopPreviewContainer(projectId.toString());
   }

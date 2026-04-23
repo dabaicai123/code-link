@@ -81,7 +81,13 @@ export async function apiClient<T = unknown>(
   const result = await response.json();
 
   if (result.code === 0 && 'data' in result) {
-    return result.data as T;
+    const data = result.data;
+    // Paginated responses: { data: T[], meta: { page, limit, total, totalPages } }
+    // Auto-extract the inner data array so callers receive T[] directly
+    if (data && typeof data === 'object' && !Array.isArray(data) && 'data' in data && 'meta' in data) {
+      return data.data as T;
+    }
+    return data as T;
   }
 
   return result as T;

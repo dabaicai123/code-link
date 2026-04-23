@@ -16,6 +16,10 @@ sleep 2
 echo "构建后端..."
 pnpm --filter @code-link/server build
 
+# Copy migration SQL files to dist (tsc doesn't copy non-TS assets)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cp -r "$SCRIPT_DIR/../packages/server/src/db/migrations" "$SCRIPT_DIR/../packages/server/dist/db/migrations"
+
 # 启动后端 (端口 4000，使用内存数据库)
 echo "启动后端服务 (内存数据库模式)..."
 cd packages/server

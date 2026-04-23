@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { singleton, inject } from 'tsyringe';
+import { singleton, inject, container } from 'tsyringe';
 import { DraftRepository } from './repository.js';
 import { ProjectService } from '../project/project.module.js';
 import { AuthService } from '../auth/auth.module.js';
@@ -14,13 +14,18 @@ import type { SelectDraft, InsertDraftMessage } from '../../db/schema/index.js';
 import type { CreateDraftInput, CreateDraftMessageInput, ConfirmMessageInput } from './schemas.js';
 import type { DraftDetail, DraftMessageWithUser, MessageConfirmationWithUser } from './types.js';
 
+let _permService: PermissionService | null = null;
+function getPermService() { return _permService ??= container.resolve(PermissionService); }
+
+/** Reset lazy getter cache (for tests after container.reset()) */
+export function resetDraftServiceCache(): void { _permService = null; }
+
 @singleton()
 export class DraftService {
   constructor(
     @inject(DraftRepository) private readonly draftRepo: DraftRepository,
     @inject(ProjectService) private readonly projectService: ProjectService,
     @inject(AuthService) private readonly authService: AuthService,
-    @inject(PermissionService) private readonly permissionService: PermissionService,
     @inject(AIClientFactory) private readonly aiClient: AIClientFactory
   ) {}
 
@@ -38,7 +43,7 @@ export class DraftService {
       throw new NotFoundError('项目');
     }
 
-    await this.permissionService.checkProjectAccess(userId, project.id);
+    await getPermService().checkProjectAccess(userId, project.id);
 
     const draft = await this.draftRepo.createWithOwner({
       projectId: input.projectId,
@@ -96,7 +101,7 @@ export class DraftService {
     await this.checkDraftAccess(draftId, userId);
 
     const member = await this.draftRepo.findMember(draftId, userId);
-    const isSuperAdmin = await this.permissionService.isSuperAdmin(userId);
+    const isSuperAdmin = await getPermService().isSuperAdmin(userId);
 
     if (!isSuperAdmin && (!member || member.role !== 'owner')) {
       throw new PermissionError('只有草稿 owner 可以删除');
@@ -287,7 +292,7 @@ export class DraftService {
   }
 
   private async checkDraftAccess(draftId: number, userId: number): Promise<void> {
-    if (await this.permissionService.isSuperAdmin(userId)) {
+    if (await getPermService().isSuperAdmin(userId)) {
       return;
     }
 

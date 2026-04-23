@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { singleton, inject, delay } from 'tsyringe';
+import { singleton, inject, container } from 'tsyringe';
 import { ProjectRepository } from './repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { ParamError } from '../../core/errors/index.js';
@@ -9,11 +9,16 @@ import { isValidTemplate } from '../container/lib/templates.js';
 import type { CreateProjectInput, AddRepoInput } from './schemas.js';
 import type { ProjectDetail, ParsedRepoUrl } from './types.js';
 
+let _permService: PermissionService | null = null;
+function getPermService() { return _permService ??= container.resolve(PermissionService); }
+
+/** Reset lazy getter cache (for tests after container.reset()) */
+export function resetProjectServiceCache(): void { _permService = null; }
+
 @singleton()
 export class ProjectService {
   constructor(
-    @inject(ProjectRepository) private readonly repo: ProjectRepository,
-    @inject(delay(() => PermissionService)) private readonly permService: PermissionService
+    @inject(ProjectRepository) private readonly repo: ProjectRepository
   ) {}
 
   async create(userId: number, input: CreateProjectInput): Promise<SelectProject> {
@@ -26,7 +31,7 @@ export class ProjectService {
       throw new ParamError('无效的模板类型，必须是 node, node+java 或 node+python');
     }
 
-    await this.permService.checkOrgRole(userId, input.organizationId, 'developer');
+    await getPermService().checkOrgRole(userId, input.organizationId, 'developer');
 
     return this.repo.create({
       name: trimmedName,
@@ -41,7 +46,7 @@ export class ProjectService {
   }
 
   async findById(userId: number, projectId: number): Promise<ProjectDetail> {
-    const project = await this.permService.checkProjectAccess(userId, projectId);
+    const project = await getPermService().checkProjectAccess(userId, projectId);
     const members = await this.repo.findProjectMembers(project.organizationId);
     const repos = await this.repo.findRepos(projectId);
 
@@ -49,8 +54,8 @@ export class ProjectService {
   }
 
   async delete(userId: number, projectId: number): Promise<void> {
-    const project = await this.permService.checkProjectAccess(userId, projectId);
-    await this.permService.checkOrgOwner(userId, project.organizationId);
+    const project = await getPermService().checkProjectAccess(userId, projectId);
+    await getPermService().checkOrgOwner(userId, project.organizationId);
     await this.repo.delete(projectId);
   }
 
@@ -81,7 +86,7 @@ export class ProjectService {
 
   async isProjectMember(projectId: number, userId: number): Promise<boolean> {
     try {
-      await this.permService.checkProjectAccess(userId, projectId);
+      await getPermService().checkProjectAccess(userId, projectId);
       return true;
     } catch {
       return false;
@@ -89,12 +94,12 @@ export class ProjectService {
   }
 
   async findRepos(projectId: number, userId: number): Promise<SelectProjectRepo[]> {
-    await this.permService.checkProjectAccess(userId, projectId);
+    await getPermService().checkProjectAccess(userId, projectId);
     return this.repo.findRepos(projectId);
   }
 
   async addRepo(projectId: number, userId: number, input: AddRepoInput): Promise<SelectProjectRepo> {
-    await this.permService.checkProjectAccess(userId, projectId);
+    await getPermService().checkProjectAccess(userId, projectId);
 
     const parsed = this.parseRepoUrl(input.url);
     if (!parsed) {
@@ -118,7 +123,7 @@ export class ProjectService {
   }
 
   async deleteRepo(projectId: number, userId: number, repoId: number): Promise<void> {
-    await this.permService.checkProjectAccess(userId, projectId);
+    await getPermService().checkProjectAccess(userId, projectId);
 
     const repo = await this.repo.findRepo(repoId, projectId);
     if (!repo) {

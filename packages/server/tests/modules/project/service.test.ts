@@ -7,7 +7,7 @@ import { OrganizationRepository } from '../../../src/modules/organization/reposi
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
 import { DatabaseConnection } from '../../../src/core/database/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { registerCoreServiceModules } from '../../helpers/service-modules.js';
+import { registerCoreServiceModules, resetLazyGetterCaches } from '../../helpers/service-modules.js';
 import { createSqliteDb, runMigrations } from '../../../src/db/index.js';
 
 describe('ProjectService', () => {
@@ -15,6 +15,7 @@ describe('ProjectService', () => {
   let db: DatabaseConnection;
 
   beforeEach(() => {
+    resetLazyGetterCaches();
     container.reset();
     resetConfig();
     process.env.JWT_SECRET = 'test-secret-key-must-be-32-characters!';
@@ -32,6 +33,7 @@ describe('ProjectService', () => {
 
   afterEach(() => {
     db.close();
+    resetLazyGetterCaches();
     container.reset();
   });
 

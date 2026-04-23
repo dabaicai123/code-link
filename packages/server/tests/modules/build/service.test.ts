@@ -11,7 +11,7 @@ import { OrganizationRepository } from '../../../src/modules/organization/reposi
 import { AuthRepository } from '../../../src/modules/auth/repository.js';
 import { DatabaseConnection } from '../../../src/core/database/index.js';
 import { resetConfig } from '../../../src/core/config.js';
-import { registerServiceModules } from '../../helpers/service-modules.js';
+import { registerServiceModules, resetLazyGetterCaches } from '../../helpers/service-modules.js';
 import { createSqliteDb, runMigrations } from '../../../src/db/index.js';
 
 describe('BuildService', () => {
@@ -33,6 +33,7 @@ describe('BuildService', () => {
   };
 
   beforeEach(() => {
+    resetLazyGetterCaches();
     vi.clearAllMocks();
     container.reset();
     resetConfig();
@@ -56,6 +57,7 @@ describe('BuildService', () => {
 
   afterEach(() => {
     db.close();
+    resetLazyGetterCaches();
     container.reset();
   });
 

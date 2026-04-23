@@ -15,7 +15,7 @@ export function registerContainerModule(): void {
 }
 
 export { DockerService } from './lib/docker.service.js';
-export { ContainerService } from './service.js';
+export { ContainerService, resetContainerServiceCache } from './service.js';
 export { ContainerController } from './controller.js';
 export { createContainerRoutes } from './routes.js';
 export { projectIdParamsSchema } from './schemas.js';

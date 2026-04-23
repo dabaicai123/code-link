@@ -14,4 +14,5 @@ export function registerCodeModule(): void {
 }
 
 export { CodeService, CodeController, CodeServerManager };
+export { resetCodeServiceCache } from './service.js';
 export { createCodeRoutes } from './routes.js';

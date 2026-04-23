@@ -6,13 +6,18 @@ import { AIClientFactory } from './ai/ai-client-factory.js';
 import { AuthMiddlewareService } from '../middleware/auth-middleware.service.js';
 import { getConfig } from './config.js';
 
+let _encryptionKeyApplied = false;
+
 export function registerCoreModule(): void {
   container.registerSingleton(EncryptionService);
 
-  const config = getConfig();
-  const encryptionService = container.resolve(EncryptionService);
-  if (config.claudeConfigEncryptionKey) {
-    encryptionService.setKey(config.claudeConfigEncryptionKey);
+  if (!_encryptionKeyApplied) {
+    const config = getConfig();
+    if (config.claudeConfigEncryptionKey) {
+      const encryptionService = container.resolve(EncryptionService);
+      encryptionService.setKey(config.claudeConfigEncryptionKey);
+    }
+    _encryptionKeyApplied = true;
   }
 
   container.registerSingleton(LoggerService);

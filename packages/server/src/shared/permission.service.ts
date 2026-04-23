@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { singleton, inject, delay } from 'tsyringe';
+import { singleton, inject, container } from 'tsyringe';
 import { OrganizationService } from '../modules/organization/organization.module.js';
 import { AuthService } from '../modules/auth/auth.module.js';
 import { ProjectService } from '../modules/project/project.module.js';
@@ -7,12 +7,18 @@ import { PermissionError, NotFoundError } from '../core/errors/index.js';
 import { ROLE_HIERARCHY, hasRole } from '../utils/roles.js';
 import type { SelectProject, OrgRole } from '../db/schema/index.js';
 
+let _orgService: OrganizationService | null = null;
+let _projectService: ProjectService | null = null;
+function getOrgService() { return _orgService ??= container.resolve(OrganizationService); }
+function getProjectService() { return _projectService ??= container.resolve(ProjectService); }
+
+/** Reset lazy getter cache (for tests after container.reset()) */
+export function resetPermissionServiceCache(): void { _orgService = null; _projectService = null; }
+
 @singleton()
 export class PermissionService {
   constructor(
-    @inject(AuthService) private readonly authService: AuthService,
-    @inject(delay(() => OrganizationService)) private readonly orgService: OrganizationService,
-    @inject(delay(() => ProjectService)) private readonly projectService: ProjectService
+    @inject(AuthService) private readonly authService: AuthService
   ) {}
 
   async isSuperAdmin(userId: number): Promise<boolean> {
@@ -24,7 +30,7 @@ export class PermissionService {
       return;
     }
 
-    const membership = await this.orgService.getOrgRole(userId, orgId);
+    const membership = await getOrgService().getOrgRole(userId, orgId);
     if (!membership) {
       throw new PermissionError('您不是该组织的成员');
     }
@@ -35,7 +41,7 @@ export class PermissionService {
   }
 
   async checkProjectAccess(userId: number, projectId: number): Promise<SelectProject> {
-    const project = await this.projectService.getProjectById(projectId);
+    const project = await getProjectService().getProjectById(projectId);
     if (!project) {
       throw new NotFoundError('项目');
     }
@@ -44,7 +50,7 @@ export class PermissionService {
       return project;
     }
 
-    const membership = await this.orgService.getOrgRole(userId, project.organizationId);
+    const membership = await getOrgService().getOrgRole(userId, project.organizationId);
     if (!membership) {
       throw new PermissionError('您没有权限访问该项目');
     }
@@ -57,7 +63,7 @@ export class PermissionService {
       return;
     }
 
-    const isOwner = await this.orgService.isOrgOwner(userId, orgId);
+    const isOwner = await getOrgService().isOrgOwner(userId, orgId);
     if (!isOwner) {
       throw new PermissionError('只有组织 owner 可以执行此操作');
     }
@@ -68,6 +74,6 @@ export class PermissionService {
       return 'owner';
     }
 
-    return this.orgService.getOrgRole(userId, orgId);
+    return getOrgService().getOrgRole(userId, orgId);
   }
 }

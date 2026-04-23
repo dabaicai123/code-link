@@ -140,7 +140,8 @@ export class TestApp {
 
   async createProject(params: { name: string; organizationId?: number }): Promise<TestProject> {
     await this.page.goto('/dashboard');
-    await this.page.getByText('+ 新建项目').click();
+    await this.page.waitForLoadState('networkidle');
+    await this.page.getByText('+ 新建项目').click({ timeout: 10000 });
 
     // Select organization if specified — find org name via API for the dropdown
     if (params.organizationId) {

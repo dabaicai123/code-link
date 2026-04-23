@@ -48,8 +48,10 @@ export class TestApi {
   // === Organization Operations ===
 
   async getOrganizations(): Promise<TestOrganization[]> {
-    const response = await this.get<ApiResponse<TestOrganization[]>>('/organizations');
-    return response.data;
+    const response = await this.get<ApiResponse<{ data: TestOrganization[]; meta: unknown }> | TestOrganization[]>('/organizations');
+    // API may return paginated format {data: [...], meta: {...}} or plain array
+    const raw = response.data;
+    return Array.isArray(raw) ? raw : raw.data;
   }
 
   async getOrganizationByName(name: string): Promise<TestOrganization | undefined> {
@@ -65,8 +67,9 @@ export class TestApi {
   // === Project Operations ===
 
   async getProjects(): Promise<TestProject[]> {
-    const response = await this.get<ApiResponse<TestProject[]>>('/projects');
-    return response.data;
+    const response = await this.get<ApiResponse<{ data: TestProject[]; meta: unknown }> | TestProject[]>('/projects');
+    const raw = response.data;
+    return Array.isArray(raw) ? raw : raw.data;
   }
 
   async getProjectByName(name: string): Promise<TestProject | undefined> {
