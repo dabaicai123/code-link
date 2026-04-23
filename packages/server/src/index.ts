@@ -11,7 +11,7 @@ import { DatabaseConnection, initDefaultAdmin, createSqliteDb, runMigrations } f
 
 // 模块注册
 import { registerCoreModule } from './core/core.module.js';
-import { registerAuthModule, createAuthRoutes, AuthController } from './modules/auth/auth.module.js';
+import { registerAuthModule, createAuthRoutes, AuthController, RateLimiterOptions } from './modules/auth/auth.module.js';
 import { registerOrganizationModule, createOrganizationRoutes, createInvitationRoutes, OrganizationController } from './modules/organization/organization.module.js';
 import { registerProjectModule, createProjectRoutes, ProjectController } from './modules/project/project.module.js';
 import { registerDraftModule, createDraftRoutes, DraftController } from './modules/draft/draft.module.js';
@@ -34,11 +34,11 @@ import { handleCodeServerWebSocketUpgrade } from './modules/code/proxy.js';
 import { CodeServerManager } from './modules/code/code.module.js';
 
 // 其他初始化
-import { success, Errors } from './core/errors/index.js';
+import { success, NotFoundError } from './core/errors/index.js';
 
 const logger = new LoggerService();
 
-export function createApp(): express.Express {
+export function createApp(authLimiterOptions?: RateLimiterOptions): express.Express {
   const app = express();
 
   // 注册核心模块（EncryptionService, LoggerService 等）
@@ -85,10 +85,9 @@ export function createApp(): express.Express {
   app.use(express.json());
   app.use(requestIdMiddleware);
 
-  // Request-context logging — each request gets a child logger with requestId & userId
+  // Request-context logging — use module-level logger, not per-request container.resolve
   app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {
-    const rootLogger = container.resolve(LoggerService);
-    req.log = rootLogger.withContext({
+    req.log = logger.withContext({
       requestId: req.requestId,
       userId: req.userId ?? 'anonymous',
     });
@@ -112,7 +111,7 @@ export function createApp(): express.Express {
   const codeController = container.resolve(CodeController);
 
   // 注册路由
-  app.use('/api/auth', createAuthRoutes(authController));
+  app.use('/api/auth', createAuthRoutes(authController, authLimiterOptions));
   app.use('/api/organizations', createOrganizationRoutes(orgController));
   app.use('/api/invitations', createInvitationRoutes(orgController));
   app.use('/api/projects', createProjectRoutes(projectController));
@@ -129,8 +128,8 @@ export function createApp(): express.Express {
   app.use('/api/claude-config', createClaudeConfigRoutes(claudeConfigController));
 
   // 404 处理
-  app.use((_req, res) => {
-    res.status(404).json(Errors.notFound('接口'));
+  app.use((_req, _res, next: express.NextFunction) => {
+    next(new NotFoundError('接口'));
   });
 
   // 错误处理

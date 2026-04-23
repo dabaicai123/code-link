@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { userIdQuerySchema, idParamSchema } from '../../shared/schemas.js';
 
 export const providerEnum = z.enum(['github', 'gitlab']);
 
@@ -7,9 +8,7 @@ export const oauthCallbackSchema = z.object({
   userId: z.number().int().positive('用户ID必须是正整数'),
 });
 
-export const repoQuerySchema = z.object({
-  userId: z.string().regex(/^\d+$/, '用户ID必须是数字').transform(Number),
-});
+export { userIdQuerySchema as repoQuerySchema };
 
 export const webhookCreateSchema = z.object({
   userId: z.number().int().positive('用户ID必须是正整数'),
@@ -18,7 +17,9 @@ export const webhookCreateSchema = z.object({
   webhookUrl: z.string().url('webhookUrl 必须是有效的 URL'),
 });
 
+export { idParamSchema as gitLabProjectParamsSchema };
+
 export type Provider = z.infer<typeof providerEnum>;
 export type OAuthCallbackInput = z.infer<typeof oauthCallbackSchema>;
-export type RepoQueryInput = z.infer<typeof repoQuerySchema>;
+export type RepoQueryInput = z.infer<typeof userIdQuerySchema>;
 export type WebhookCreateInput = z.infer<typeof webhookCreateSchema>;

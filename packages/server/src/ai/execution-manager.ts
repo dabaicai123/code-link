@@ -1,6 +1,7 @@
 // packages/server/src/ai/execution-manager.ts
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../core/logger/index.js';
+import { normalizeError } from '../core/errors/index.js';
 import {
   createCard,
   updateCard,
@@ -9,6 +10,10 @@ import {
 import type { CardData, CardType, CardStatus } from '../modules/draft/file-types.js';
 
 const logger = createLogger('execution-manager');
+
+// Session max age: 1 hour
+const SESSION_MAX_AGE_MS = 60 * 60 * 1000;
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 export interface ExecutionSession {
   id: string;
@@ -233,14 +238,26 @@ export async function cleanupExpiredSessions(): Promise<void> {
   const now = new Date();
   for (const [sessionId, session] of activeExecutions) {
     const elapsed = now.getTime() - session.startedAt.getTime();
-    if (elapsed > 60 * 60 * 1000) {
+    if (elapsed > SESSION_MAX_AGE_MS) {
       try {
         await updateCard(session.projectId, session.draftId, session.cardId, { cardStatus: 'failed' });
       } catch (error) {
-        logger.error(`Failed to mark expired card as failed: ${session.cardId}`, error instanceof Error ? error : new Error(String(error)));
+        logger.error(`Failed to mark expired card as failed: ${session.cardId}`, normalizeError(error));
       }
       activeExecutions.delete(sessionId);
       logger.warn(`Cleaned up expired execution: ${sessionId}`);
     }
   }
+}
+
+// Auto-cleanup interval
+let cleanupInterval: NodeJS.Timeout | null = null;
+
+export function startExecutionCleanup(): void {
+  if (cleanupInterval) return;
+  cleanupInterval = setInterval(() => { cleanupExpiredSessions().catch(e => logger.error('Cleanup error', normalizeError(e))); }, CLEANUP_INTERVAL_MS);
+}
+
+export function stopExecutionCleanup(): void {
+  if (cleanupInterval) { clearInterval(cleanupInterval); cleanupInterval = null; }
 }

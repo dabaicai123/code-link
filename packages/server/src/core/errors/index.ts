@@ -13,6 +13,7 @@ export {
   isError,
   getErrorMessage,
   getErrorStack,
+  normalizeError,
 } from './errors.js';
 
 export {

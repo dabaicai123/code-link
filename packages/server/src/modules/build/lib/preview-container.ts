@@ -2,6 +2,7 @@ import { singleton, inject } from 'tsyringe';
 import Docker from 'dockerode';
 import { DockerService } from '../../container/lib/docker.service.js';
 import { PortManager } from './port-manager.js';
+import { normalizeError } from '../../../core/errors/index.js';
 import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('preview');
@@ -80,7 +81,7 @@ export class PreviewContainerManager {
         await container.stop();
         await container.remove();
       } catch (error) {
-        logger.error('Failed to stop container', error instanceof Error ? error : new Error(String(error)));
+        logger.error('Failed to stop container', normalizeError(error));
       }
 
       this.portManager.releasePort(info.port);
@@ -99,7 +100,7 @@ export class PreviewContainerManager {
           this.portManager.releasePort(parseInt(portBinding, 10));
         }
       } catch (error) {
-        logger.error('Failed to stop container by name', error instanceof Error ? error : new Error(String(error)));
+        logger.error('Failed to stop container by name', normalizeError(error));
       }
     }
   }
@@ -120,7 +121,7 @@ export class PreviewContainerManager {
         await container.stop();
         await container.remove();
       } catch (error) {
-        logger.error('Failed to cleanup container', error instanceof Error ? error : new Error(String(error)));
+        logger.error('Failed to cleanup container', normalizeError(error));
       }
 
       this.portManager.releasePort(info.port);

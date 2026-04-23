@@ -7,10 +7,11 @@ import { createLogger } from '../../core/logger/index.js';
 import { TerminalEvents } from '../types.js';
 import { getTerminalManager } from '../../modules/container/lib/terminal-manager.js';
 import { DockerService } from '../../modules/container/lib/docker.service.js';
-import { decrypt, isEncryptionKeySet } from '../../crypto/aes.js';
+import { EncryptionService } from '../../core/crypto/encryption.service.js';
 import { ProjectRepository } from '../../modules/project/repository.js';
 import { ClaudeConfigRepository } from '../../modules/claude-config/repository.js';
 import { OrganizationRepository } from '../../modules/organization/repository.js';
+import { normalizeError } from '../../core/errors/index.js';
 import { sanitizeErrorMessage } from '../utils/error-sanitize.js';
 import { startExecutionSession, getExecutionByTerminal, updateExecutionStatus, appendExecutionOutput, completeExecution, pauseExecution, resumeExecution } from '../../ai/execution-manager.js';
 import { buildAIExecutionContext, generateClaudeCodePrompt } from '../../ai/context-builder.js';
@@ -26,11 +27,13 @@ let _projectRepo: ProjectRepository | null = null;
 let _claudeConfigRepo: ClaudeConfigRepository | null = null;
 let _orgRepo: OrganizationRepository | null = null;
 let _dockerService: DockerService | null = null;
+let _encryptionService: EncryptionService | null = null;
 
 function getProjectRepo() { return _projectRepo ??= container.resolve(ProjectRepository); }
 function getClaudeConfigRepo() { return _claudeConfigRepo ??= container.resolve(ClaudeConfigRepository); }
 function getOrgRepo() { return _orgRepo ??= container.resolve(OrganizationRepository); }
 function getDockerService() { return _dockerService ??= container.resolve(DockerService); }
+function getEncryptionService() { return _encryptionService ??= container.resolve(EncryptionService); }
 
 export function setupTerminalNamespace(namespace: Namespace): void {
   namespace.on('connection', async (socket) => {
@@ -90,12 +93,13 @@ export function setupTerminalNamespace(namespace: Namespace): void {
 
       let userEnv: Record<string, string> = {};
       try {
-        if (!isEncryptionKeySet()) {
+        const encryption = getEncryptionService();
+        if (!encryption.isAvailable()) {
           socket.emit('error', { message: '服务器加密密钥未配置，请联系管理员' });
           return;
         }
 
-        const config = JSON.parse(decrypt(configRow.config));
+        const config = JSON.parse(encryption.decrypt(configRow.config));
         if (config.env && typeof config.env === 'object') {
           userEnv = config.env;
         }
@@ -105,7 +109,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
           return;
         }
       } catch (error) {
-        logger.error('Failed to decrypt user config', error instanceof Error ? error : new Error(String(error)));
+        logger.error('Failed to decrypt user config', normalizeError(error));
         socket.emit('error', { message: '用户配置解密失败，请重新配置' });
         return;
       }
@@ -183,7 +187,7 @@ export function setupTerminalNamespace(namespace: Namespace): void {
       try {
         await terminalManager.resize(sessionId, cols, rows);
       } catch (error) {
-        logger.error('Failed to resize terminal', error instanceof Error ? error : new Error(String(error)));
+        logger.error('Failed to resize terminal', normalizeError(error));
       }
     });
 

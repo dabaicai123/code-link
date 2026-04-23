@@ -14,6 +14,7 @@ export const paginationSchema = z.object({
  */
 export const projectPaginationSchema = paginationSchema.extend({
   limit: z.coerce.number().int().min(1).max(PAGINATION_LIMITS.projects.max).default(PAGINATION_LIMITS.projects.default),
+  organizationId: z.coerce.number().int().positive().optional(),
 });
 
 export const organizationPaginationSchema = paginationSchema.extend({

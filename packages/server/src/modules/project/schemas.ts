@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { idParamSchema, repoIdParamSchema } from '../../shared/schemas.js';
 
 export const createProjectSchema = z.object({
   name: z.string().min(1, '项目名称不能为空').max(100, '项目名称最多100个字符'),
@@ -10,16 +11,9 @@ export const addRepoSchema = z.object({
   url: z.string().url('必须是有效的 URL'),
 });
 
-export const projectIdParamsSchema = z.object({
-  id: z.string().regex(/^\d+$/, '项目ID必须是数字').transform(Number),
-});
-
-export const repoIdParamsSchema = z.object({
-  id: z.string().regex(/^\d+$/, '项目ID必须是数字').transform(Number),
-  repoId: z.string().regex(/^\d+$/, '仓库ID必须是数字').transform(Number),
-});
+export { idParamSchema as projectIdParamsSchema, repoIdParamSchema as repoIdParamsSchema };
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type AddRepoInput = z.infer<typeof addRepoSchema>;
-export type ProjectIdParams = z.infer<typeof projectIdParamsSchema>;
-export type RepoIdParams = z.infer<typeof repoIdParamsSchema>;
+export type ProjectIdParams = z.infer<typeof idParamSchema>;
+export type RepoIdParams = z.infer<typeof repoIdParamSchema>;

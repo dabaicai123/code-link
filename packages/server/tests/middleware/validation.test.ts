@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { validateBody, validateParams, validateQuery } from '../../src/middleware/validation.js';
+import { ValidationError } from '../../src/core/errors/index.js';
 
 describe('Validation Middleware', () => {
   let mockReq: Partial<Request>;
@@ -26,32 +27,26 @@ describe('Validation Middleware', () => {
     it('should pass valid body', () => {
       mockReq.body = { name: 'test', age: 25 };
       validateBody(schema)(mockReq as Request, mockRes as Response, mockNext);
-      
+
       expect(mockNext).toHaveBeenCalled();
       expect(mockReq.body).toEqual({ name: 'test', age: 25 });
     });
 
-    it('should reject invalid body', () => {
+    it('should throw ValidationError on invalid body', () => {
       mockReq.body = { name: '', age: -1 };
-      validateBody(schema)(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(() => validateBody(schema)(mockReq as Request, mockRes as Response, mockNext))
+        .toThrow(ValidationError);
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 20002,
-          error: '参数验证失败',
-        })
-      );
     });
 
-    it('should strip unknown properties with strict mode', () => {
+    it('should throw ValidationError for unknown properties with strict mode', () => {
       const strictSchema = z.object({ name: z.string() }).strict();
       mockReq.body = { name: 'test', unknown: 'field' };
-      
-      validateBody(strictSchema)(mockReq as Request, mockRes as Response, mockNext);
-      
-      expect(mockRes.status).toHaveBeenCalledWith(400);
+
+      expect(() => validateBody(strictSchema)(mockReq as Request, mockRes as Response, mockNext))
+        .toThrow(ValidationError);
     });
   });
 
@@ -60,20 +55,21 @@ describe('Validation Middleware', () => {
       id: z.string().regex(/^\d+$/).transform(Number),
     });
 
-    it('should pass valid params', () => {
+    it('should pass valid params and store in validatedParams', () => {
       mockReq.params = { id: '123' };
       validateParams(schema)(mockReq as Request, mockRes as Response, mockNext);
-      
+
       expect(mockNext).toHaveBeenCalled();
-      expect(mockReq.params).toEqual({ id: 123 });
+      expect(mockReq.validatedParams).toEqual({ id: 123 });
     });
 
-    it('should reject invalid params', () => {
+    it('should throw ValidationError on invalid params', () => {
       mockReq.params = { id: 'abc' };
-      validateParams(schema)(mockReq as Request, mockRes as Response, mockNext);
-      
+
+      expect(() => validateParams(schema)(mockReq as Request, mockRes as Response, mockNext))
+        .toThrow(ValidationError);
+
       expect(mockNext).not.toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(400);
     });
   });
 
@@ -86,7 +82,7 @@ describe('Validation Middleware', () => {
     it('should pass valid query with defaults', () => {
       mockReq.query = {};
       validateQuery(schema)(mockReq as Request, mockRes as Response, mockNext);
-      
+
       expect(mockNext).toHaveBeenCalled();
       expect(mockReq.query).toEqual({ page: 1, limit: 10 });
     });
@@ -94,7 +90,7 @@ describe('Validation Middleware', () => {
     it('should use provided values', () => {
       mockReq.query = { page: '2', limit: '20' };
       validateQuery(schema)(mockReq as Request, mockRes as Response, mockNext);
-      
+
       expect(mockNext).toHaveBeenCalled();
       expect(mockReq.query).toEqual({ page: 2, limit: 20 });
     });

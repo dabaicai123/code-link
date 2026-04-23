@@ -13,6 +13,7 @@ import {
   execWithUserEnv,
   type ExecSession,
 } from './docker-exec.js';
+import { normalizeError } from '../../../core/errors/index.js';
 import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('terminal-mgr');
@@ -136,7 +137,7 @@ class TerminalManagerImpl {
       const decoded = Buffer.from(data, 'base64').toString();
       writeToExecStream(session.execSession.stream as unknown as NodeJS.WritableStream, decoded);
     } catch (error) {
-      logger.error(`Failed to write input to session ${sessionId}`, error instanceof Error ? error : new Error(String(error)));
+      logger.error(`Failed to write input to session ${sessionId}`, normalizeError(error));
     }
   }
 
@@ -158,7 +159,7 @@ class TerminalManagerImpl {
       session.cols = cols;
       session.rows = rows;
     } catch (error) {
-      logger.error(`Failed to resize session ${sessionId}`, error instanceof Error ? error : new Error(String(error)));
+      logger.error(`Failed to resize session ${sessionId}`, normalizeError(error));
       throw error;
     }
   }
@@ -188,7 +189,7 @@ class TerminalManagerImpl {
       // 从 sessions map 中删除
       this.sessions.delete(sessionId);
     } catch (error) {
-      logger.error(`Error closing session ${sessionId}`, error instanceof Error ? error : new Error(String(error)));
+      logger.error(`Error closing session ${sessionId}`, normalizeError(error));
       // 即使出错也要删除会话
       this.sessions.delete(sessionId);
     }
@@ -256,7 +257,7 @@ class TerminalManagerImpl {
 
       logger.info(`Message sent to terminal session ${sessionId}`);
     } catch (error) {
-      logger.error(`Failed to send message to session ${sessionId}`, error instanceof Error ? error : new Error(String(error)));
+      logger.error(`Failed to send message to session ${sessionId}`, normalizeError(error));
     }
   }
 

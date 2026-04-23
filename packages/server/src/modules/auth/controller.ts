@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
 import { Request, Response } from 'express';
 import { AuthService } from './service.js';
-import { success, Errors } from '../../core/errors/index.js';
+import { success, NotFoundError } from '../../core/errors/index.js';
 
 @singleton()
 export class AuthController {
@@ -21,14 +21,8 @@ export class AuthController {
   }
 
   async me(req: Request, res: Response): Promise<void> {
-    const userId = req.userId!;
-    const user = await this.service.getUser(userId);
-
-    if (!user) {
-      res.status(404).json(Errors.notFound('用户'));
-      return;
-    }
-
+    const user = await this.service.getUser(req.userId!);
+    if (!user) throw new NotFoundError('用户');
     res.json(success(user));
   }
 }

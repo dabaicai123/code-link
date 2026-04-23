@@ -1,6 +1,7 @@
 import { singleton, inject } from 'tsyringe';
 import { DockerService } from '../../container/lib/docker.service.js';
 import { PortManager } from '../../build/lib/port-manager.js';
+import { normalizeError } from '../../../core/errors/index.js';
 import { createLogger } from '../../../core/logger/index.js';
 
 const logger = createLogger('code-server-manager');
@@ -50,7 +51,7 @@ export class CodeServerManager {
       if (!existing) {
         portManager.releasePort(port);
       }
-      logger.error('Failed to start code-server', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Failed to start code-server', normalizeError(error));
       throw error;
     }
   }

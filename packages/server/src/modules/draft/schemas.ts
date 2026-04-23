@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { draftIdParamSchema } from '../../shared/schemas.js';
 
 export const createDraftSchema = z.object({
   projectId: z.number().int().positive('项目ID必须是正整数'),
@@ -30,17 +31,13 @@ export const addDraftMemberSchema = z.object({
   newUserId: z.number().int().positive('用户ID必须是正整数'),
 });
 
-export const draftIdParamsSchema = z.object({
-  draftId: z.string().regex(/^\d+$/, 'Draft ID必须是数字').transform(Number),
-});
+export { draftIdParamSchema as draftIdParamsSchema };
 
-export const messageIdParamsSchema = z.object({
-  draftId: z.string().regex(/^\d+$/, 'Draft ID必须是数字').transform(Number),
+export const messageIdParamsSchema = draftIdParamSchema.extend({
   messageId: z.string().regex(/^\d+$/, '消息ID必须是数字').transform(Number),
 });
 
-export const memberIdParamsSchema = z.object({
-  draftId: z.string().regex(/^\d+$/, 'Draft ID必须是数字').transform(Number),
+export const memberIdParamsSchema = draftIdParamSchema.extend({
   memberId: z.string().regex(/^\d+$/, '成员ID必须是数字').transform(Number),
 });
 

@@ -1,5 +1,6 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
+import { idParamSchema } from '../../shared/schemas.js';
 
-export const projectIdParamsSchema = z.object({
-  projectId: z.string().transform(Number),
-});
+export { idParamSchema as projectIdParamsSchema };
+
+export type ProjectIdParams = z.infer<typeof idParamSchema>;

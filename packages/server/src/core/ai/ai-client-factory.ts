@@ -1,6 +1,7 @@
 import { singleton } from 'tsyringe';
 import Anthropic from '@anthropic-ai/sdk';
 import { getConfig } from '../config.js';
+import { normalizeError } from '../errors/index.js';
 import { createLogger } from '../logger/index.js';
 
 export interface AIResponse {
@@ -85,7 +86,7 @@ export class AIClientFactory implements IAIService {
         },
       };
     } catch (error) {
-      logger.error('AI request failed:', error instanceof Error ? error : new Error(String(error)));
+      logger.error('AI request failed:', normalizeError(error));
       throw error;
     }
   }

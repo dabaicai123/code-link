@@ -4,7 +4,7 @@ import { BuildRepository } from './repository.js';
 import { PermissionService } from '../../shared/permission.service.js';
 import { BuildManager } from './lib/build-manager.js';
 import { PreviewContainerManager } from './lib/preview-container.js';
-import { NotFoundError } from '../../core/errors/index.js';
+import { NotFoundError, normalizeError } from '../../core/errors/index.js';
 import { createLogger } from '../../core/logger/index.js';
 import { SocketServerService } from '../../socket/socket-server.service.js';
 import { broadcastBuildStatus } from '../../socket/namespaces/project.js';
@@ -30,7 +30,7 @@ export class BuildService {
     const build = await this.buildManager.createBuild(input.projectId);
 
     this.buildManager.startBuild(input.projectId, build.id).catch(async (error: unknown) => {
-      const err = error instanceof Error ? error : new Error(String(error));
+      const err = normalizeError(error);
       logger.error('Build failed', err, { projectId: input.projectId, buildId: build.id });
 
       // Update build status to failed

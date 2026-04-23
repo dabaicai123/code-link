@@ -3,7 +3,7 @@ import { singleton, inject } from 'tsyringe';
 import { ClaudeConfigRepository } from './repository.js';
 import { EncryptionService } from '../../core/crypto/encryption.service.js';
 import { createLogger } from '../../core/logger/index.js';
-import { ParamError } from '../../core/errors/index.js';
+import { ParamError, normalizeError } from '../../core/errors/index.js';
 import type { ClaudeConfig, ClaudeConfigResponse } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
 
@@ -31,7 +31,7 @@ export class ClaudeConfigService {
       const config = JSON.parse(this.encryption.decrypt(row.config));
       return { config, hasConfig: true };
     } catch (error) {
-      logger.error('Failed to decrypt user config', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Failed to decrypt user config', normalizeError(error));
       throw new Error('配置解密失败');
     }
   }
@@ -46,7 +46,7 @@ export class ClaudeConfigService {
       const encryptedConfig = this.encryption.encrypt(JSON.stringify(config));
       await this.repo.upsert(userId, encryptedConfig);
     } catch (error) {
-      logger.error('Failed to save user config', error instanceof Error ? error : new Error(String(error)));
+      logger.error('Failed to save user config', normalizeError(error));
       throw new Error('保存配置失败');
     }
   }

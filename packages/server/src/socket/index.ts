@@ -8,6 +8,7 @@ import { setupProjectNamespace } from './namespaces/project.js';
 import { setupDraftNamespace } from './namespaces/draft.js';
 import { setupTerminalNamespace } from './namespaces/terminal.js';
 import { setupCleanupInterval, stopCleanupInterval } from './utils/room-manager.js';
+import { startExecutionCleanup, stopExecutionCleanup } from '../ai/execution-manager.js';
 import { createLogger } from '../core/logger/index.js';
 
 const logger = createLogger('socket-server');
@@ -84,8 +85,9 @@ export function createSocketServer(httpServer: HttpServer): Server {
   setupDraftNamespace(io.of('/draft'));
   setupTerminalNamespace(io.of('/terminal'));
 
-  // Start TTL cleanup for empty rooms
+  // Start TTL cleanup for empty rooms and execution sessions
   setupCleanupInterval();
+  startExecutionCleanup();
 
   // Start rate-limit entry cleanup
   startRateLimitCleanup();
@@ -97,6 +99,7 @@ export function createSocketServer(httpServer: HttpServer): Server {
 
 export function closeSocketServer(): void {
   stopCleanupInterval();
+  stopExecutionCleanup();
   stopRateLimitCleanup();
   const socketService = container.resolve(SocketServerService);
   socketService.close();

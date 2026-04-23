@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
-import { Errors } from '../core/errors/index.js';
+import { ValidationError } from '../core/errors/index.js';
 
 function formatZodError(error: ZodError): string[] {
   return error.issues.map(issue => {
@@ -10,11 +10,10 @@ function formatZodError(error: ZodError): string[] {
 }
 
 export function validateBody(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
-      res.status(400).json(Errors.validationError(formatZodError(result.error)));
-      return;
+      throw new ValidationError(formatZodError(result.error));
     }
     req.body = result.data;
     next();
@@ -22,23 +21,24 @@ export function validateBody(schema: ZodSchema) {
 }
 
 export function validateParams(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.params);
     if (!result.success) {
-      res.status(400).json(Errors.validationError(formatZodError(result.error)));
-      return;
+      throw new ValidationError(formatZodError(result.error));
     }
-    req.params = result.data as Record<string, string>;
+    // Zod transforms (e.g., .transform(Number)) produce typed output —
+    // cast to any to allow controllers to access the transformed values
+    // without fighting Express's string-typed ParamsDictionary.
+    (req as any).validatedParams = result.data;
     next();
   };
 }
 
 export function validateQuery(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.query);
     if (!result.success) {
-      res.status(400).json(Errors.validationError(formatZodError(result.error)));
-      return;
+      throw new ValidationError(formatZodError(result.error));
     }
     req.query = result.data as Record<string, any>;
     next();
@@ -50,12 +50,11 @@ export function validate(schema: {
   params?: ZodSchema;
   query?: ZodSchema;
 }) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     if (schema.body) {
       const result = schema.body.safeParse(req.body);
       if (!result.success) {
-        res.status(400).json(Errors.validationError(formatZodError(result.error)));
-        return;
+        throw new ValidationError(formatZodError(result.error));
       }
       req.body = result.data;
     }
@@ -63,17 +62,15 @@ export function validate(schema: {
     if (schema.params) {
       const result = schema.params.safeParse(req.params);
       if (!result.success) {
-        res.status(400).json(Errors.validationError(formatZodError(result.error)));
-        return;
+        throw new ValidationError(formatZodError(result.error));
       }
-      req.params = result.data as Record<string, string>;
+      (req as any).validatedParams = result.data;
     }
 
     if (schema.query) {
       const result = schema.query.safeParse(req.query);
       if (!result.success) {
-        res.status(400).json(Errors.validationError(formatZodError(result.error)));
-        return;
+        throw new ValidationError(formatZodError(result.error));
       }
       req.query = result.data as Record<string, any>;
     }

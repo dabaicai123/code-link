@@ -84,6 +84,11 @@ export function getErrorMessage(error: unknown): string {
   return 'Unknown error';
 }
 
+export function normalizeError(error: unknown): Error {
+  if (isError(error)) return error;
+  return new Error(String(error));
+}
+
 /**
  * Safely extract error stack from unknown error
  */

@@ -1,7 +1,3 @@
-import { z } from 'zod';
+import { idParamSchema } from '../../shared/schemas.js';
 
-export const projectIdParamsSchema = z.object({
-  id: z.string().regex(/^\d+$/, '项目ID必须是数字').transform(Number),
-});
-
-export type ProjectIdParams = z.infer<typeof projectIdParamsSchema>;
+export { idParamSchema as projectIdParamsSchema };

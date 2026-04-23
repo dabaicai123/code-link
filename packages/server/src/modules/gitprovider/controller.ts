@@ -1,4 +1,3 @@
-// src/modules/gitprovider/controller.ts
 import "reflect-metadata";
 import { singleton, inject } from 'tsyringe';
 import { Request, Response } from 'express';
@@ -13,7 +12,7 @@ export class GitProviderController {
   ) {}
 
   // GitHub OAuth
-  async getGitHubOAuthUrl(req: Request, res: Response): Promise<void> {
+  async getGitHubOAuthUrl(_req: Request, res: Response): Promise<void> {
     const url = this.service.getOAuthUrl('github');
     res.json(success({ url }));
   }
@@ -25,13 +24,13 @@ export class GitProviderController {
   }
 
   async getGitHubRepos(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     const repos = await this.service.getGitHubRepos(userId);
     res.json(success(repos));
   }
 
   async getGitHubRepo(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     const owner = req.params.owner as string;
     const repo = req.params.repo as string;
     const repoInfo = await this.service.getGitHubRepo(userId, owner, repo);
@@ -39,7 +38,7 @@ export class GitProviderController {
   }
 
   async getGitHubBranches(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     const owner = req.params.owner as string;
     const repo = req.params.repo as string;
     const branches = await this.service.getGitHubBranches(userId, owner, repo);
@@ -53,19 +52,19 @@ export class GitProviderController {
   }
 
   async revokeGitHubToken(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     await this.service.revokeAuthorization(userId, 'github');
     res.status(204).send();
   }
 
   async getGitHubStatus(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     const hasToken = await this.service.getAuthorizationStatus(userId);
     res.json(success({ authorized: hasToken.github.authorized }));
   }
 
   // GitLab OAuth
-  async getGitLabOAuthUrl(req: Request, res: Response): Promise<void> {
+  async getGitLabOAuthUrl(_req: Request, res: Response): Promise<void> {
     const url = this.service.getOAuthUrl('gitlab');
     res.json(success({ url }));
   }
@@ -77,40 +76,40 @@ export class GitProviderController {
   }
 
   async getGitLabProjects(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     const projects = await this.service.getGitLabProjects(userId);
     res.json(success(projects));
   }
 
   async getGitLabProject(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
-    const projectId = parseInt(req.params.id as string, 10);
+    const userId = req.query.userId as unknown as number;
+    const { id: projectId } = req.validatedParams!;
     const project = await this.service.getGitLabProject(userId, projectId);
     res.json(success(project));
   }
 
   async getGitLabBranches(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
-    const projectId = parseInt(req.params.id as string, 10);
+    const userId = req.query.userId as unknown as number;
+    const { id: projectId } = req.validatedParams!;
     const branches = await this.service.getGitLabBranches(userId, projectId);
     res.json(success(branches));
   }
 
   async revokeGitLabToken(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     await this.service.revokeAuthorization(userId, 'gitlab');
     res.status(204).send();
   }
 
   async getGitLabStatus(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     const hasToken = await this.service.getAuthorizationStatus(userId);
     res.json(success({ authorized: hasToken.gitlab.authorized }));
   }
 
   // Combined status
   async getAuthorizationStatus(req: Request, res: Response): Promise<void> {
-    const userId = parseInt(req.query.userId as string, 10);
+    const userId = req.query.userId as unknown as number;
     const status = await this.service.getAuthorizationStatus(userId);
     res.json(success(status));
   }

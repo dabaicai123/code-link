@@ -6,7 +6,7 @@ import { OrganizationRepository } from '../modules/organization/repository.js';
 import { ProjectRepository } from '../modules/project/repository.js';
 import { isSuperAdmin } from '../utils/super-admin.js';
 import { ROLE_HIERARCHY, hasRole } from '../utils/roles.js';
-import { Errors } from '../core/errors/index.js';
+import { AuthError, PermissionError, ParamError, NotFoundError } from '../core/errors/index.js';
 import { parseIdParam } from '../utils/params.js';
 import type { OrgRole, SelectProject } from '../db/schema/index.js';
 
@@ -21,101 +21,55 @@ interface ProjectAccessResult {
   membership: { role: OrgRole };
 }
 
-/**
- * 解析并验证项目 ID
- */
 export function requireProjectId(req: Request): number | null {
   return parseIdParam(req.params.id || req.params.projectId);
 }
 
-/**
- * 获取项目访问信息（中间件辅助函数）
- * 返回项目和成员信息，或返回错误响应
- */
 export async function getProjectAccess(
   projectId: number,
   userId: number
-): Promise<{ success: true; data: ProjectAccessResult } | { success: false; error: { status: number; body: any } }> {
-  // 获取项目
+): Promise<ProjectAccessResult> {
   const project = await getProjectRepo().findById(projectId);
-  if (!project) {
-    return { success: false, error: { status: 404, body: Errors.notFound('项目') } };
-  }
+  if (!project) throw new NotFoundError('项目');
 
-  // 检查用户邮箱判断超级管理员
   const userEmail = await getAuthRepo().findEmailById(userId);
   if (userEmail && isSuperAdmin(userEmail)) {
-    const syntheticMembership: { role: OrgRole } = { role: 'owner' };
-    return {
-      success: true,
-      data: { projectId, userId, project, membership: syntheticMembership }
-    };
+    return { projectId, userId, project, membership: { role: 'owner' as OrgRole } };
   }
 
-  // 检查组织成员
   const membership = await getOrgRepo().findUserMembership(project.organizationId, userId);
-  if (!membership) {
-    return { success: false, error: { status: 403, body: Errors.forbidden() } };
-  }
+  if (!membership) throw new PermissionError('您没有权限访问该项目');
 
-  return { success: true, data: { projectId, userId, project, membership } };
+  return { projectId, userId, project, membership };
 }
 
-/**
- * 创建项目访问中间件
- * 验证用户是否有权限访问项目，并将项目和成员信息附加到请求对象
- */
 export function createProjectAccessMiddleware(minRole: OrgRole = 'member') {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     const userId = req.userId;
     const projectId = requireProjectId(req);
 
-    if (!userId) {
-      res.status(401).json(Errors.unauthorized());
-      return;
-    }
-
-    if (projectId === null) {
-      res.status(400).json(Errors.paramInvalid('项目 ID'));
-      return;
-    }
+    if (!userId) throw new AuthError();
+    if (projectId === null) throw new ParamError('项目 ID 无效');
 
     const result = await getProjectAccess(projectId, userId);
 
-    if (!result.success) {
-      res.status(result.error.status).json(result.error.body);
-      return;
+    if (!hasRole(result.membership.role, minRole)) {
+      throw new PermissionError(`需要 ${minRole} 或更高权限`);
     }
 
-    // 检查角色权限
-    if (!hasRole(result.data.membership.role, minRole)) {
-      res.status(403).json(Errors.forbidden());
-      return;
-    }
-
-    req.project = result.data.project;
-    req.membership = result.data.membership;
+    req.project = result.project;
+    req.membership = result.membership;
     next();
   };
 }
 
-/**
- * 组织访问中间件工厂
- */
 export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     const userId = req.userId;
     const orgId = parseIdParam(req.params.orgId || req.params.id || req.body.organization_id);
 
-    if (!userId) {
-      res.status(401).json(Errors.unauthorized());
-      return;
-    }
-
-    if (orgId === null) {
-      res.status(400).json(Errors.paramInvalid('组织 ID'));
-      return;
-    }
+    if (!userId) throw new AuthError();
+    if (orgId === null) throw new ParamError('组织 ID 无效');
 
     const userEmail = await getAuthRepo().findEmailById(userId);
     if (userEmail && isSuperAdmin(userEmail)) {
@@ -125,14 +79,10 @@ export function createOrganizationAccessMiddleware(minRole: OrgRole = 'member') 
     }
 
     const membership = await getOrgRepo().findUserMembership(orgId, userId);
-    if (!membership) {
-      res.status(403).json(Errors.forbidden());
-      return;
-    }
+    if (!membership) throw new PermissionError('您不是该组织的成员');
 
     if (!hasRole(membership.role, minRole)) {
-      res.status(403).json(Errors.forbidden());
-      return;
+      throw new PermissionError(`需要 ${minRole} 或更高权限`);
     }
 
     req.orgRole = membership.role;

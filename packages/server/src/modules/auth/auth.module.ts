@@ -13,6 +13,7 @@ export function registerAuthModule(): void {
 export { AuthService } from './service.js';
 export { AuthController } from './controller.js';
 export { createAuthRoutes } from './routes.js';
+export type { RateLimiterOptions } from './routes.js';
 export { registerSchema, loginSchema } from './schemas.js';
 export type { RegisterInput, LoginInput } from './schemas.js';
 export type { AuthResult, UserWithoutPassword } from './types.js';

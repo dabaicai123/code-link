@@ -19,26 +19,26 @@ export class BuildController {
   }
 
   async listByProject(req: Request, res: Response): Promise<void> {
-    const projectId = parseInt(req.params.projectId as string, 10);
+    const { projectId } = req.validatedParams!;
     const { page, limit } = buildPaginationSchema.parse(req.query);
     const result = await this.service.findByProjectId(req.userId!, projectId, page, limit);
     res.json(success(result));
   }
 
   async get(req: Request, res: Response): Promise<void> {
-    const buildId = parseInt(req.params.id as string, 10);
+    const { id: buildId } = req.validatedParams!;
     const result = await this.service.findById(req.userId!, buildId);
     res.json(success(result));
   }
 
   async getPreview(req: Request, res: Response): Promise<void> {
-    const projectId = parseInt(req.params.projectId as string, 10);
+    const { projectId } = req.validatedParams!;
     const preview = await this.service.getPreview(req.userId!, projectId);
     res.json(success(preview));
   }
 
   async stopPreview(req: Request, res: Response): Promise<void> {
-    const projectId = parseInt(req.params.projectId as string, 10);
+    const { projectId } = req.validatedParams!;
     await this.service.stopPreview(req.userId!, projectId);
     res.status(204).send();
   }

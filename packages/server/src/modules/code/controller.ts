@@ -8,19 +8,19 @@ export class CodeController {
   constructor(@inject(CodeService) private readonly service: CodeService) {}
 
   async startCodeServer(req: Request, res: Response): Promise<void> {
-    const projectId = Number(req.params.projectId);
+    const { projectId } = req.validatedParams!;
     const result = await this.service.startCodeServer(req.userId!, projectId);
     res.json(success(result));
   }
 
   async stopCodeServer(req: Request, res: Response): Promise<void> {
-    const projectId = Number(req.params.projectId);
+    const { projectId } = req.validatedParams!;
     const result = await this.service.stopCodeServer(req.userId!, projectId);
     res.json(success(result));
   }
 
   async getCodeServerStatus(req: Request, res: Response): Promise<void> {
-    const projectId = Number(req.params.projectId);
+    const { projectId } = req.validatedParams!;
     const result = await this.service.getCodeServerStatus(req.userId!, projectId);
     res.json(success(result));
   }

@@ -33,10 +33,12 @@ export const draftMembers = sqliteTable('draft_members', {
   userIdIdx: index('idx_draft_members_user_id').on(table.userId),
 }));
 
+// @ts-expect-error — Drizzle self-referential table (parentId -> draftMessages.id) causes circular type inference
 export const draftMessages = sqliteTable('draft_messages', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   draftId: integer('draft_id').notNull()
     .references(() => drafts.id, { onDelete: 'cascade' }),
+  // @ts-expect-error — self-referential column causes circular return type
   parentId: integer('parent_id').references(() => draftMessages.id, { onDelete: 'cascade' }),
   userId: integer('user_id').notNull().references(() => users.id),
   content: text('content'),
